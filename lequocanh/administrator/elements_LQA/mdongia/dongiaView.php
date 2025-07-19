@@ -1,365 +1,360 @@
-<div class="admin-title">Quản lý đơn giá</div>
-<hr>
 <?php
+require_once './elements_LQA/mod/dongiaCls.php';
+require_once './elements_LQA/mod/hanghoaCls.php';
+
 // Hiển thị thông báo nếu có
 if (isset($_SESSION['dongia_message'])) {
     $message = $_SESSION['dongia_message'];
     $success = isset($_SESSION['dongia_success']) ? $_SESSION['dongia_success'] : false;
     $alertClass = $success ? 'alert-success' : 'alert-danger';
     echo '<div class="alert ' . $alertClass . '" role="alert">' . htmlspecialchars($message) . '</div>';
-
-    // Xóa thông báo sau khi hiển thị
     unset($_SESSION['dongia_message']);
     unset($_SESSION['dongia_success']);
 }
-?>
-<style>
-    /* CSS cho thông báo */
-    .alert {
-        padding: 15px;
-        margin-bottom: 20px;
-        border: 1px solid transparent;
-        border-radius: 4px;
-    }
 
-    .alert-success {
-        color: #155724;
-        background-color: #d4edda;
-        border-color: #c3e6cb;
-    }
-
-    .alert-danger {
-        color: #721c24;
-        background-color: #f8d7da;
-        border-color: #f5c6cb;
-    }
-
-    /* CSS cho nút trạng thái áp dụng */
-    .btn-status {
-        display: inline-block;
-        padding: 10px 15px;
-        border-radius: 30px;
-        font-weight: 600;
-        font-size: 14px;
-        text-align: center;
-        cursor: pointer;
-        border: none;
-        transition: all 0.3s ease;
-        width: 160px;
-        position: relative;
-        overflow: hidden;
-        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
-        letter-spacing: 0.5px;
-    }
-
-    /* Nút "Ngừng áp dụng" */
-    .btn-status:not(.active) {
-        background: linear-gradient(135deg, #ff7675, #d63031);
-        color: white;
-        border: 2px solid #ff7675;
-    }
-
-    /* Nút "Đang áp dụng" */
-    .btn-status.active {
-        background: linear-gradient(135deg, #00b894, #00cec9);
-        color: white;
-        border: 2px solid #00b894;
-    }
-
-    /* Hiệu ứng hover */
-    .btn-status:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-        filter: brightness(1.05);
-    }
-
-    /* Hiệu ứng khi nhấn */
-    .btn-status:active {
-        transform: translateY(1px);
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-    }
-
-    /* Thêm biểu tượng */
-    .btn-status::before {
-        font-family: "Font Awesome 5 Free";
-        font-weight: 900;
-        margin-right: 8px;
-        display: inline-block;
-        transition: transform 0.3s ease;
-    }
-
-    .btn-status.active::before {
-        content: "\f058"; /* Biểu tượng check-circle */
-        color: #ffffff;
-    }
-
-    .btn-status:not(.active)::before {
-        content: "\f057"; /* Biểu tượng times-circle */
-        color: #ffffff;
-    }
-
-    /* Hiệu ứng hover cho biểu tượng */
-    .btn-status:hover::before {
-        transform: rotate(360deg);
-    }
-
-    /* Hiệu ứng ripple khi click */
-    .btn-status::after {
-        content: "";
-        position: absolute;
-        background: rgba(255, 255, 255, 0.3);
-        border-radius: 50%;
-        width: 100px;
-        height: 100px;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%) scale(0);
-        opacity: 0;
-        transition: transform 0.5s, opacity 0.5s;
-        pointer-events: none;
-    }
-
-    .btn-status:active::after {
-        transform: translate(-50%, -50%) scale(2);
-        opacity: 0;
-        transition: 0s;
-    }
-
-    /* Thêm hiệu ứng đổ bóng */
-    .btn-status.active {
-        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-    }
-
-    .btn-status:not(.active) {
-        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-    }
-
-    /* Thêm hiệu ứng pulse cho nút đang áp dụng */
-    @keyframes pulse {
-        0% {
-            box-shadow: 0 0 0 0 rgba(0, 184, 148, 0.7);
-        }
-        70% {
-            box-shadow: 0 0 0 10px rgba(0, 184, 148, 0);
-        }
-        100% {
-            box-shadow: 0 0 0 0 rgba(0, 184, 148, 0);
-        }
-    }
-
-    .btn-status.active {
-        animation: pulse 2s infinite;
-    }
-</style>
-<?php
-require_once './elements_LQA/mod/dongiaCls.php';
-require_once './elements_LQA/mod/hanghoaCls.php';
-
-$lhobj = new Dongia();
-$list_lh = $lhobj->DongiaGetAll();
-$l = count($list_lh);
+try {
+    $lhobj = new Dongia();
+    $list_lh = $lhobj->DongiaGetAll();
+    $l = count($list_lh);
+} catch (Exception $e) {
+    $list_lh = [];
+    $l = 0;
+}
 
 $hhobj = new Hanghoa();
 $list_hh = $hhobj->HanghoaGetAll();
-
 if (empty($list_hh)) {
     $list_hh = [];
 }
 ?>
 
-<div class="admin-form">
-    <h3>Thêm đơn giá mới</h3>
-    <form name="newdongia" id="formadddongia" method="post" action='./elements_LQA/mdongia/dongiaAct.php?reqact=addnew' enctype="multipart/form-data">
+<style>
+.alert { padding: 15px; margin-bottom: 20px; border: 1px solid transparent; border-radius: 4px; }
+.alert-success { color: #155724; background-color: #d4edda; border-color: #c3e6cb; }
+.alert-danger { color: #721c24; background-color: #f8d7da; border-color: #f5c6cb; }
+.btn-apply { 
+    background: #28a745 !important; 
+    color: white !important; 
+    padding: 10px 20px; 
+    border: none; 
+    border-radius: 5px; 
+    cursor: pointer; 
+    font-weight: bold;
+    font-size: 14px;
+    margin: 2px;
+}
+.btn-apply:hover { background: #218838 !important; transform: translateY(-1px); }
+.btn-active { 
+    background: #6c757d !important; 
+    color: white !important; 
+    padding: 10px 20px; 
+    border: none; 
+    border-radius: 5px;
+    font-weight: bold;
+}
+.btn-delete {
+    background: #dc3545 !important;
+    color: white !important;
+    padding: 8px 15px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    margin: 2px;
+}
+.btn-delete:hover { background: #c82333 !important; }
+.price-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+.price-table th { background: #007bff; color: white; padding: 12px 8px; text-align: center; }
+.price-table td { padding: 12px 8px; border-bottom: 1px solid #dee2e6; vertical-align: middle; }
+.price-table tr:hover { background-color: rgba(0, 123, 255, 0.05); }
+.form-section { background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+</style>
+
+<div class="admin-title">
+    <h2>🏷️ Quản lý đơn giá - Có thể chuyển đổi giữa các giá cũ</h2>
+</div>
+
+<div class="form-section">
+    <h3>➕ Thêm đơn giá mới</h3>
+    
+    <form method="post" action='./elements_LQA/mdongia/dongiaAct.php?reqact=addnew'>
         <table>
             <tr>
-                <td>Chọn hàng hóa:</td>
-                <td>
-                    <select name="idhanghoa" id="hanghoaSelect" onchange="updatePrice()" required>
+                <td style="padding: 8px; font-weight: bold;">Chọn hàng hóa:</td>
+                <td style="padding: 8px;">
+                    <select name="idhanghoa" required style="width: 300px; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
                         <option value="">-- Chọn hàng hóa --</option>
-                        <?php
-                        if (!empty($list_hh)) {
-                            foreach ($list_hh as $h) {
-                        ?>
-                                <option value="<?php echo htmlspecialchars($h->idhanghoa ?? ''); ?>"
-                                    data-price="<?php echo htmlspecialchars($h->giathamkhao ?? ''); ?>">
-                                    <?php echo htmlspecialchars($h->tenhanghoa ?? ''); ?>
-                                </option>
-                        <?php
-                            }
-                        }
-                        ?>
+                        <?php foreach ($list_hh as $h): ?>
+                            <option value="<?php echo $h->idhanghoa; ?>"><?php echo htmlspecialchars($h->tenhanghoa); ?></option>
+                        <?php endforeach; ?>
                     </select>
                 </td>
             </tr>
             <tr>
-                <td>Giá bán</td>
-                <td><input type="text" name="giaban" id="giaban" required /></td>
+                <td style="padding: 8px; font-weight: bold;">Giá bán:</td>
+                <td style="padding: 8px;">
+                    <input type="number" name="giaban" required style="width: 200px; padding: 8px; border: 1px solid #ccc; border-radius: 4px;" placeholder="VD: 100000">
+                </td>
             </tr>
             <tr>
-                <td>Tên hàng hóa</td>
-                <td><input type="text" name="tenHangHoa" id="tenHangHoa" readonly /></td>
+                <td style="padding: 8px; font-weight: bold;">Ngày áp dụng:</td>
+                <td style="padding: 8px;">
+                    <input type="date" name="ngayapdung" required value="<?php echo date('Y-m-d'); ?>" style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                </td>
             </tr>
             <tr>
-                <td>Ngày áp dụng</td>
-                <td><input type="date" name="ngayapdung" required /></td>
+                <td style="padding: 8px; font-weight: bold;">Ngày kết thúc:</td>
+                <td style="padding: 8px;">
+                    <input type="date" name="ngayketthuc" required value="<?php echo date('Y-m-d', strtotime('+1 year')); ?>" style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                </td>
             </tr>
             <tr>
-                <td>Ngày kết thúc</td>
-                <td><input type="date" name="ngayketthuc" required /></td>
+                <td style="padding: 8px; font-weight: bold;">Ghi chú:</td>
+                <td style="padding: 8px;">
+                    <input type="text" name="ghichu" style="width: 300px; padding: 8px; border: 1px solid #ccc; border-radius: 4px;" placeholder="Ghi chú (tùy chọn)">
+                </td>
             </tr>
             <tr>
-                <td>Điều kiện</td>
-                <td><input type="text" name="dieukien" /></td>
-            </tr>
-            <tr>
-                <td>Ghi chú</td>
-                <td><input type="text" name="ghichu" /></td>
-            </tr>
-            <tr>
-                <td><input type="submit" value="Tạo mới" /></td>
-                <td><input type="reset" value="Làm lại" /><b id="noteForm"></b></td>
+                <td></td>
+                <td style="padding: 8px;">
+                    <input type="submit" value="➕ TẠO ĐƠN GIÁ MỚI" style="background: #007bff; color: white; padding: 12px 25px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 16px;">
+                </td>
             </tr>
         </table>
     </form>
 </div>
 
-<hr />
-<div class="content_dongia">
-    <div class="admin-info">
-        Tổng số đơn giá: <b><?php echo $l; ?></b>
-    </div>
+<hr style="margin: 30px 0;">
 
-    <table class="content-table">
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>ID Hàng Hóa</th>
-                <th>Tên Hàng Hóa</th>
-                <th>Giá Bán</th>
-                <th>Ngày áp dụng</th>
-                <th>Ngày kết thúc</th>
-                <th>Điều kiện</th>
-                <th>Ghi chú</th>
-                <th>Áp dụng</th>
-            </tr>
-        </thead>
-        <tbody>
-            <?php
-            if ($l > 0) {
-                foreach ($list_lh as $u) {
-            ?>
-                    <tr>
-                        <td><?php echo htmlspecialchars($u->idDonGia ?? ''); ?></td>
-                        <td><?php echo htmlspecialchars($u->idHangHoa ?? ''); ?></td>
-                        <td><?php echo htmlspecialchars($u->tenhanghoa ?? ''); ?></td>
-                        <td><?php echo number_format($u->giaBan, 0, ',', '.'); ?> đ</td>
-                        <td><?php echo htmlspecialchars($u->ngayApDung ?? ''); ?></td>
-                        <td><?php echo htmlspecialchars($u->ngayKetThuc ?? ''); ?></td>
-                        <td><?php echo htmlspecialchars($u->dieuKien ?? ''); ?></td>
-                        <td><?php echo htmlspecialchars($u->ghiChu ?? ''); ?></td>
+<div>
+    <h3>📋 Danh sách đơn giá (Tổng: <?php echo $l; ?> đơn giá)</h3>
+    
+    <?php if ($l > 0): ?>
+        <table class="price-table">
+            <thead>
+                <tr>
+                    <th style="width: 60px;">ID</th>
+                    <th style="width: 200px;">SẢN PHẨM</th>
+                    <th style="width: 120px;">GIÁ BÁN</th>
+                    <th style="width: 150px;">THỜI GIAN ÁP DỤNG</th>
+                    <th style="width: 100px;">TRẠNG THÁI</th>
+                    <th style="width: 200px;">🎯 THAO TÁC</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($list_lh as $u): ?>
+                    <?php 
+                    $isActive = $u->apDung;
+                    $isExpired = strtotime($u->ngayKetThuc) < time();
+                    $rowStyle = $isActive ? 'background-color: rgba(40, 167, 69, 0.1); border-left: 4px solid #28a745;' : '';
+                    ?>
+                    <tr style="<?php echo $rowStyle; ?>">
+                        <td style="text-align: center;">
+                            <strong style="font-size: 16px;"><?php echo $u->idDonGia; ?></strong>
+                        </td>
                         <td>
-                            <form method="post" action="./elements_LQA/mdongia/updateSetFalse.php">
-                                <input type="hidden" name="idDonGia" value="<?php echo htmlspecialchars($u->idDonGia ?? ''); ?>">
-                                <input type="hidden" name="apDung" value="<?php echo $u->apDung ? 'false' : 'true'; ?>">
-                                <button type="submit" class="btn-status <?php echo $u->apDung ? 'active' : ''; ?>" title="<?php echo $u->apDung ? 'Đây là giá đang được áp dụng. Nhấn để ngừng áp dụng.' : 'Đây là giá không được áp dụng. Nhấn để áp dụng giá này.'; ?>">
-                                    <?php echo $u->apDung ? 'Đang áp dụng' : 'Chọn áp dụng'; ?>
+                            <div>
+                                <strong style="color: #007bff; font-size: 15px;"><?php echo htmlspecialchars($u->tenhanghoa); ?></strong><br>
+                                <small style="color: #6c757d;">ID sản phẩm: <?php echo $u->idHangHoa; ?></small>
+                            </div>
+                        </td>
+                        <td style="text-align: center;">
+                            <div style="font-size: 18px; font-weight: bold; color: #28a745;">
+                                <?php echo number_format($u->giaBan, 0, ',', '.'); ?>đ
+                            </div>
+                        </td>
+                        <td style="text-align: center;">
+                            <div>
+                                <small><strong>Từ:</strong> <?php echo date('d/m/Y', strtotime($u->ngayApDung)); ?></small><br>
+                                <small><strong>Đến:</strong> <?php echo date('d/m/Y', strtotime($u->ngayKetThuc)); ?></small>
+                            </div>
+                        </td>
+                        <td style="text-align: center;">
+                            <?php if ($isActive): ?>
+                                <div style="background: #28a745; color: white; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; display: inline-block;">
+                                    ✅ ĐANG ÁP DỤNG
+                                </div>
+                            <?php elseif ($isExpired): ?>
+                                <div style="background: #dc3545; color: white; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; display: inline-block;">
+                                    ⏰ ĐÃ HẾT HẠN
+                                </div>
+                            <?php else: ?>
+                                <div style="background: #ffc107; color: #212529; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; display: inline-block;">
+                                    ⏸️ CHƯA ÁP DỤNG
+                                </div>
+                            <?php endif; ?>
+                        </td>
+                        <td style="text-align: center;">
+                            <?php if (!$isExpired): ?>
+                                <?php if (!$isActive): ?>
+                                    <!-- NÚT ÁP DỤNG - TÍNH NĂNG CHÍNH -->
+                                    <button onclick="applyPrice(<?php echo $u->idDonGia; ?>, '<?php echo htmlspecialchars($u->tenhanghoa); ?>', <?php echo $u->giaBan; ?>)" 
+                                            class="btn-apply" 
+                                            title="Nhấn để áp dụng đơn giá này"
+                                            style="background: #28a745 !important; color: white !important; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 14px;">
+                                        🎯 ÁP DỤNG NGAY
+                                    </button>
+                                <?php else: ?>
+                                    <span class="btn-active" style="background: #6c757d !important; color: white !important; padding: 10px 20px; border: none; border-radius: 5px; font-weight: bold;">
+                                        ✅ ĐANG DÙNG
+                                    </span>
+                                <?php endif; ?>
+                                <br>
+                                <!-- NÚT XÓA -->
+                                <button onclick="deletePrice(<?php echo $u->idDonGia; ?>)" 
+                                        class="btn-delete" 
+                                        title="Xóa đơn giá này"
+                                        style="background: #dc3545 !important; color: white !important; padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; margin-top: 5px;">
+                                    🗑️ XÓA
                                 </button>
-                            </form>
+                            <?php else: ?>
+                                <span style="color: #6c757d; font-style: italic;">⏰ Đã hết hạn</span>
+                            <?php endif; ?>
                         </td>
                     </tr>
-            <?php
-                }
-            }
-            ?>
-        </tbody>
-    </table>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    <?php else: ?>
+        <div style="text-align: center; padding: 60px; background: #f8f9fa; border-radius: 8px; color: #6c757d;">
+            <div style="font-size: 48px; margin-bottom: 20px;">📋</div>
+            <h4>Chưa có đơn giá nào</h4>
+            <p>Hãy tạo đơn giá đầu tiên bằng form ở trên!</p>
+        </div>
+    <?php endif; ?>
 </div>
 
 <script>
-    // Cập nhật giá và tên hàng hóa khi chọn sản phẩm
-    function updatePrice() {
-        var select = document.getElementById("hanghoaSelect");
-        if (select.selectedIndex > 0) {
-            var selectedOption = select.options[select.selectedIndex];
-            var price = selectedOption.getAttribute("data-price");
-            var name = selectedOption.text;
-            document.getElementById("giaban").value = price;
-            document.getElementById("tenHangHoa").value = name;
+function applyPrice(idDonGia, tenSanPham, giaBan) {
+    const giaFormatted = new Intl.NumberFormat('vi-VN').format(giaBan);
+    
+    const confirmMessage = `🎯 XÁC NHẬN ÁP DỤNG ĐƠN GIÁ
 
-            // Tự động đặt ngày áp dụng là ngày hiện tại
-            var today = new Date();
-            var formattedDate = today.toISOString().substr(0, 10);
+📦 Sản phẩm: ${tenSanPham}
+💰 Giá mới: ${giaFormatted}đ
 
-            // Chỉ đặt ngày áp dụng nếu chưa được đặt
-            var ngayApDungInput = document.querySelector('input[name="ngayapdung"]');
-            if (!ngayApDungInput.value) {
-                ngayApDungInput.value = formattedDate;
+⚠️ LƯU Ý QUAN TRỌNG:
+• Đơn giá hiện tại sẽ bị thay thế
+• Giá tham khảo sẽ được cập nhật
+• Có thể ảnh hưởng đến báo cáo doanh thu
+
+❓ Bạn có chắc chắn muốn áp dụng đơn giá này không?`;
+    
+    if (confirm(confirmMessage)) {
+        // Hiển thị loading
+        const btn = event.target;
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '⏳ ĐANG XỬ LÝ...';
+        btn.disabled = true;
+        btn.style.background = '#6c757d !important';
+        
+        fetch('./elements_LQA/mdongia/dongiaSwitch.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                action: 'switch_price',
+                idDonGia: idDonGia
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(`✅ THÀNH CÔNG!
+
+${data.message}
+
+🔄 Trang sẽ được tải lại để cập nhật thông tin mới.`);
+                location.reload();
+            } else {
+                alert(`❌ THẤT BẠI!
+
+Lỗi: ${data.message || 'Có lỗi xảy ra khi áp dụng đơn giá'}
+
+🔄 Vui lòng thử lại hoặc liên hệ quản trị viên.`);
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+                btn.style.background = '#28a745 !important';
             }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert(`❌ LỖI KẾT NỐI!
 
-            // Đặt ngày kết thúc là 1 năm sau nếu chưa được đặt
-            var nextYear = new Date();
-            nextYear.setFullYear(today.getFullYear() + 1);
-            var formattedNextYear = nextYear.toISOString().substr(0, 10);
+Không thể kết nối đến server.
+Chi tiết lỗi: ${error.message}
 
-            var ngayKetThucInput = document.querySelector('input[name="ngayketthuc"]');
-            if (!ngayKetThucInput.value) {
-                ngayKetThucInput.value = formattedNextYear;
-            }
-        }
+🔄 Vui lòng kiểm tra kết nối mạng và thử lại.`);
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+            btn.style.background = '#28a745 !important';
+        });
     }
+}
 
-    // Kiểm tra form trước khi submit
-    document.getElementById("formadddongia").addEventListener("submit", function(event) {
-        var idHangHoa = document.getElementById("hanghoaSelect").value;
-        var giaBan = document.getElementById("giaban").value;
-        var ngayApDung = document.querySelector('input[name="ngayapdung"]').value;
-        var ngayKetThuc = document.querySelector('input[name="ngayketthuc"]').value;
+function deletePrice(idDonGia) {
+    const confirmMessage = `🗑️ XÁC NHẬN XÓA ĐƠN GIÁ
 
-        if (!idHangHoa || !giaBan || !ngayApDung || !ngayKetThuc) {
-            event.preventDefault();
-            alert("Vui lòng điền đầy đủ thông tin bắt buộc!");
-            return false;
-        }
+⚠️ CẢNH BÁO:
+• Hành động này không thể hoàn tác
+• Đơn giá sẽ bị xóa vĩnh viễn khỏi hệ thống
+• Nếu đây là đơn giá đang áp dụng, hệ thống sẽ tự động chọn đơn giá khác
 
-        // Kiểm tra ngày áp dụng phải trước ngày kết thúc
-        var apDungDate = new Date(ngayApDung);
-        var ketThucDate = new Date(ngayKetThuc);
+❓ Bạn có chắc chắn muốn xóa đơn giá này không?`;
+    
+    if (confirm(confirmMessage)) {
+        const btn = event.target;
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '⏳ ĐANG XÓA...';
+        btn.disabled = true;
+        
+        fetch('./elements_LQA/mdongia/dongiaAct.php?reqact=deletedongia', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: 'idDonGia=' + encodeURIComponent(idDonGia)
+        })
+        .then(response => response.text())
+        .then(data => {
+            alert('✅ XÓA THÀNH CÔNG!\n\nĐơn giá đã được xóa khỏi hệ thống.\n\n🔄 Trang sẽ được tải lại.');
+            location.reload();
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('❌ LỖI!\n\nCó lỗi xảy ra khi xóa đơn giá.\n\n🔄 Vui lòng thử lại.');
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        });
+    }
+}
 
-        if (apDungDate >= ketThucDate) {
-            event.preventDefault();
-            alert("Ngày áp dụng phải trước ngày kết thúc!");
-            return false;
-        }
-
-        // Kiểm tra giá bán phải là số dương
-        if (isNaN(giaBan) || parseFloat(giaBan) <= 0) {
-            event.preventDefault();
-            alert("Giá bán phải là số dương!");
-            return false;
-        }
-
-        return true;
+// Thêm hiệu ứng hover cho các nút
+document.addEventListener('DOMContentLoaded', function() {
+    // Hiệu ứng hover cho nút áp dụng
+    const applyButtons = document.querySelectorAll('.btn-apply');
+    applyButtons.forEach(btn => {
+        btn.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-2px)';
+            this.style.boxShadow = '0 4px 8px rgba(40, 167, 69, 0.3)';
+        });
+        btn.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0)';
+            this.style.boxShadow = 'none';
+        });
     });
-
-    // Đặt ngày mặc định khi trang được tải
-    window.onload = function() {
-        var today = new Date();
-        var formattedDate = today.toISOString().substr(0, 10);
-
-        // Đặt ngày áp dụng là ngày hiện tại
-        var ngayApDungInput = document.querySelector('input[name="ngayapdung"]');
-        if (!ngayApDungInput.value) {
-            ngayApDungInput.value = formattedDate;
-        }
-
-        // Đặt ngày kết thúc là 1 năm sau
-        var nextYear = new Date();
-        nextYear.setFullYear(today.getFullYear() + 1);
-        var formattedNextYear = nextYear.toISOString().substr(0, 10);
-
-        var ngayKetThucInput = document.querySelector('input[name="ngayketthuc"]');
-        if (!ngayKetThucInput.value) {
-            ngayKetThucInput.value = formattedNextYear;
-        }
-    };
+    
+    // Hiệu ứng hover cho nút xóa
+    const deleteButtons = document.querySelectorAll('.btn-delete');
+    deleteButtons.forEach(btn => {
+        btn.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-1px)';
+            this.style.boxShadow = '0 2px 4px rgba(220, 53, 69, 0.3)';
+        });
+        btn.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0)';
+            this.style.boxShadow = 'none';
+        });
+    });
+});
 </script>

@@ -1,4 +1,11 @@
 <?php
+// Use SessionManager for safe session handling
+require_once __DIR__ . '/../mod/sessionManager.php';
+require_once __DIR__ . '/../config/logger_config.php';
+
+// Start session safely
+SessionManager::start();
+
 // Kiểm tra quyền truy cập
 require_once '../mod/phanquyenCls.php';
 $phanQuyen = new PhanQuyen();

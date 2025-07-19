@@ -1,5 +1,10 @@
 <?php
-session_start();
+// Use SessionManager for safe session handling
+require_once __DIR__ . '/../mod/sessionManager.php';
+require_once __DIR__ . '/../config/logger_config.php';
+
+// Start session safely
+SessionManager::start();
 require_once '../../elements_LQA/mod/database.php';
 require_once '../../elements_LQA/mod/giohangCls.php';
 require_once '../../elements_LQA/mod/mtonkhoCls.php';
@@ -99,9 +104,13 @@ if (!$hasShippingAddressColumn) {
     try {
         $addShippingAddressColumnSql = "ALTER TABLE don_hang ADD COLUMN dia_chi_giao_hang TEXT AFTER ma_nguoi_dung";
         $conn->exec($addShippingAddressColumnSql);
-        error_log("Đã thêm cột dia_chi_giao_hang vào bảng don_hang");
+        if (class_exists('Logger')) {
+            Logger::info("Added shipping address column to orders table");
+        }
     } catch (PDOException $e) {
-        error_log("Lỗi khi thêm cột dia_chi_giao_hang: " . $e->getMessage());
+        if (class_exists('Logger')) {
+            Logger::error("Failed to add shipping address column", ['error' => $e->getMessage()]);
+        }
     }
 }
 
@@ -141,8 +150,14 @@ try {
     // Lấy user_id từ session (nếu đã đăng nhập)
     $userId = isset($_SESSION['USER']) ? $_SESSION['USER'] : null;
 
-    // Ghi log để debug
-    error_log("Bắt đầu tạo đơn hàng: order_code=" . $orderCode . ", user_id=" . $userId . ", total_amount=" . $totalAmount);
+    // Ghi log để debug - sử dụng Logger
+    if (class_exists('Logger')) {
+        Logger::info("Creating new order", [
+            'order_code' => $orderCode,
+            'user_id' => $userId,
+            'total_amount' => $totalAmount
+        ]);
+    }
 
     // Kiểm tra xem các cột thông báo có tồn tại không
     $hasNotificationColumns = true;
@@ -170,12 +185,21 @@ try {
     // Lấy ID của đơn hàng vừa thêm
     $orderId = $conn->lastInsertId();
 
-    error_log("Đã tạo đơn hàng thành công: order_id=" . $orderId);
+    if (class_exists('Logger')) {
+        Logger::info("Order created successfully", ['order_id' => $orderId]);
+    }
 
     // Thêm các sản phẩm vào bảng order_items
     foreach ($orderDetails as $item) {
         try {
-            error_log("Thêm sản phẩm vào đơn hàng: product_id=" . $item['id'] . ", quantity=" . $item['quantity'] . ", price=" . $item['price']);
+            if (class_exists('Logger')) {
+                Logger::debug("Adding product to order", [
+                    'order_id' => $orderId,
+                    'product_id' => $item['id'],
+                    'quantity' => $item['quantity'],
+                    'price' => $item['price']
+                ]);
+            }
 
             $insertOrderItemSql = "INSERT INTO chi_tiet_don_hang (ma_don_hang, ma_san_pham, so_luong, gia, ngay_tao)
                                   VALUES (?, ?, ?, ?, NOW())";

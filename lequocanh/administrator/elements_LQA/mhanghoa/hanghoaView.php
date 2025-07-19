@@ -38,7 +38,51 @@ if (isset($_GET['result'])) {
         echo '</div>';
     } else if ($_GET['result'] == 'notok') {
         echo '<div class="alert alert-danger">';
-        if (isset($_GET['msg'])) {
+
+        // Xử lý lỗi foreign key constraint
+        if (isset($_GET['error_type']) && $_GET['error_type'] == 'foreign_key_constraint') {
+            echo '<div class="foreign-key-error">';
+            echo '<h4><i class="fas fa-exclamation-triangle"></i> Không thể xóa hàng hóa</h4>';
+
+            if (isset($_GET['message'])) {
+                echo '<p><strong>Lý do:</strong> ' . htmlspecialchars(urldecode($_GET['message'])) . '</p>';
+            }
+
+            if (isset($_GET['related_tables'])) {
+                $relatedTables = json_decode(urldecode($_GET['related_tables']), true);
+                if (!empty($relatedTables)) {
+                    echo '<div class="related-data-info">';
+                    echo '<h5>📋 Dữ liệu liên quan:</h5>';
+                    echo '<ul>';
+                    foreach ($relatedTables as $table) {
+                        echo '<li>';
+                        echo '<strong>' . htmlspecialchars($table['display_name']) . ':</strong> ';
+                        echo htmlspecialchars($table['description']);
+                        echo '</li>';
+                    }
+                    echo '</ul>';
+                    echo '</div>';
+                }
+            }
+
+            if (isset($_GET['suggested_action'])) {
+                echo '<div class="suggested-action">';
+                echo '<h5>💡 Hướng dẫn khắc phục:</h5>';
+                echo '<p>' . htmlspecialchars(urldecode($_GET['suggested_action'])) . '</p>';
+                echo '</div>';
+            }
+
+            echo '<div class="action-steps">';
+            echo '<h5>🔧 Các bước thực hiện:</h5>';
+            echo '<ol>';
+            echo '<li>Kiểm tra và xóa dữ liệu liên quan trong các bảng được liệt kê ở trên</li>';
+            echo '<li>Hoặc liên hệ quản trị viên để được hỗ trợ</li>';
+            echo '<li>Sau khi xóa dữ liệu liên quan, bạn có thể thử xóa hàng hóa này lại</li>';
+            echo '</ol>';
+            echo '</div>';
+            echo '</div>';
+        } else if (isset($_GET['msg'])) {
+            // Xử lý các lỗi khác
             if ($_GET['msg'] == 'remove_failed') {
                 echo '<strong>Lỗi!</strong> Không thể gỡ bỏ hình ảnh. Vui lòng thử lại.';
             } else if ($_GET['msg'] == 'no_images_removed') {
@@ -441,6 +485,72 @@ $l = count($list_hanghoa);
 
     .remove-image-btn:hover {
         background-color: #dc3545;
+    }
+
+    /* Styles for foreign key error display */
+    .foreign-key-error {
+        background: #fff3cd;
+        border: 1px solid #ffeaa7;
+        border-radius: 8px;
+        padding: 20px;
+        margin: 15px 0;
+    }
+
+    .foreign-key-error h4 {
+        color: #856404;
+        margin-bottom: 15px;
+        font-size: 18px;
+    }
+
+    .foreign-key-error h5 {
+        color: #856404;
+        margin: 15px 0 10px 0;
+        font-size: 14px;
+        font-weight: bold;
+    }
+
+    .related-data-info {
+        background: #f8f9fa;
+        border-left: 4px solid #ffc107;
+        padding: 15px;
+        margin: 10px 0;
+        border-radius: 4px;
+    }
+
+    .related-data-info ul {
+        margin: 10px 0;
+        padding-left: 20px;
+    }
+
+    .related-data-info li {
+        margin: 8px 0;
+        line-height: 1.4;
+    }
+
+    .suggested-action {
+        background: #e7f3ff;
+        border-left: 4px solid #007bff;
+        padding: 15px;
+        margin: 10px 0;
+        border-radius: 4px;
+    }
+
+    .action-steps {
+        background: #f0f9ff;
+        border-left: 4px solid #17a2b8;
+        padding: 15px;
+        margin: 10px 0;
+        border-radius: 4px;
+    }
+
+    .action-steps ol {
+        margin: 10px 0;
+        padding-left: 20px;
+    }
+
+    .action-steps li {
+        margin: 8px 0;
+        line-height: 1.4;
     }
 </style>
 

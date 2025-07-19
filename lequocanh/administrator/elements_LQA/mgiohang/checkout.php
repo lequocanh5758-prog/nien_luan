@@ -1,5 +1,10 @@
 <?php
-session_start();
+// Use SessionManager for safe session handling
+require_once __DIR__ . '/../mod/sessionManager.php';
+require_once __DIR__ . '/../config/logger_config.php';
+
+// Start session safely
+SessionManager::start();
 require_once '../../elements_LQA/mod/giohangCls.php';
 require_once '../../elements_LQA/mod/hanghoaCls.php';
 require_once '../../elements_LQA/mod/mtonkhoCls.php';
@@ -76,11 +81,8 @@ foreach ($selectedProducts as $product) {
     $hinhanh = $hanghoa->GetHinhAnhById($productInfo->hinhanh);
     $imageSrc = "";
 
-    if ($hinhanh && !empty($hinhanh->duong_dan)) {
-        $imageSrc = "../../elements_LQA/mhanghoa/displayImage.php?id=" . $productInfo->hinhanh;
-    } else {
-        $imageSrc = "../../elements_LQA/img_LQA/no-image.png";
-    }
+    // Tạm thời tắt displayImage để tránh lỗi 500
+    $imageSrc = "../img_LQA/no-image.png";
 
     // Tính tổng tiền cho sản phẩm
     $subtotal = $productInfo->giathamkhao * $quantity;
@@ -150,68 +152,68 @@ $transferContent = $orderCode;
     <title>Thanh toán</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="../../public_files/mycss.css">
+    <link rel="stylesheet" href="../../stylecss_LQA/mycss.css">
     <style>
-    .checkout-container {
-        max-width: 1200px;
-        margin: 20px auto;
-        background: #fff;
-        padding: 30px;
-        border-radius: 15px;
-        box-shadow: 0 2px 15px rgba(0, 0, 0, 0.08);
-    }
+        .checkout-container {
+            max-width: 1200px;
+            margin: 20px auto;
+            background: #fff;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 2px 15px rgba(0, 0, 0, 0.08);
+        }
 
-    .product-image {
-        width: 80px;
-        height: 80px;
-        object-fit: cover;
-        border-radius: 8px;
-    }
+        .product-image {
+            width: 80px;
+            height: 80px;
+            object-fit: cover;
+            border-radius: 8px;
+        }
 
-    .payment-methods {
-        display: flex;
-        gap: 20px;
-        margin-top: 20px;
-    }
+        .payment-methods {
+            display: flex;
+            gap: 20px;
+            margin-top: 20px;
+        }
 
-    .payment-method {
-        border: 1px solid #dee2e6;
-        border-radius: 10px;
-        padding: 20px;
-        cursor: pointer;
-        transition: all 0.3s;
-    }
+        .payment-method {
+            border: 1px solid #dee2e6;
+            border-radius: 10px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
 
-    .payment-method.active {
-        border-color: #0d6efd;
-        background-color: rgba(13, 110, 253, 0.05);
-    }
+        .payment-method.active {
+            border-color: #0d6efd;
+            background-color: rgba(13, 110, 253, 0.05);
+        }
 
-    .payment-method img {
-        height: 40px;
-        margin-bottom: 10px;
-    }
+        .payment-method img {
+            height: 40px;
+            margin-bottom: 10px;
+        }
 
-    .qr-container {
-        text-align: center;
-        margin-top: 20px;
-        padding: 20px;
-        border: 1px solid #dee2e6;
-        border-radius: 10px;
-        background-color: #f8f9fa;
-    }
+        .qr-container {
+            text-align: center;
+            margin-top: 20px;
+            padding: 20px;
+            border: 1px solid #dee2e6;
+            border-radius: 10px;
+            background-color: #f8f9fa;
+        }
 
-    .qr-code {
-        max-width: 300px;
-        margin: 0 auto;
-    }
+        .qr-code {
+            max-width: 300px;
+            margin: 0 auto;
+        }
 
-    .bank-info {
-        margin-top: 20px;
-        padding: 15px;
-        background-color: #e9ecef;
-        border-radius: 10px;
-    }
+        .bank-info {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #e9ecef;
+            border-radius: 10px;
+        }
     </style>
 </head>
 
@@ -252,18 +254,18 @@ $transferContent = $orderCode;
                     </thead>
                     <tbody>
                         <?php foreach ($orderDetails as $item): ?>
-                        <tr>
-                            <td>
-                                <div class="d-flex align-items-center">
-                                    <img src="<?php echo $item['image']; ?>"
-                                        alt="<?php echo htmlspecialchars($item['name']); ?>" class="product-image me-3">
-                                    <span><?php echo htmlspecialchars($item['name']); ?></span>
-                                </div>
-                            </td>
-                            <td><?php echo number_format($item['price'], 0, ',', '.'); ?> ₫</td>
-                            <td><?php echo $item['quantity']; ?></td>
-                            <td><?php echo number_format($item['subtotal'], 0, ',', '.'); ?> ₫</td>
-                        </tr>
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <img src="<?php echo $item['image']; ?>"
+                                            alt="<?php echo htmlspecialchars($item['name']); ?>" class="product-image me-3">
+                                        <span><?php echo htmlspecialchars($item['name']); ?></span>
+                                    </div>
+                                </td>
+                                <td><?php echo number_format($item['price'], 0, ',', '.'); ?> ₫</td>
+                                <td><?php echo $item['quantity']; ?></td>
+                                <td><?php echo number_format($item['subtotal'], 0, ',', '.'); ?> ₫</td>
+                            </tr>
                         <?php endforeach; ?>
                     </tbody>
                     <tfoot>
@@ -283,6 +285,11 @@ $transferContent = $orderCode;
             </div>
             <div class="card-body">
                 <div class="payment-methods">
+                    <div class="payment-method" id="momo-payment">
+                        <img src="https://developers.momo.vn/v3/assets/images/square-logo.svg" alt="MoMo" style="height: 40px; margin-bottom: 10px;">
+                        <h5>Thanh toán MoMo</h5>
+                        <p class="text-muted">Thanh toán nhanh chóng và an toàn qua ví MoMo</p>
+                    </div>
                     <div class="payment-method active" id="bank-transfer">
                         <i class="fas fa-university" style="font-size: 2rem; color: #0d6efd; margin-bottom: 10px;"></i>
                         <h5>Chuyển khoản ngân hàng</h5>
@@ -290,12 +297,25 @@ $transferContent = $orderCode;
                     </div>
                 </div>
 
+                <!-- Thông tin thanh toán MoMo -->
+                <div class="qr-container" id="momo-payment-details" style="display: none;">
+                    <h5>Thanh toán qua MoMo</h5>
+                    <div class="text-center">
+                        <img src="https://developers.momo.vn/v3/assets/images/logo.png" alt="MoMo" style="height: 60px; margin-bottom: 20px;">
+                        <p>Bạn sẽ được chuyển hướng đến trang thanh toán MoMo để hoàn tất giao dịch.</p>
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i>
+                            <strong>Lưu ý:</strong> Sau khi thanh toán thành công trên MoMo, bạn sẽ được tự động chuyển về trang xác nhận đơn hàng.
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Thông tin thanh toán qua VietQR -->
                 <div class="qr-container" id="bank-transfer-details">
                     <?php if (!empty($paymentConfig['account_number']) && !empty($paymentConfig['bank_name'])): ?>
-                    <h5>Quét mã QR để thanh toán</h5>
-                    <div class="qr-code">
-                        <?php
+                        <h5>Quét mã QR để thanh toán</h5>
+                        <div class="qr-code">
+                            <?php
                             // Tạo URL VietQR
                             $bankCode = ''; // Mã ngân hàng, cần cập nhật theo ngân hàng thực tế
                             $amount = $totalAmount;
@@ -351,23 +371,23 @@ $transferContent = $orderCode;
                             // Debug
                             error_log("VietQR URL: " . $vietQrUrl);
                             ?>
-                        <img src="<?php echo $vietQrUrl; ?>" alt="QR Code" class="img-fluid">
-                    </div>
-                    <div class="bank-info mt-3">
-                        <p><strong>Ngân hàng:</strong> <?php echo htmlspecialchars($paymentConfig['bank_name']); ?></p>
-                        <p><strong>Số tài khoản:</strong>
-                            <?php echo htmlspecialchars($paymentConfig['account_number']); ?></p>
-                        <p><strong>Chủ tài khoản:</strong>
-                            <?php echo htmlspecialchars($paymentConfig['account_name']); ?></p>
-                        <p><strong>Nội dung chuyển khoản:</strong> <?php echo $transferContent; ?></p>
-                    </div>
-                    <div class="alert alert-info mt-3">
-                        <p>Sau khi thanh toán, vui lòng nhấn nút "Xác nhận đã thanh toán" bên dưới.</p>
-                    </div>
+                            <img src="<?php echo $vietQrUrl; ?>" alt="QR Code" class="img-fluid">
+                        </div>
+                        <div class="bank-info mt-3">
+                            <p><strong>Ngân hàng:</strong> <?php echo htmlspecialchars($paymentConfig['bank_name']); ?></p>
+                            <p><strong>Số tài khoản:</strong>
+                                <?php echo htmlspecialchars($paymentConfig['account_number']); ?></p>
+                            <p><strong>Chủ tài khoản:</strong>
+                                <?php echo htmlspecialchars($paymentConfig['account_name']); ?></p>
+                            <p><strong>Nội dung chuyển khoản:</strong> <?php echo $transferContent; ?></p>
+                        </div>
+                        <div class="alert alert-info mt-3">
+                            <p>Sau khi thanh toán, vui lòng nhấn nút "Xác nhận đã thanh toán" bên dưới.</p>
+                        </div>
                     <?php else: ?>
-                    <div class="alert alert-warning">
-                        <p>Chưa có thông tin tài khoản ngân hàng. Vui lòng liên hệ quản trị viên để cập nhật.</p>
-                    </div>
+                        <div class="alert alert-warning">
+                            <p>Chưa có thông tin tài khoản ngân hàng. Vui lòng liên hệ quản trị viên để cập nhật.</p>
+                        </div>
                     <?php endif; ?>
                 </div>
             </div>
@@ -390,69 +410,168 @@ $transferContent = $orderCode;
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const confirmPaymentBtn = document.getElementById('confirmPaymentBtn');
-        const processingPayment = document.getElementById('processingPayment');
+        document.addEventListener('DOMContentLoaded', function() {
+            const confirmPaymentBtn = document.getElementById('confirmPaymentBtn');
+            const processingPayment = document.getElementById('processingPayment');
+            const momoPaymentMethod = document.getElementById('momo-payment');
+            const bankTransferMethod = document.getElementById('bank-transfer');
+            const momoDetails = document.getElementById('momo-payment-details');
+            const bankDetails = document.getElementById('bank-transfer-details');
 
-        confirmPaymentBtn.addEventListener('click', function() {
-            // Hiển thị thông báo đang xử lý
-            confirmPaymentBtn.disabled = true;
-            processingPayment.style.display = 'block';
+            let selectedPaymentMethod = 'bank-transfer'; // Mặc định
 
-            // Lấy địa chỉ giao hàng
-            const shippingAddress = document.getElementById('shipping-address').value.trim();
+            // Xử lý chuyển đổi phương thức thanh toán
+            momoPaymentMethod.addEventListener('click', function() {
+                console.log('🚀 MoMo payment method clicked!');
 
-            // Kiểm tra địa chỉ giao hàng
-            if (!shippingAddress) {
-                alert('Vui lòng nhập địa chỉ giao hàng');
-                confirmPaymentBtn.disabled = false;
-                processingPayment.style.display = 'none';
-                return;
+                // Kiểm tra địa chỉ giao hàng
+                const shippingAddress = document.getElementById('shipping-address').value.trim();
+                if (!shippingAddress) {
+                    alert('Vui lòng nhập địa chỉ giao hàng trước khi thanh toán!');
+                    return;
+                }
+
+                // Chuyển sang MoMo và thanh toán luôn
+                momoPaymentMethod.classList.add('active');
+                bankTransferMethod.classList.remove('active');
+                momoDetails.style.display = 'block';
+                bankDetails.style.display = 'none';
+                selectedPaymentMethod = 'momo';
+                confirmPaymentBtn.textContent = 'Đang xử lý MoMo...';
+                confirmPaymentBtn.disabled = true;
+
+                // Thanh toán MoMo ngay lập tức
+                processMoMoPayment(shippingAddress);
+            });
+
+            bankTransferMethod.addEventListener('click', function() {
+                // Chuyển sang chuyển khoản
+                bankTransferMethod.classList.add('active');
+                momoPaymentMethod.classList.remove('active');
+                bankDetails.style.display = 'block';
+                momoDetails.style.display = 'none';
+                selectedPaymentMethod = 'bank-transfer';
+                confirmPaymentBtn.textContent = 'Xác nhận đã thanh toán';
+            });
+
+            confirmPaymentBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                console.log('🔥 BUTTON CLICKED! Payment method:', selectedPaymentMethod);
+
+                // Test ngay lập tức
+                if (selectedPaymentMethod === 'momo') {
+                    console.log('✅ MoMo payment selected!');
+                    // Lấy địa chỉ giao hàng
+                    const shippingAddress = document.getElementById('shipping-address').value.trim();
+                    if (!shippingAddress) {
+                        alert('Vui lòng nhập địa chỉ giao hàng!');
+                        return;
+                    }
+                    // Xử lý thanh toán MoMo
+                    processMoMoPayment(shippingAddress);
+                    return;
+                }
+
+                // Lấy địa chỉ giao hàng
+                const shippingAddress = document.getElementById('shipping-address').value.trim();
+
+                // Kiểm tra địa chỉ giao hàng
+                if (!shippingAddress) {
+                    alert('Vui lòng nhập địa chỉ giao hàng');
+                    return;
+                }
+
+                // Hiển thị thông báo đang xử lý
+                confirmPaymentBtn.disabled = true;
+                processingPayment.style.display = 'block';
+
+                // Xử lý thanh toán chuyển khoản (logic cũ)
+                processBankTransferPayment(shippingAddress);
+            });
+
+            function processMoMoPayment(shippingAddress) {
+                console.log('🚀 processMoMoPayment called!');
+                console.log('Shipping address:', shippingAddress);
+
+                // Tạo form data cho MoMo
+                const formData = new FormData();
+                formData.append('payment_method', 'momo');
+                formData.append('order_code', '<?php echo $orderCode; ?>');
+                formData.append('shipping_address', shippingAddress);
+                formData.append('amount', '<?php echo $totalAmount; ?>');
+
+                // Gửi request đến MoMo payment handler (thật)
+                fetch('momo_payment.php', {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log('MoMo Response:', data); // Debug log
+
+                        if (data.success && data.payUrl) {
+                            // Lưu thông tin đơn hàng vào session trước khi chuyển
+                            sessionStorage.setItem('pendingOrder', JSON.stringify({
+                                orderId: data.orderId,
+                                amount: '<?php echo $totalAmount; ?>',
+                                shipping_address: shippingAddress
+                            }));
+
+                            // Chuyển hướng đến trang thanh toán MoMo
+                            console.log('Redirecting to MoMo:', data.payUrl);
+                            window.location.href = data.payUrl;
+                        } else {
+                            console.error('MoMo Error:', data);
+                            alert('Lỗi khi tạo thanh toán MoMo: ' + (data.message || 'Unknown error'));
+                            confirmPaymentBtn.disabled = false;
+                            processingPayment.style.display = 'none';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Lỗi MoMo:', error);
+                        alert('Đã xảy ra lỗi khi xử lý thanh toán MoMo. Vui lòng thử lại.');
+                        confirmPaymentBtn.disabled = false;
+                        processingPayment.style.display = 'none';
+                    });
             }
 
-            // Tạo form data
-            const formData = new FormData();
-            formData.append('order_code', '<?php echo $orderCode; ?>');
-            formData.append('shipping_address', shippingAddress);
+            function processBankTransferPayment(shippingAddress) {
+                // Tạo form data cho chuyển khoản
+                const formData = new FormData();
+                formData.append('order_code', '<?php echo $orderCode; ?>');
+                formData.append('shipping_address', shippingAddress);
 
-            // Gửi request bằng fetch API
-            fetch('payment_confirm.php', {
-                    method: 'POST',
-                    body: formData
-                })
-                .then(response => {
-                    if (response.redirected) {
-                        // Nếu server chuyển hướng, theo URL đó
-                        window.location.href = response.url;
-                    } else {
-                        // Nếu không có chuyển hướng, đọc response
-                        return response.text().then(text => {
-                            // Kiểm tra nếu response chứa URL chuyển hướng
-                            if (text.includes('order_success.php')) {
-                                // Trích xuất order_id từ text
-                                const match = text.match(
-                                    /order_success\.php\?order_id=(\d+)/);
-                                if (match && match[1]) {
-                                    window.location.href = 'order_success.php?order_id=' +
-                                        match[1];
+                // Gửi request bằng fetch API (logic cũ)
+                fetch('payment_confirm.php', {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(response => {
+                        if (response.redirected) {
+                            window.location.href = response.url;
+                        } else {
+                            return response.text().then(text => {
+                                if (text.includes('order_success.php')) {
+                                    const match = text.match(/order_success\.php\?order_id=(\d+)/);
+                                    if (match && match[1]) {
+                                        window.location.href = 'order_success.php?order_id=' + match[1];
+                                    } else {
+                                        window.location.href = 'giohangView.php';
+                                    }
                                 } else {
                                     window.location.href = 'giohangView.php';
                                 }
-                            } else {
-                                // Nếu không tìm thấy URL, chuyển về trang giỏ hàng
-                                window.location.href = 'giohangView.php';
-                            }
-                        });
-                    }
-                })
-                .catch(error => {
-                    console.error('Lỗi:', error);
-                    alert('Đã xảy ra lỗi khi xử lý thanh toán. Vui lòng thử lại.');
-                    confirmPaymentBtn.disabled = false;
-                    processingPayment.style.display = 'none';
-                });
+                            });
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Lỗi:', error);
+                        alert('Đã xảy ra lỗi khi xử lý thanh toán. Vui lòng thử lại.');
+                        confirmPaymentBtn.disabled = false;
+                        processingPayment.style.display = 'none';
+                    });
+            }
         });
-    });
     </script>
 </body>
 

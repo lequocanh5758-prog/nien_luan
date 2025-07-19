@@ -467,15 +467,14 @@ $danhSachDoiTuong = [
                     <table class="content-table">
                         <thead>
                             <tr>
-                                <th>ID</th>
-                                <th>Người dùng</th>
-                                <th>Hành động</th>
-                                <th>Đối tượng</th>
-                                <th>ID đối tượng</th>
+                                <th width="60">ID</th>
+                                <th width="120">Người dùng</th>
+                                <th width="100">Hành động</th>
+                                <th width="100">Đối tượng</th>
                                 <th>Chi tiết</th>
-                                <th>IP</th>
-                                <th>Thời gian</th>
-                                <th>Thao tác</th>
+                                <th width="120">IP</th>
+                                <th width="140">Thời gian</th>
+                                <th width="80">Thao tác</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -497,31 +496,36 @@ $danhSachDoiTuong = [
                                             echo $displayName;
                                             ?>
                                         </td>
-                                        <td><?php echo $nhatKy['hanh_dong']; ?></td>
-                                        <td><?php echo $nhatKy['doi_tuong']; ?></td>
-                                        <td><?php echo $nhatKy['doi_tuong_id'] ?? 'N/A'; ?></td>
-                                        <td><?php
-                                            // Hiển thị chi tiết từ cột chi_tiet hoặc noi_dung
-                                            $chiTiet = '';
-                                            if (!empty($nhatKy['chi_tiet'])) {
-                                                $chiTiet = $nhatKy['chi_tiet'];
-                                            } elseif (!empty($nhatKy['noi_dung'])) {
-                                                $chiTiet = $nhatKy['noi_dung'];
-                                            }
-                                            echo htmlspecialchars($chiTiet);
-                                            ?></td>
-                                        <td><?php echo $nhatKy['ip_address']; ?></td>
+                                        <td><span class="badge badge-action"><?php echo htmlspecialchars($nhatKy['hanh_dong']); ?></span></td>
+                                        <td><span class="badge badge-object"><?php echo htmlspecialchars($nhatKy['doi_tuong']); ?></span></td>
+                                        <td class="detail-cell"><?php
+                                                                // Hiển thị chi tiết từ cột chi_tiet hoặc noi_dung
+                                                                $chiTiet = '';
+                                                                if (!empty($nhatKy['chi_tiet'])) {
+                                                                    $chiTiet = $nhatKy['chi_tiet'];
+                                                                } elseif (!empty($nhatKy['noi_dung'])) {
+                                                                    $chiTiet = $nhatKy['noi_dung'];
+                                                                }
+
+                                                                if (!empty($chiTiet)) {
+                                                                    $shortDetail = mb_strlen($chiTiet) > 60 ? mb_substr($chiTiet, 0, 60) . '...' : $chiTiet;
+                                                                    echo '<span title="' . htmlspecialchars($chiTiet) . '">' . htmlspecialchars($shortDetail) . '</span>';
+                                                                } else {
+                                                                    echo '<em class="text-muted">Không có chi tiết</em>';
+                                                                }
+                                                                ?></td>
+                                        <td><code class="ip-code"><?php echo htmlspecialchars($nhatKy['ip_address']); ?></code></td>
                                         <td><?php echo date('d/m/Y H:i:s', strtotime($nhatKy['thoi_gian'])); ?></td>
-                                        <td>
-                                            <button class="btn btn-sm btn-info" onclick="viewActivityDetail(<?php echo $nhatKy['id']; ?>)">
-                                                <i class="fas fa-eye"></i> Xem chi tiết
+                                        <td class="text-center">
+                                            <button class="btn btn-sm btn-info" onclick="viewActivityDetail(<?php echo $nhatKy['id']; ?>)" title="Xem chi tiết">
+                                                <i class="fas fa-eye"></i>
                                             </button>
                                         </td>
                                     </tr>
                                 <?php endforeach; ?>
                             <?php else: ?>
                                 <tr>
-                                    <td colspan="9" class="text-center">
+                                    <td colspan="8" class="text-center">
                                         <div class="no-data-message">
                                             <i class="fas fa-history fa-2x"></i>
                                             <h4>Không có dữ liệu nhật ký hoạt động</h4>
@@ -1087,6 +1091,53 @@ $danhSachDoiTuong = [
         .detail-table th {
             width: 40%;
         }
+    }
+
+    /* Badge styles */
+    .badge {
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: 500;
+        white-space: nowrap;
+    }
+
+    .badge-action {
+        background-color: #007bff;
+        color: white;
+    }
+
+    .badge-object {
+        background-color: #28a745;
+        color: white;
+    }
+
+    /* Detail cell styles */
+    .detail-cell {
+        max-width: 300px;
+        word-wrap: break-word;
+        line-height: 1.4;
+    }
+
+    .detail-cell span {
+        cursor: help;
+    }
+
+    /* IP code styles */
+    .ip-code {
+        background-color: #f8f9fa;
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-family: 'Courier New', monospace;
+        color: #e83e8c;
+        font-size: 11px;
+        border: 1px solid #dee2e6;
+    }
+
+    /* Text muted */
+    .text-muted {
+        color: #6c757d !important;
+        font-style: italic;
     }
 </style>
 

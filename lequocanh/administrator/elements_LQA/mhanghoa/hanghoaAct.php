@@ -1,5 +1,10 @@
 <?php
-session_start();
+// Use SessionManager for safe session handling
+require_once __DIR__ . '/../mod/sessionManager.php';
+require_once __DIR__ . '/../config/logger_config.php';
+
+// Start session safely
+SessionManager::start();
 require_once '../mod/hanghoaCls.php';
 $hanghoa = new hanghoa();
 
@@ -96,15 +101,43 @@ if (isset($_REQUEST['reqact'])) {
             $tenhanghoa = $hanghoaInfo ? $hanghoaInfo->tenhanghoa : "Không xác định";
 
             $result = $hanghoa->HanghoaDelete($idhanghoa);
-            if ($result) {
-                // Ghi nhật ký xóa hàng hóa
-                if ($foundNhatKyHelper && !empty($username)) {
-                    ghiNhatKyXoa($username, 'hàng hóa', $idhanghoa, "Xóa hàng hóa: $tenhanghoa");
-                }
 
-                header('location: ../../index.php?req=hanghoaview&result=ok');
+            // Xử lý kết quả mới từ method HanghoaDelete
+            if (is_array($result)) {
+                if ($result['success']) {
+                    // Xóa thành công
+                    if ($foundNhatKyHelper && !empty($username)) {
+                        ghiNhatKyXoa($username, 'hàng hóa', $idhanghoa, "Xóa hàng hóa: $tenhanghoa");
+                    }
+                    header('location: ../../index.php?req=hanghoaview&result=ok&message=' . urlencode($result['message']));
+                } else {
+                    // Xóa thất bại - có thông tin chi tiết
+                    $errorParams = [
+                        'result=notok',
+                        'error_type=' . urlencode($result['error_type']),
+                        'message=' . urlencode($result['message'])
+                    ];
+
+                    if (isset($result['related_tables'])) {
+                        $errorParams[] = 'related_tables=' . urlencode(json_encode($result['related_tables']));
+                    }
+
+                    if (isset($result['suggested_action'])) {
+                        $errorParams[] = 'suggested_action=' . urlencode($result['suggested_action']);
+                    }
+
+                    header('location: ../../index.php?req=hanghoaview&' . implode('&', $errorParams));
+                }
             } else {
-                header('location: ../../index.php?req=hanghoaview&result=notok');
+                // Xử lý theo cách cũ (tương thích ngược)
+                if ($result) {
+                    if ($foundNhatKyHelper && !empty($username)) {
+                        ghiNhatKyXoa($username, 'hàng hóa', $idhanghoa, "Xóa hàng hóa: $tenhanghoa");
+                    }
+                    header('location: ../../index.php?req=hanghoaview&result=ok');
+                } else {
+                    header('location: ../../index.php?req=hanghoaview&result=notok');
+                }
             }
             break;
 

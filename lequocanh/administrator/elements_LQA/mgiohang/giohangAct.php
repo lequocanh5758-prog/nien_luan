@@ -1,7 +1,10 @@
 <?php
-if (session_status() == PHP_SESSION_NONE) {
-    session_start();
-}
+// Use SessionManager for safe session handling
+require_once __DIR__ . '/../mod/sessionManager.php';
+require_once __DIR__ . '/../config/logger_config.php';
+
+// Start session safely
+SessionManager::start();
 require_once '../../elements_LQA/mod/giohangCls.php';
 require_once '../../elements_LQA/mod/mtonkhoCls.php';
 
@@ -30,24 +33,21 @@ if (!$giohang->canUseCart()) {
     }
 }
 
-// Debug information
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
-
-error_log("Session data: " . print_r($_SESSION, true));
-error_log("GET data: " . print_r($_GET, true));
-error_log("Server info: " . print_r($_SERVER, true));
-error_log("Document Root: " . $_SERVER['DOCUMENT_ROOT']);
-error_log("Script Filename: " . $_SERVER['SCRIPT_FILENAME']);
-error_log("Script Name: " . $_SERVER['SCRIPT_NAME']);
+// Debug information - only in development mode
+if (class_exists('Logger')) {
+    Logger::debug("Processing cart action", [
+        'session' => $_SESSION,
+        'get' => $_GET,
+        'script' => $_SERVER['SCRIPT_NAME']
+    ]);
+}
 
 $tonkho = new MTonKho();
 
 // Kiểm tra hành động từ GET
 if (isset($_GET['action'])) {
     $action = $_GET['action'];
-    error_log("Action requested: " . $action);
+    Logger::info("Cart action requested", ['action' => $action]);
 
     $productId = isset($_GET['productId']) ? (int)$_GET['productId'] : null;
     $quantity = isset($_GET['quantity']) ? (int)$_GET['quantity'] : 1;

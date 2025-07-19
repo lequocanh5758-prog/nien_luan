@@ -1,5 +1,19 @@
 <?php
-session_start();
+// Use SessionManager for safe session handling
+require_once __DIR__ . '/administrator/elements_LQA/mod/sessionManager.php';
+require_once __DIR__ . '/administrator/elements_LQA/config/logger_config.php';
+
+// Start session safely
+SessionManager::start();
+
+// Xóa session pending_order nếu user quay lại từ trang thanh toán thành công
+if (isset($_GET['clear_session']) && $_GET['clear_session'] == '1') {
+    unset($_SESSION['pending_order']);
+    // Redirect để xóa parameter khỏi URL
+    header('Location: index.php');
+    exit();
+}
+
 require_once './administrator/elements_LQA/mod/giohangCls.php';
 require_once './administrator/elements_LQA/mod/database.php';
 

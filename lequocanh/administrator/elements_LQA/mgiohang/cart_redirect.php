@@ -1,5 +1,10 @@
 <?php
-session_start();
+// Use SessionManager for safe session handling
+require_once __DIR__ . '/../mod/sessionManager.php';
+require_once __DIR__ . '/../config/logger_config.php';
+
+// Start session safely
+SessionManager::start();
 $referrer = isset($_GET['referrer']) ? $_GET['referrer'] : '../../../index.php';
 ?>
 <!DOCTYPE html>

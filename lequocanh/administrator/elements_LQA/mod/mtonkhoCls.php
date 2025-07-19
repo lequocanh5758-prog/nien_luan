@@ -44,7 +44,7 @@ class MTonKho
     }
 
     // Cập nhật số lượng tồn kho
-    public function updateSoLuong($idhanghoa, $soLuongThayDoi, $isIncrement = true)
+    public function updateSoLuong($idhanghoa, $soLuongThayDoi, $isIncrement = true, $useExternalTransaction = false)
     {
         try {
             // Tạo bảng system_logs nếu chưa tồn tại
@@ -82,18 +82,25 @@ class MTonKho
                 $this->logToDatabase($logMessage);
                 error_log($logMessage);
 
-                // Sử dụng transaction để đảm bảo tính toàn vẹn dữ liệu
-                $this->db->beginTransaction();
+                // Chỉ sử dụng transaction nội bộ nếu không có transaction bên ngoài
+                $needInternalTransaction = !$useExternalTransaction;
+                if ($needInternalTransaction) {
+                    $this->db->beginTransaction();
+                }
 
                 $sql = "UPDATE tonkho SET soLuong = ?, ngayCapNhat = CURRENT_TIMESTAMP WHERE idhanghoa = ?";
                 $stmt = $this->db->prepare($sql);
                 $result = $stmt->execute([$newSoLuong, $idhanghoa]);
 
                 if ($result) {
-                    $this->db->commit();
+                    if ($needInternalTransaction) {
+                        $this->db->commit();
+                    }
                     $logMessage = "Update result: success, rows affected: " . $stmt->rowCount() . ", idhanghoa: " . $idhanghoa . ", new soLuong: " . $newSoLuong;
                 } else {
-                    $this->db->rollBack();
+                    if ($needInternalTransaction) {
+                        $this->db->rollBack();
+                    }
                     $logMessage = "Update result: failed, idhanghoa: " . $idhanghoa;
                 }
 
@@ -133,8 +140,11 @@ class MTonKho
                     error_log($logMessage);
                 }
 
-                // Sử dụng transaction để đảm bảo tính toàn vẹn dữ liệu
-                $this->db->beginTransaction();
+                // Chỉ sử dụng transaction nội bộ nếu không có transaction bên ngoài
+                $needInternalTransaction = !$useExternalTransaction;
+                if ($needInternalTransaction) {
+                    $this->db->beginTransaction();
+                }
 
                 // Nếu là tăng số lượng, thêm mới với số lượng đã cho
                 // Nếu là giảm số lượng, thêm mới với số lượng 0 (vì không thể giảm từ không có gì)
@@ -145,10 +155,14 @@ class MTonKho
                 $result = $stmt->execute([$idhanghoa, $initialSoLuong]);
 
                 if ($result) {
-                    $this->db->commit();
+                    if ($needInternalTransaction) {
+                        $this->db->commit();
+                    }
                     $logMessage = "Insert result: success, last insert ID: " . $this->db->lastInsertId() . ", idhanghoa: " . $idhanghoa . ", soLuong: " . $initialSoLuong;
                 } else {
-                    $this->db->rollBack();
+                    if ($needInternalTransaction) {
+                        $this->db->rollBack();
+                    }
                     $logMessage = "Insert result: failed, idhanghoa: " . $idhanghoa;
                 }
 

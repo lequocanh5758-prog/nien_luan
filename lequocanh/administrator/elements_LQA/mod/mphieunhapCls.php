@@ -167,32 +167,90 @@ class MPhieuNhap
                         ", soLuong = " . $chiTiet->soLuong .
                         ", giaNhap = " . $chiTiet->giaNhap);
 
-                    // Cập nhật số lượng tồn kho
-                    $updateResult = $tonkhoObj->updateSoLuong($chiTiet->idhanghoa, $chiTiet->soLuong, true);
+                    // Cập nhật số lượng tồn kho (sử dụng transaction bên ngoài)
+                    $updateResult = $tonkhoObj->updateSoLuong($chiTiet->idhanghoa, $chiTiet->soLuong, true, true);
                     error_log("Update tonkho result: " . ($updateResult ? "success" : "failed"));
 
-                    // Cập nhật giá tham khảo của hàng hóa bằng giá nhập
-                    $updatePriceResult = $hanghoaObj->HanghoaUpdatePrice($chiTiet->idhanghoa, $chiTiet->giaNhap);
-                    error_log("Update hanghoa price result: " . ($updatePriceResult ? "success" : "failed") .
-                        ", idhanghoa = " . $chiTiet->idhanghoa .
-                        ", new price = " . $chiTiet->giaNhap);
+                    // LOGIC MỚI: Quản lý giá thông minh dựa trên cấu hình
+                    if (!class_exists('PriceLogicConfig')) {
+                        require_once dirname(__FILE__) . '/../config/price_logic_config.php';
+                    }
+                    if (!class_exists('Dongia')) {
+                        require_once 'dongiaCls.php';
+                    }
+
+                    $dongiaObj = new Dongia();
+                    $currentActivePrice = $dongiaObj->DongiaGetActiveByProduct($chiTiet->idhanghoa);
+                    $hasActivePrice = ($currentActivePrice !== false);
+
+                    // Kiểm tra có nên cập nhật giá tham khảo không
+                    if (PriceLogicConfig::shouldUpdateReferencePrice($hasActivePrice)) {
+                        $priceToUpdate = $chiTiet->giaNhap;
+
+                        // Nếu cấu hình tự động áp dụng lợi nhuận
+                        if (PriceLogicConfig::AUTO_APPLY_PROFIT_MARGIN) {
+                            $priceToUpdate = PriceLogicConfig::calculateSellingPrice($chiTiet->giaNhap);
+                        }
+
+                        $updatePriceResult = $hanghoaObj->HanghoaUpdatePrice($chiTiet->idhanghoa, $priceToUpdate);
+                        error_log("Update hanghoa price result: " . ($updatePriceResult ? "success" : "failed") .
+                            ", idhanghoa = " . $chiTiet->idhanghoa .
+                            ", import price = " . $chiTiet->giaNhap .
+                            ", selling price = " . $priceToUpdate);
+                    }
+
+                    // Tạo đơn giá mới từ giá nhập nếu được cấu hình
+                    if (PriceLogicConfig::shouldCreatePriceFromImport() && !$hasActivePrice) {
+                        $sellingPrice = PriceLogicConfig::calculateSellingPrice($chiTiet->giaNhap);
+                        $ngayApDung = date('Y-m-d');
+                        $ngayKetThuc = date('Y-m-d', strtotime('+1 year')); // Có hiệu lực 1 năm
+                        $ghiChu = "Tự động tạo từ phiếu nhập - Giá nhập: " . number_format($chiTiet->giaNhap) . " VNĐ";
+
+                        $addPriceResult = $dongiaObj->DongiaAdd(
+                            $chiTiet->idhanghoa,
+                            $sellingPrice,
+                            $ngayApDung,
+                            $ngayKetThuc,
+                            '',
+                            $ghiChu
+                        );
+
+                        error_log("Auto create price result: " . ($addPriceResult ? "success" : "failed") .
+                            ", idhanghoa = " . $chiTiet->idhanghoa .
+                            ", import price = " . $chiTiet->giaNhap .
+                            ", auto selling price = " . $sellingPrice);
+                    } else if ($hasActivePrice) {
+                        error_log("Skipped price creation for product " . $chiTiet->idhanghoa .
+                            " because it has active price: " . $currentActivePrice->giaBan .
+                            " (import price was: " . $chiTiet->giaNhap . ")");
+                    }
                 }
 
                 $this->db->commit();
                 error_log("Transaction committed successfully");
                 return true;
             } else {
-                $this->db->rollBack();
+                if ($this->db->inTransaction()) {
+                    $this->db->rollBack();
+                }
                 error_log("No rows affected when updating phieu nhap status, transaction rolled back");
                 return false;
             }
         } catch (PDOException $e) {
-            $this->db->rollBack();
+            // Chỉ rollback nếu có transaction đang hoạt động
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+                error_log("Transaction rolled back due to PDO error");
+            }
             error_log("Error approving phieu nhap: " . $e->getMessage());
             error_log("Stack trace: " . $e->getTraceAsString());
             return false;
         } catch (Exception $e) {
-            $this->db->rollBack();
+            // Chỉ rollback nếu có transaction đang hoạt động
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+                error_log("Transaction rolled back due to general error");
+            }
             error_log("General error in approvePhieuNhap: " . $e->getMessage());
             error_log("Stack trace: " . $e->getTraceAsString());
             return false;
@@ -282,15 +340,63 @@ class MPhieuNhap
                         ", soLuong = " . $chiTiet->soLuong .
                         ", giaNhap = " . $chiTiet->giaNhap);
 
-                    // Cập nhật số lượng tồn kho
-                    $updateResult = $tonkhoObj->updateSoLuong($chiTiet->idhanghoa, $chiTiet->soLuong, true);
+                    // Cập nhật số lượng tồn kho (sử dụng transaction bên ngoài)
+                    $updateResult = $tonkhoObj->updateSoLuong($chiTiet->idhanghoa, $chiTiet->soLuong, true, true);
                     error_log("Update tonkho result: " . ($updateResult ? "success" : "failed"));
 
-                    // Cập nhật giá tham khảo của hàng hóa bằng giá nhập
-                    $updatePriceResult = $hanghoaObj->HanghoaUpdatePrice($chiTiet->idhanghoa, $chiTiet->giaNhap);
-                    error_log("Update hanghoa price result: " . ($updatePriceResult ? "success" : "failed") .
-                        ", idhanghoa = " . $chiTiet->idhanghoa .
-                        ", new price = " . $chiTiet->giaNhap);
+                    // LOGIC MỚI: Quản lý giá thông minh dựa trên cấu hình (tương tự approvePhieuNhap)
+                    if (!class_exists('PriceLogicConfig')) {
+                        require_once dirname(__FILE__) . '/../config/price_logic_config.php';
+                    }
+                    if (!class_exists('Dongia')) {
+                        require_once 'dongiaCls.php';
+                    }
+
+                    $dongiaObj = new Dongia();
+                    $currentActivePrice = $dongiaObj->DongiaGetActiveByProduct($chiTiet->idhanghoa);
+                    $hasActivePrice = ($currentActivePrice !== false);
+
+                    // Kiểm tra có nên cập nhật giá tham khảo không
+                    if (PriceLogicConfig::shouldUpdateReferencePrice($hasActivePrice)) {
+                        $priceToUpdate = $chiTiet->giaNhap;
+
+                        // Nếu cấu hình tự động áp dụng lợi nhuận
+                        if (PriceLogicConfig::AUTO_APPLY_PROFIT_MARGIN) {
+                            $priceToUpdate = PriceLogicConfig::calculateSellingPrice($chiTiet->giaNhap);
+                        }
+
+                        $updatePriceResult = $hanghoaObj->HanghoaUpdatePrice($chiTiet->idhanghoa, $priceToUpdate);
+                        error_log("Force update hanghoa price result: " . ($updatePriceResult ? "success" : "failed") .
+                            ", idhanghoa = " . $chiTiet->idhanghoa .
+                            ", import price = " . $chiTiet->giaNhap .
+                            ", selling price = " . $priceToUpdate);
+                    }
+
+                    // Tạo đơn giá mới từ giá nhập nếu được cấu hình
+                    if (PriceLogicConfig::shouldCreatePriceFromImport() && !$hasActivePrice) {
+                        $sellingPrice = PriceLogicConfig::calculateSellingPrice($chiTiet->giaNhap);
+                        $ngayApDung = date('Y-m-d');
+                        $ngayKetThuc = date('Y-m-d', strtotime('+1 year')); // Có hiệu lực 1 năm
+                        $ghiChu = "Tự động tạo từ phiếu nhập (force update) - Giá nhập: " . number_format($chiTiet->giaNhap) . " VNĐ";
+
+                        $addPriceResult = $dongiaObj->DongiaAdd(
+                            $chiTiet->idhanghoa,
+                            $sellingPrice,
+                            $ngayApDung,
+                            $ngayKetThuc,
+                            '',
+                            $ghiChu
+                        );
+
+                        error_log("Force auto create price result: " . ($addPriceResult ? "success" : "failed") .
+                            ", idhanghoa = " . $chiTiet->idhanghoa .
+                            ", import price = " . $chiTiet->giaNhap .
+                            ", auto selling price = " . $sellingPrice);
+                    } else if ($hasActivePrice) {
+                        error_log("Force update: Skipped price creation for product " . $chiTiet->idhanghoa .
+                            " because it has active price: " . $currentActivePrice->giaBan .
+                            " (import price was: " . $chiTiet->giaNhap . ")");
+                    }
                 }
 
                 $this->db->commit();

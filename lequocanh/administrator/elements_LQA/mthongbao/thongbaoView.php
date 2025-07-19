@@ -1,7 +1,10 @@
 <?php
-if (session_status() == PHP_SESSION_NONE) {
-    session_start();
-}
+// Use SessionManager for safe session handling
+require_once __DIR__ . '/../mod/sessionManager.php';
+require_once __DIR__ . '/../config/logger_config.php';
+
+// Start session safely
+SessionManager::start();
 
 // Kiểm tra đăng nhập
 if (!isset($_SESSION['USER'])) {

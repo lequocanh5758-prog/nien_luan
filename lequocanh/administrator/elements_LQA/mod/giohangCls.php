@@ -242,16 +242,28 @@ class GioHang
 
         $userId = $this->getUserId();
 
-        try {
-            // Chỉ hiển thị giỏ hàng của user đó
-            $sql = "SELECT SUM(quantity) as total FROM tbl_giohang WHERE user_id = ?";
-            $stmt = $this->db->prepare($sql);
-            $stmt->execute([$userId]);
+        // Nếu có user đăng nhập, đếm từ database
+        if ($userId) {
+            try {
+                $sql = "SELECT SUM(quantity) as total FROM tbl_giohang WHERE user_id = ?";
+                $stmt = $this->db->prepare($sql);
+                $stmt->execute([$userId]);
 
-            $result = $stmt->fetch(PDO::FETCH_ASSOC);
-            return $result['total'] ?? 0;
-        } catch (PDOException $e) {
-            error_log("Error getting cart count: " . $e->getMessage());
+                $result = $stmt->fetch(PDO::FETCH_ASSOC);
+                return $result['total'] ?? 0;
+            } catch (PDOException $e) {
+                error_log("Error getting cart count: " . $e->getMessage());
+                return 0;
+            }
+        } else {
+            // Nếu không đăng nhập, đếm từ session cart
+            if (isset($_SESSION['cart']) && is_array($_SESSION['cart'])) {
+                $total = 0;
+                foreach ($_SESSION['cart'] as $item) {
+                    $total += $item['quantity'] ?? 1;
+                }
+                return $total;
+            }
             return 0;
         }
     }

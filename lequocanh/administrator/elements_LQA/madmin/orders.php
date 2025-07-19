@@ -1,7 +1,10 @@
 <?php
-if (session_status() == PHP_SESSION_NONE) {
-    session_start();
-}
+// Use SessionManager for safe session handling
+require_once './elements_LQA/mod/sessionManager.php';
+require_once './elements_LQA/config/logger_config.php';
+
+// Start session safely
+SessionManager::start();
 
 // Kiểm tra quyền truy cập - cho phép cả admin và user thông thường
 require_once './elements_LQA/mod/phanquyenCls.php';
@@ -20,10 +23,16 @@ if (!isset($_SESSION['ADMIN']) && !$phanQuyen->checkAccess('don_hang', $username
     exit();
 }
 
-// Tắt hiển thị lỗi
-ini_set('display_errors', 0);
-ini_set('display_startup_errors', 0);
-error_reporting(0);
+// Cấu hình hiển thị lỗi dựa trên môi trường
+if (class_exists('Logger')) {
+    // Logger đã được cấu hình trong logger_config.php
+    Logger::info("Accessing orders management page", ['user' => $username]);
+} else {
+    // Fallback nếu Logger chưa được load
+    ini_set('display_errors', 0);
+    ini_set('display_startup_errors', 0);
+    error_reporting(0);
+}
 
 require_once './elements_LQA/mod/database.php';
 require_once './elements_LQA/mod/hanghoaCls.php';
@@ -134,10 +143,10 @@ if ($checkTableStmt->rowCount() == 0) {
             // Thêm cột dia_chi_giao_hang
             $addAddressColumnSql = "ALTER TABLE don_hang ADD COLUMN dia_chi_giao_hang TEXT AFTER ma_nguoi_dung";
             $conn->exec($addAddressColumnSql);
-            error_log("Đã thêm cột dia_chi_giao_hang vào bảng don_hang");
+            Logger::info("Added shipping address column to orders table");
         }
     } catch (PDOException $e) {
-        error_log("Lỗi khi thêm cột dia_chi_giao_hang: " . $e->getMessage());
+        Logger::error("Failed to add shipping address column", ['error' => $e->getMessage()]);
     }
 
     // Kiểm tra xem có dữ liệu trong bảng don_hang không

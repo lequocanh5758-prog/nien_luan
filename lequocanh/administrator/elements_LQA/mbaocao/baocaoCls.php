@@ -146,42 +146,43 @@ class BaoCao
      * @param string $endDate Ngày kết thúc (nhiều định dạng được hỗ trợ)
      * @return array Danh sách doanh thu theo ngày
      */
-    public function getDoanhThuTheoNgayTrongKhoang($startDate, $endDate)
+    public function getDoanhThuTheoNgayTrongKhoang($startDate = null, $endDate = null)
     {
         try {
-            // Chuẩn hóa định dạng ngày
-            $startDateFormatted = $this->isValidDate($startDate);
-            $endDateFormatted = $this->isValidDate($endDate);
+            $params = [];
+            $whereClauses = ["trang_thai = 'approved'"];
 
-            if (!$startDateFormatted || !$endDateFormatted) {
-                error_log("Định dạng ngày không hợp lệ: startDate=$startDate, endDate=$endDate");
-                return [];
+            if ($startDate && $endDate) {
+                $startDateFormatted = $this->isValidDate($startDate);
+                $endDateFormatted = $this->isValidDate($endDate);
+
+                if ($startDateFormatted && $endDateFormatted) {
+                    if (strtotime($startDateFormatted) > strtotime($endDateFormatted)) {
+                        list($startDateFormatted, $endDateFormatted) = [$endDateFormatted, $startDateFormatted];
+                    }
+                    $whereClauses[] = "DATE(ngay_tao) BETWEEN :startDate AND :endDate";
+                    $params[':startDate'] = $startDateFormatted;
+                    $params[':endDate'] = $endDateFormatted;
+                }
             }
 
-            // Đảm bảo startDate <= endDate
-            if (strtotime($startDateFormatted) > strtotime($endDateFormatted)) {
-                $temp = $startDateFormatted;
-                $startDateFormatted = $endDateFormatted;
-                $endDateFormatted = $temp;
-                error_log("Đã đổi vị trí startDate và endDate vì startDate > endDate");
-            }
+            $whereSql = "WHERE " . implode(" AND ", $whereClauses);
 
             // Truy vấn dữ liệu
             $sql = "SELECT DATE(ngay_tao) as ngay,
                            COALESCE(SUM(tong_tien), 0) as doanh_thu,
                            COUNT(*) as so_don_hang
                     FROM don_hang
-                    WHERE DATE(ngay_tao) BETWEEN :startDate AND :endDate
-                    AND trang_thai = 'approved'
+                    $whereSql
                     GROUP BY DATE(ngay_tao)
                     ORDER BY ngay";
 
             $stmt = $this->conn->prepare($sql);
-            $stmt->execute(['startDate' => $startDateFormatted, 'endDate' => $endDateFormatted]);
+            $stmt->execute($params);
 
             // Lấy kết quả
             $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            error_log("Lấy doanh thu theo ngày từ $startDateFormatted đến $endDateFormatted: " . count($result) . " bản ghi");
+            error_log("Lấy doanh thu theo ngày: " . count($result) . " bản ghi");
 
             return $result;
         } catch (PDOException $e) {
@@ -301,9 +302,15 @@ class BaoCao
     public function getSanPhamBanChay($startDate, $endDate, $limit = 10)
     {
         try {
+            // Ghi log các tham số đầu vào
+            error_log("getSanPhamBanChay called with startDate: $startDate, endDate: $endDate, limit: $limit");
+
             // Chuẩn hóa định dạng ngày
             $startDateFormatted = $this->isValidDate($startDate);
             $endDateFormatted = $this->isValidDate($endDate);
+
+            // Ghi log ngày đã được chuẩn hóa
+            error_log("Formatted dates: startDate=$startDateFormatted, endDate=$endDateFormatted");
 
             if (!$startDateFormatted || !$endDateFormatted) {
                 error_log("Định dạng ngày không hợp lệ: startDate=$startDate, endDate=$endDate");
@@ -330,6 +337,10 @@ class BaoCao
                     GROUP BY h.idhanghoa
                     ORDER BY so_luong_ban DESC
                     LIMIT :limit";
+            
+            // Ghi log câu truy vấn SQL
+            error_log("SQL query: $sql");
+
             $stmt = $this->conn->prepare($sql);
             $stmt->bindParam(':startDate', $startDateFormatted, PDO::PARAM_STR);
             $stmt->bindParam(':endDate', $endDateFormatted, PDO::PARAM_STR);
@@ -337,7 +348,15 @@ class BaoCao
             $stmt->execute();
 
             $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            // Ghi log số lượng kết quả
             error_log("Lấy sản phẩm bán chạy từ $startDateFormatted đến $endDateFormatted: " . count($result) . " sản phẩm");
+            
+            // Ghi log kết quả nếu có
+            if (count($result) > 0) {
+                error_log("Query result: " . print_r($result, true));
+            }
+
             return $result;
         } catch (PDOException $e) {
             error_log("Lỗi khi lấy danh sách sản phẩm bán chạy: " . $e->getMessage());

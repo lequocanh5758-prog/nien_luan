@@ -1,5 +1,10 @@
 <?php
-session_start();
+// Use SessionManager for safe session handling
+require_once __DIR__ . '/../mod/sessionManager.php';
+require_once __DIR__ . '/../config/logger_config.php';
+
+// Start session safely
+SessionManager::start();
 require_once '../../elements_LQA/mod/giohangCls.php';
 require_once '../../elements_LQA/mod/hanghoaCls.php';
 
@@ -32,8 +37,10 @@ $cartDetails = [];
 $totalAmount = 0;
 $totalCartCount = 0;
 
-// Debug log để kiểm tra dữ liệu giỏ hàng
-error_log("Dữ liệu giỏ hàng: " . print_r($cart, true));
+// Debug log để kiểm tra dữ liệu giỏ hàng - sử dụng Logger
+if (class_exists('Logger')) {
+    Logger::debug("Cart data retrieved", ['cart_items' => count($cart)]);
+}
 
 if (!empty($cart)) {
     foreach ($cart as $item) {
@@ -42,7 +49,9 @@ if (!empty($cart)) {
             $hinhanhValue = null;
             if (isset($item['hinhanh']) && $item['hinhanh'] !== null && $item['hinhanh'] !== '') {
                 $hinhanhValue = (int)$item['hinhanh'];
-                error_log("Đã chuyển đổi hinhanh trong cartDetails thành số nguyên: " . $hinhanhValue);
+                if (class_exists('Logger')) {
+                    Logger::debug("Converted image ID to integer", ['product_id' => $item['product_id'], 'image_id' => $hinhanhValue]);
+                }
             }
 
             $cartDetails[] = [

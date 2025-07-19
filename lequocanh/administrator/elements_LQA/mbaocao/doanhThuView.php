@@ -23,8 +23,13 @@ if (isset($_POST['startDate']) && isset($_POST['endDate'])) {
     $startDate = $_POST['startDate'];
     $endDate = $_POST['endDate'];
 
-    // Ghi log để debug
-    error_log("Form values: startDate=$startDate, endDate=$endDate");
+    // Ghi log để debug - sử dụng Logger
+    if (class_exists('Logger')) {
+        Logger::debug("Revenue report form values", [
+            'start_date' => $startDate,
+            'end_date' => $endDate
+        ]);
+    }
 
     // Đảm bảo ngày bắt đầu không lớn hơn ngày kết thúc
     if (strtotime($startDate) > strtotime($endDate)) {
@@ -183,12 +188,14 @@ foreach ($reportData as $item) {
                 <label for="reportType">Loại báo cáo:</label>
                 <select name="reportType" id="reportType" onchange="changeReportType()">
                     <option value="daily" <?php echo $reportType == 'daily' ? 'selected' : ''; ?>>Theo ngày</option>
-                    <option value="monthly" <?php echo $reportType == 'monthly' ? 'selected' : ''; ?>>Theo tháng</option>
+                    <option value="monthly" <?php echo $reportType == 'monthly' ? 'selected' : ''; ?>>Theo tháng
+                    </option>
                     <option value="yearly" <?php echo $reportType == 'yearly' ? 'selected' : ''; ?>>Theo năm</option>
                 </select>
             </div>
 
-            <div id="dateRangeFilter" class="filter-group" <?php echo $reportType != 'daily' ? 'style="display:none;"' : ''; ?>>
+            <div id="dateRangeFilter" class="filter-group"
+                <?php echo $reportType != 'daily' ? 'style="display:none;"' : ''; ?>>
                 <label for="startDate">Từ ngày:</label>
                 <input type="date" name="startDate" id="startDate" value="<?php echo $startDate; ?>">
 
@@ -196,7 +203,8 @@ foreach ($reportData as $item) {
                 <input type="date" name="endDate" id="endDate" value="<?php echo $endDate; ?>">
             </div>
 
-            <div id="yearFilter" class="filter-group" <?php echo $reportType != 'monthly' ? 'style="display:none;"' : ''; ?>>
+            <div id="yearFilter" class="filter-group"
+                <?php echo $reportType != 'monthly' ? 'style="display:none;"' : ''; ?>>
                 <label for="year">Năm:</label>
                 <select name="year" id="year">
                     <?php
@@ -295,38 +303,38 @@ foreach ($reportData as $item) {
             <thead>
                 <tr>
                     <?php if ($reportType == 'daily'): ?>
-                        <th>Ngày</th>
-                        <th>Doanh thu</th>
-                        <th>Số đơn hàng</th>
-                        <th>Doanh thu trung bình/đơn</th>
+                    <th>Ngày</th>
+                    <th>Doanh thu</th>
+                    <th>Số đơn hàng</th>
+                    <th>Doanh thu trung bình/đơn</th>
                     <?php elseif ($reportType == 'monthly'): ?>
-                        <th>Tháng</th>
-                        <th>Doanh thu</th>
-                        <th>Số đơn hàng</th>
-                        <th>Doanh thu trung bình/đơn</th>
+                    <th>Tháng</th>
+                    <th>Doanh thu</th>
+                    <th>Số đơn hàng</th>
+                    <th>Doanh thu trung bình/đơn</th>
                     <?php else: ?>
-                        <th>Năm</th>
-                        <th>Doanh thu</th>
+                    <th>Năm</th>
+                    <th>Doanh thu</th>
                     <?php endif; ?>
                 </tr>
             </thead>
             <tbody>
                 <?php if ($reportType == 'daily'): ?>
-                    <?php foreach ($reportData as $item): ?>
-                        <tr>
-                            <td><?php echo date('d/m/Y', strtotime($item['ngay'])); ?></td>
-                            <td><?php echo number_format($item['doanh_thu'], 0, ',', '.'); ?> đ</td>
-                            <td><?php echo $item['so_don_hang']; ?></td>
-                            <td>
-                                <?php
+                <?php foreach ($reportData as $item): ?>
+                <tr>
+                    <td><?php echo date('d/m/Y', strtotime($item['ngay'])); ?></td>
+                    <td><?php echo number_format($item['doanh_thu'], 0, ',', '.'); ?> đ</td>
+                    <td><?php echo $item['so_don_hang']; ?></td>
+                    <td>
+                        <?php
                                 $avgOrderValue = $item['so_don_hang'] > 0 ? $item['doanh_thu'] / $item['so_don_hang'] : 0;
                                 echo number_format($avgOrderValue, 0, ',', '.') . ' đ';
                                 ?>
-                            </td>
-                        </tr>
-                    <?php endforeach; ?>
+                    </td>
+                </tr>
+                <?php endforeach; ?>
                 <?php elseif ($reportType == 'monthly'): ?>
-                    <?php
+                <?php
                     $monthNames = [
                         1 => 'Tháng 1',
                         2 => 'Tháng 2',
@@ -342,26 +350,26 @@ foreach ($reportData as $item) {
                         12 => 'Tháng 12'
                     ];
                     ?>
-                    <?php foreach ($reportData as $item): ?>
-                        <tr>
-                            <td><?php echo $monthNames[$item['thang']]; ?></td>
-                            <td><?php echo number_format($item['doanh_thu'], 0, ',', '.'); ?> đ</td>
-                            <td><?php echo $item['so_don_hang']; ?></td>
-                            <td>
-                                <?php
+                <?php foreach ($reportData as $item): ?>
+                <tr>
+                    <td><?php echo $monthNames[$item['thang']]; ?></td>
+                    <td><?php echo number_format($item['doanh_thu'], 0, ',', '.'); ?> đ</td>
+                    <td><?php echo $item['so_don_hang']; ?></td>
+                    <td>
+                        <?php
                                 $avgOrderValue = $item['so_don_hang'] > 0 ? $item['doanh_thu'] / $item['so_don_hang'] : 0;
                                 echo number_format($avgOrderValue, 0, ',', '.') . ' đ';
                                 ?>
-                            </td>
-                        </tr>
-                    <?php endforeach; ?>
+                    </td>
+                </tr>
+                <?php endforeach; ?>
                 <?php else: ?>
-                    <?php foreach ($reportData as $item): ?>
-                        <tr>
-                            <td><?php echo $item['nam']; ?></td>
-                            <td><?php echo number_format($item['doanh_thu'], 0, ',', '.'); ?> đ</td>
-                        </tr>
-                    <?php endforeach; ?>
+                <?php foreach ($reportData as $item): ?>
+                <tr>
+                    <td><?php echo $item['nam']; ?></td>
+                    <td><?php echo number_format($item['doanh_thu'], 0, ',', '.'); ?> đ</td>
+                </tr>
+                <?php endforeach; ?>
                 <?php endif; ?>
             </tbody>
         </table>
@@ -369,333 +377,336 @@ foreach ($reportData as $item) {
 </div>
 
 <style>
-    .admin-content {
-        background: white;
-        padding: 20px;
-        border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    }
+.admin-content {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
 
-    .content-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 20px;
-        padding-bottom: 15px;
-        border-bottom: 1px solid #eee;
-    }
+.content-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #eee;
+}
 
-    .header-actions {
-        display: flex;
-        gap: 10px;
-    }
+.header-actions {
+    display: flex;
+    gap: 10px;
+}
 
-    .btn-print,
-    .btn-export,
-    .btn-filter {
-        padding: 8px 15px;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        gap: 5px;
-        font-weight: 500;
-    }
+.btn-print,
+.btn-export,
+.btn-filter {
+    padding: 8px 15px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-weight: 500;
+}
 
-    .btn-print {
-        background: #6c757d;
-        color: white;
-    }
+.btn-print {
+    background: #6c757d;
+    color: white;
+}
 
-    .btn-export {
-        background: #28a745;
-        color: white;
-    }
+.btn-export {
+    background: #28a745;
+    color: white;
+}
 
-    .btn-filter {
-        background: #007bff;
-        color: white;
-    }
+.btn-filter {
+    background: #007bff;
+    color: white;
+}
 
-    .report-filters {
-        background: #f8f9fa;
-        padding: 15px;
-        border-radius: 8px;
-        margin-bottom: 20px;
+.report-filters {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.report-filters form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    align-items: flex-end;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.filter-group label {
+    font-weight: 500;
+    font-size: 14px;
+}
+
+.filter-group select,
+.filter-group input {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    min-width: 150px;
+}
+
+.report-summary {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.summary-card {
+    flex: 1;
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.summary-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: #007bff;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+}
+
+.summary-info h3 {
+    margin: 0 0 5px 0;
+    font-size: 16px;
+    color: #555;
+}
+
+.summary-value {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 600;
+    color: #333;
+}
+
+.summary-subtitle {
+    margin: 5px 0 0 0;
+    font-size: 12px;
+    color: #777;
+    font-style: italic;
+}
+
+.report-chart {
+    margin-bottom: 30px;
+    height: 300px;
+}
+
+.report-table {
+    margin-top: 30px;
+}
+
+.report-table h3 {
+    margin-bottom: 15px;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.table th,
+.table td {
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 1px solid #eee;
+}
+
+.table th {
+    background: #f8f9fa;
+    font-weight: 600;
+}
+
+.table tr:hover {
+    background: #f8f9fa;
+}
+
+@media (max-width: 768px) {
+    .report-summary {
+        flex-direction: column;
     }
 
     .report-filters form {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 15px;
-        align-items: flex-end;
+        flex-direction: column;
     }
 
     .filter-group {
-        display: flex;
-        flex-direction: column;
-        gap: 5px;
-    }
-
-    .filter-group label {
-        font-weight: 500;
-        font-size: 14px;
-    }
-
-    .filter-group select,
-    .filter-group input {
-        padding: 8px 12px;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        min-width: 150px;
-    }
-
-    .report-summary {
-        display: flex;
-        gap: 20px;
-        margin-bottom: 30px;
-    }
-
-    .summary-card {
-        flex: 1;
-        background: #f8f9fa;
-        border-radius: 8px;
-        padding: 20px;
-        display: flex;
-        align-items: center;
-        gap: 15px;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-    }
-
-    .summary-icon {
-        width: 50px;
-        height: 50px;
-        border-radius: 50%;
-        background: #007bff;
-        color: white;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 20px;
-    }
-
-    .summary-info h3 {
-        margin: 0 0 5px 0;
-        font-size: 16px;
-        color: #555;
-    }
-
-    .summary-value {
-        margin: 0;
-        font-size: 20px;
-        font-weight: 600;
-        color: #333;
-    }
-
-    .summary-subtitle {
-        margin: 5px 0 0 0;
-        font-size: 12px;
-        color: #777;
-        font-style: italic;
-    }
-
-    .report-chart {
-        margin-bottom: 30px;
-        height: 300px;
-    }
-
-    .report-table {
-        margin-top: 30px;
-    }
-
-    .report-table h3 {
-        margin-bottom: 15px;
-    }
-
-    .table {
         width: 100%;
-        border-collapse: collapse;
     }
-
-    .table th,
-    .table td {
-        padding: 12px 15px;
-        text-align: left;
-        border-bottom: 1px solid #eee;
-    }
-
-    .table th {
-        background: #f8f9fa;
-        font-weight: 600;
-    }
-
-    .table tr:hover {
-        background: #f8f9fa;
-    }
-
-    @media (max-width: 768px) {
-        .report-summary {
-            flex-direction: column;
-        }
-
-        .report-filters form {
-            flex-direction: column;
-        }
-
-        .filter-group {
-            width: 100%;
-        }
-    }
+}
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.16.9/xlsx.full.min.js"></script>
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Chuyển đổi dữ liệu từ chuỗi sang số
-        const chartData = <?php echo json_encode($chartData); ?>.map(value => parseFloat(value));
+document.addEventListener('DOMContentLoaded', function() {
+    // Chuyển đổi dữ liệu từ chuỗi sang số
+    const chartData = <?php echo json_encode($chartData); ?>.map(value => parseFloat(value));
 
-        // Khởi tạo biểu đồ
-        const ctx = document.getElementById('revenueChart').getContext('2d');
-        const revenueChart = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: <?php echo json_encode($chartLabels); ?>,
-                datasets: [{
-                    label: 'Doanh thu',
-                    data: chartData,
-                    backgroundColor: 'rgba(0, 123, 255, 0.5)',
-                    borderColor: 'rgba(0, 123, 255, 1)',
-                    borderWidth: 1
-                }]
+    // Khởi tạo biểu đồ
+    const ctx = document.getElementById('revenueChart').getContext('2d');
+    const revenueChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: <?php echo json_encode($chartLabels); ?>,
+            datasets: [{
+                label: 'Doanh thu',
+                data: chartData,
+                backgroundColor: 'rgba(0, 123, 255, 0.5)',
+                borderColor: 'rgba(0, 123, 255, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return value.toLocaleString('vi-VN') + ' đ';
+                        }
+                    }
+                }
             },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: {
-                            callback: function(value) {
-                                return value.toLocaleString('vi-VN') + ' đ';
-                            }
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return 'Doanh thu: ' + context.raw.toLocaleString('vi-VN') + ' đ';
                         }
                     }
                 },
-                plugins: {
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                return 'Doanh thu: ' + context.raw.toLocaleString('vi-VN') + ' đ';
-                            }
-                        }
-                    },
-                    legend: {
-                        display: true,
-                        position: 'top'
-                    }
+                legend: {
+                    display: true,
+                    position: 'top'
                 }
             }
-        });
-
-        // Kiểm tra và hiển thị thông báo nếu không có dữ liệu
-        if (chartData.length === 0 || chartData.every(value => value === 0)) {
-            const chartContainer = document.querySelector('.report-chart');
-            const noDataMessage = document.createElement('div');
-            noDataMessage.className = 'alert alert-info';
-            noDataMessage.textContent = 'Không có dữ liệu doanh thu trong khoảng thời gian này';
-            chartContainer.appendChild(noDataMessage);
         }
     });
 
-    // Hàm thay đổi loại báo cáo
-    function changeReportType() {
-        const reportType = document.getElementById('reportType').value;
-        const dateRangeFilter = document.getElementById('dateRangeFilter');
-        const yearFilter = document.getElementById('yearFilter');
+    // Kiểm tra và hiển thị thông báo nếu không có dữ liệu
+    if (chartData.length === 0 || chartData.every(value => value === 0)) {
+        const chartContainer = document.querySelector('.report-chart');
+        const noDataMessage = document.createElement('div');
+        noDataMessage.className = 'alert alert-info';
+        noDataMessage.textContent = 'Không có dữ liệu doanh thu trong khoảng thời gian này';
+        chartContainer.appendChild(noDataMessage);
+    }
+});
 
-        if (reportType === 'daily') {
-            dateRangeFilter.style.display = 'flex';
-            yearFilter.style.display = 'none';
-        } else if (reportType === 'monthly') {
-            dateRangeFilter.style.display = 'none';
-            yearFilter.style.display = 'flex';
-        } else {
-            dateRangeFilter.style.display = 'none';
-            yearFilter.style.display = 'none';
+// Hàm thay đổi loại báo cáo
+function changeReportType() {
+    const reportType = document.getElementById('reportType').value;
+    const dateRangeFilter = document.getElementById('dateRangeFilter');
+    const yearFilter = document.getElementById('yearFilter');
+
+    if (reportType === 'daily') {
+        dateRangeFilter.style.display = 'flex';
+        yearFilter.style.display = 'none';
+    } else if (reportType === 'monthly') {
+        dateRangeFilter.style.display = 'none';
+        yearFilter.style.display = 'flex';
+    } else {
+        dateRangeFilter.style.display = 'none';
+        yearFilter.style.display = 'none';
+    }
+}
+
+// Hàm in báo cáo
+function printReport() {
+    window.print();
+}
+
+// Hàm xuất Excel
+function exportToExcel() {
+    const table = document.querySelector('.table');
+    const wb = XLSX.utils.table_to_book(table, {
+        sheet: "Báo cáo doanh thu"
+    });
+    XLSX.writeFile(wb, 'bao-cao-doanh-thu.xlsx');
+}
+
+// Đặt giá trị mặc định cho các trường ngày tháng nếu chưa có
+window.onload = function() {
+const startDateInput = document.getElementById('startDate');
+const endDateInput = document.getElementById('endDate');
+
+if (startDateInput && !startDateInput.value) {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    startDateInput.value = thirtyDaysAgo.toISOString().split('T')[0];
+}
+
+if (endDateInput && !endDateInput.value) {
+    const today = new Date();
+    endDateInput.value = today.toISOString().split('T')[0];
+}
+
+// Kiểm tra định dạng ngày khi submit form
+document.getElementById('reportForm').addEventListener('submit', function(e) {
+    const startDate = startDateInput.value;
+    const endDate = endDateInput.value;
+
+    // Kiểm tra nếu ngày không hợp lệ
+    if (startDate && !isValidDate(startDate)) {
+        e.preventDefault();
+        alert('Ngày bắt đầu không hợp lệ. Vui lòng sử dụng định dạng YYYY-MM-DD.');
+        return false;
+    }
+
+    if (endDate && !isValidDate(endDate)) {
+        e.preventDefault();
+        alert('Ngày kết thúc không hợp lệ. Vui lòng sử dụng định dạng YYYY-MM-DD.');
+        return false;
+    }
+
+    // Kiểm tra nếu ngày bắt đầu lớn hơn ngày kết thúc
+    if (startDate && endDate && new Date(startDate) > new Date(endDate)) {
+        if (!confirm('Ngày bắt đầu lớn hơn ngày kết thúc. Bạn có muốn tiếp tục không?')) {
+            e.preventDefault();
+            return false;
         }
     }
+});
+};
 
-    // Hàm in báo cáo
-    function printReport() {
-        window.print();
-    }
+});
+};
 
-    // Hàm xuất Excel
-    function exportToExcel() {
-        const table = document.querySelector('.table');
-        const wb = XLSX.utils.table_to_book(table, {
-            sheet: "Báo cáo doanh thu"
-        });
-        XLSX.writeFile(wb, 'bao-cao-doanh-thu.xlsx');
-    }
+// Kiểm tra định dạng ngày hợp lệ (YYYY-MM-DD)
+function isValidDate(dateString) {
+    // Kiểm tra định dạng YYYY-MM-DD
+    const regex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!regex.test(dateString)) return false;
 
-    // Đặt giá trị mặc định cho các trường ngày tháng nếu chưa có
-    window.onload = function() {
-        const startDateInput = document.getElementById('startDate');
-        const endDateInput = document.getElementById('endDate');
+    // Kiểm tra ngày hợp lệ
+    const date = new Date(dateString);
+    const timestamp = date.getTime();
+    if (isNaN(timestamp)) return false;
 
-        if (startDateInput && !startDateInput.value) {
-            const thirtyDaysAgo = new Date();
-            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-            startDateInput.value = thirtyDaysAgo.toISOString().split('T')[0];
-        }
-
-        if (endDateInput && !endDateInput.value) {
-            const today = new Date();
-            endDateInput.value = today.toISOString().split('T')[0];
-        }
-
-        // Kiểm tra định dạng ngày khi submit form
-        document.getElementById('reportForm').addEventListener('submit', function(e) {
-            const startDate = startDateInput.value;
-            const endDate = endDateInput.value;
-
-            // Kiểm tra nếu ngày không hợp lệ
-            if (startDate && !isValidDate(startDate)) {
-                e.preventDefault();
-                alert('Ngày bắt đầu không hợp lệ. Vui lòng sử dụng định dạng YYYY-MM-DD.');
-                return false;
-            }
-
-            if (endDate && !isValidDate(endDate)) {
-                e.preventDefault();
-                alert('Ngày kết thúc không hợp lệ. Vui lòng sử dụng định dạng YYYY-MM-DD.');
-                return false;
-            }
-
-            // Kiểm tra nếu ngày bắt đầu lớn hơn ngày kết thúc
-            if (startDate && endDate && new Date(startDate) > new Date(endDate)) {
-                if (!confirm('Ngày bắt đầu lớn hơn ngày kết thúc. Bạn có muốn tiếp tục không?')) {
-                    e.preventDefault();
-                    return false;
-                }
-            }
-        });
-    };
-
-    // Kiểm tra định dạng ngày hợp lệ (YYYY-MM-DD)
-    function isValidDate(dateString) {
-        // Kiểm tra định dạng YYYY-MM-DD
-        const regex = /^\d{4}-\d{2}-\d{2}$/;
-        if (!regex.test(dateString)) return false;
-
-        // Kiểm tra ngày hợp lệ
-        const date = new Date(dateString);
-        const timestamp = date.getTime();
-        if (isNaN(timestamp)) return false;
-
-        return date.toISOString().split('T')[0] === dateString;
-    }
+    return date.toISOString().split('T')[0] === dateString;
+}
 </script>

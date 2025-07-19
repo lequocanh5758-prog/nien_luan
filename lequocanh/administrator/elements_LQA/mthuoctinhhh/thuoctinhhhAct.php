@@ -1,5 +1,14 @@
 <?php
-session_start();
+// Use SessionManager and Security Enhancement
+require_once __DIR__ . '/../mod/sessionManager.php';
+require_once __DIR__ . '/../config/logger_config.php';
+require_once __DIR__ . '/../mod/securityEnhancement.php';
+
+// Initialize security
+SecurityEnhancement::initializePage(true);
+
+// Start session safely
+SessionManager::start();
 require '../../elements_LQA/mod/thuoctinhhhCls.php';
 
 if (isset($_GET['reqact'])) {

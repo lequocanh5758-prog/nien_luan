@@ -1,41 +1,85 @@
+version: '3.8'
+
 services:
-  apache-php:
-    image: apache-mysqli
+  web:
     build:
       context: .
       dockerfile: Dockerfile
-    volumes:
-      - D:/php_ws/lequocanh:/var/www/html
     ports:
-      - "80:80"
+      - "8080:80"
+    volumes:
+      - .:/var/www/html
+      - ./logs:/var/www/html/logs
     environment:
-      - TZ=Asia/Bangkok
+      - APP_ENV=development
+      - DB_HOST=mysql
+    depends_on:
+      - mysql
+      - redis
     networks:
       - app-network
 
   mysql:
-    image: mysql
-    volumes:
-      - D:/php_ws/DB:/var/lib/mysql
+    image: mysql:8.0
     environment:
-      MYSQL_ROOT_PASSWORD: pw
-      TZ: Asia/Bangkok
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: sales_management
+      MYSQL_USER: app_user
+      MYSQL_PASSWORD: app_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - app-network
 
-  phpmyadmin:
-    image: phpmyadmin/phpmyadmin
-    environment:
-      PMA_HOST: mysql
-      PMA_PORT: 3306
-      UPLOAD_LIMIT: 100M
-      TZ: Asia/Bangkok
+  redis:
+    image: redis:7-alpine
     ports:
-      - "8888:80"
-    depends_on:
-      - mysql
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
     networks:
       - app-network
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+      - .:/var/www/html
+    depends_on:
+      - web
+    networks:
+      - app-network
+
+  monitoring:
+    image: prom/prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - app-network
+
+  grafana:
+    image: grafana/grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+    networks:
+      - app-network
+
+volumes:
+  mysql_data:
+  redis_data:
+  grafana_data:
 
 networks:
   app-network:

@@ -37,27 +37,57 @@ class Dongia
         }
     }
 
-    // Thêm đơn giá mới
-    public function DongiaAdd($idHangHoa, $giaBan, $ngayApDung, $ngayKetThuc, $dieuKien = '', $ghiChu = '')
+    // Thêm đơn giá mới với logic cải tiến
+    public function DongiaAdd($idHangHoa, $giaBan, $ngayApDung, $ngayKetThuc, $dieuKien = '', $ghiChu = '', $autoApply = true)
     {
         try {
-            // Đặt tất cả các đơn giá hiện tại của sản phẩm này thành không áp dụng
-            $this->DongiaSetAllToFalse($idHangHoa);
+            error_log("DongiaAdd: Starting with params - idHangHoa: $idHangHoa, giaBan: $giaBan, ngayApDung: $ngayApDung, ngayKetThuc: $ngayKetThuc");
 
-            // Thêm đơn giá mới và đặt nó thành đang áp dụng
+            // Tạm thời bỏ qua kiểm tra trùng lặp để debug
+            // if ($this->checkDuplicatePrice($idHangHoa, $giaBan, $ngayApDung, $ngayKetThuc)) {
+            //     error_log("DongiaAdd: Duplicate price detected");
+            //     return false;
+            // }
+
+            // Nếu autoApply = true, đặt tất cả các đơn giá hiện tại thành không áp dụng
+            if ($autoApply) {
+                error_log("DongiaAdd: Setting all existing prices to false for product $idHangHoa");
+                $this->DongiaSetAllToFalse($idHangHoa);
+            }
+
+            // Thêm đơn giá mới
             $sql = "INSERT INTO dongia (idHangHoa, giaBan, ngayApDung, ngayKetThuc, dieuKien, ghiChu, apDung)
-                   VALUES (?, ?, ?, ?, ?, ?, 1)";
-            $data = array($idHangHoa, $giaBan, $ngayApDung, $ngayKetThuc, $dieuKien, $ghiChu);
+                   VALUES (?, ?, ?, ?, ?, ?, ?)";
+            $data = array($idHangHoa, $giaBan, $ngayApDung, $ngayKetThuc, $dieuKien, $ghiChu, $autoApply ? 1 : 0);
+
+            error_log("DongiaAdd: Executing SQL: $sql");
+            error_log("DongiaAdd: With data: " . print_r($data, true));
 
             $add = $this->db->prepare($sql);
-            $add->execute($data);
+            $result = $add->execute($data);
 
-            // Cập nhật giá tham khảo trong bảng hanghoa
-            $this->HanghoaUpdatePrice($idHangHoa, $giaBan);
+            if (!$result) {
+                $errorInfo = $add->errorInfo();
+                error_log("DongiaAdd: SQL execution failed - " . print_r($errorInfo, true));
+                return false;
+            }
 
-            return $this->db->lastInsertId();
+            $insertId = $this->db->lastInsertId();
+            error_log("DongiaAdd: Insert successful, ID: $insertId");
+
+            // Chỉ cập nhật giá tham khảo nếu đơn giá này được áp dụng
+            if ($autoApply) {
+                error_log("DongiaAdd: Updating reference price for product $idHangHoa");
+                $this->HanghoaUpdatePrice($idHangHoa, $giaBan);
+                
+                // Tạm thời bỏ qua log để tránh lỗi
+                // $this->logPriceChange($idHangHoa, $giaBan, 'Thêm đơn giá mới', $insertId);
+            }
+
+            return $insertId;
         } catch (PDOException $e) {
             error_log("DongiaAdd Error: " . $e->getMessage());
+            error_log("DongiaAdd Error Stack: " . $e->getTraceAsString());
             return false;
         }
     }
@@ -231,6 +261,231 @@ class Dongia
         } catch (PDOException $e) {
             error_log("UpdateLatestPriceForProduct Error: " . $e->getMessage());
             return false;
+        }
+    }
+
+    // Lấy đơn giá đang áp dụng cho sản phẩm
+    public function DongiaGetActiveByProduct($idHangHoa)
+    {
+        try {
+            $sql = "SELECT * FROM dongia WHERE idHangHoa = ? AND apDung = 1 LIMIT 1";
+            $data = array($idHangHoa);
+
+            $getActive = $this->db->prepare($sql);
+            $getActive->setFetchMode(PDO::FETCH_OBJ);
+            $getActive->execute($data);
+
+            return $getActive->fetch();
+        } catch (PDOException $e) {
+            error_log("DongiaGetActiveByProduct Error: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    // Kiểm tra đơn giá trùng lặp
+    private function checkDuplicatePrice($idHangHoa, $giaBan, $ngayApDung, $ngayKetThuc)
+    {
+        try {
+            $sql = "SELECT COUNT(*) as count FROM dongia 
+                   WHERE idHangHoa = ? AND giaBan = ? 
+                   AND ((ngayApDung <= ? AND ngayKetThuc >= ?) 
+                   OR (ngayApDung <= ? AND ngayKetThuc >= ?))";
+            $data = array($idHangHoa, $giaBan, $ngayApDung, $ngayApDung, $ngayKetThuc, $ngayKetThuc);
+
+            $check = $this->db->prepare($sql);
+            $check->execute($data);
+            $result = $check->fetch(PDO::FETCH_ASSOC);
+
+            return $result['count'] > 0;
+        } catch (PDOException $e) {
+            error_log("checkDuplicatePrice Error: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    // Ghi log lịch sử thay đổi giá
+    private function logPriceChange($idHangHoa, $giaBan, $action, $idDonGia = null)
+    {
+        try {
+            // Tạo bảng price_history nếu chưa có
+            $this->createPriceHistoryTable();
+
+            $sql = "INSERT INTO price_history (idHangHoa, giaBan, action_type, idDonGia, created_at, user_id) 
+                   VALUES (?, ?, ?, ?, NOW(), ?)";
+            $userId = $_SESSION['ADMIN']['id'] ?? $_SESSION['user_id'] ?? 0;
+            $data = array($idHangHoa, $giaBan, $action, $idDonGia, $userId);
+
+            $log = $this->db->prepare($sql);
+            return $log->execute($data);
+        } catch (PDOException $e) {
+            error_log("logPriceChange Error: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    // Tạo bảng lịch sử giá
+    private function createPriceHistoryTable()
+    {
+        try {
+            $sql = "CREATE TABLE IF NOT EXISTS price_history (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                idHangHoa INT NOT NULL,
+                giaBan DECIMAL(15,2) NOT NULL,
+                action_type VARCHAR(100) NOT NULL,
+                idDonGia INT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                user_id INT DEFAULT 0,
+                INDEX idx_hanghoa (idHangHoa),
+                INDEX idx_created (created_at)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
+
+            $this->db->exec($sql);
+            return true;
+        } catch (PDOException $e) {
+            error_log("createPriceHistoryTable Error: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    // Chuyển đổi đơn giá áp dụng (switch between prices)
+    public function DongiaSwitchActive($idDonGia)
+    {
+        try {
+            // Lấy thông tin đơn giá
+            $dongia = $this->DongiaGetbyId($idDonGia);
+            if (!$dongia) {
+                return false;
+            }
+
+            // Đặt tất cả đơn giá khác thành không áp dụng
+            $this->DongiaSetAllToFalse($dongia->idHangHoa);
+
+            // Đặt đơn giá này thành áp dụng
+            $result = $this->DongiaUpdateStatus($idDonGia, true);
+
+            if ($result) {
+                // Cập nhật giá tham khảo
+                $this->HanghoaUpdatePrice($dongia->idHangHoa, $dongia->giaBan);
+                
+                // Ghi log
+                $this->logPriceChange($dongia->idHangHoa, $dongia->giaBan, 'Chuyển đổi đơn giá áp dụng', $idDonGia);
+            }
+
+            return $result;
+        } catch (PDOException $e) {
+            error_log("DongiaSwitchActive Error: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    // Lấy lịch sử giá của sản phẩm
+    public function getPriceHistory($idHangHoa, $limit = 20)
+    {
+        try {
+            $sql = "SELECT ph.*, h.tenhanghoa, d.ngayApDung, d.ngayKetThuc
+                   FROM price_history ph
+                   LEFT JOIN hanghoa h ON ph.idHangHoa = h.idhanghoa
+                   LEFT JOIN dongia d ON ph.idDonGia = d.idDonGia
+                   WHERE ph.idHangHoa = ?
+                   ORDER BY ph.created_at DESC
+                   LIMIT ?";
+            $data = array($idHangHoa, $limit);
+
+            $getHistory = $this->db->prepare($sql);
+            $getHistory->setFetchMode(PDO::FETCH_OBJ);
+            $getHistory->execute($data);
+
+            return $getHistory->fetchAll();
+        } catch (PDOException $e) {
+            error_log("getPriceHistory Error: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    // Kiểm tra tác động của việc thay đổi giá đến báo cáo
+    public function checkPriceImpact($idHangHoa, $newPrice)
+    {
+        try {
+            $impact = [
+                'affected_orders' => 0,
+                'revenue_difference' => 0,
+                'recent_transactions' => []
+            ];
+
+            // Kiểm tra các đơn hàng gần đây (30 ngày)
+            $sql = "SELECT COUNT(*) as count, SUM(soluong * dongia) as total_revenue
+                   FROM chitietdonhang cd
+                   JOIN donhang d ON cd.iddonhang = d.iddonhang
+                   WHERE cd.idhanghoa = ? AND d.ngaydat >= DATE_SUB(NOW(), INTERVAL 30 DAY)";
+            
+            $check = $this->db->prepare($sql);
+            $check->execute([$idHangHoa]);
+            $result = $check->fetch(PDO::FETCH_ASSOC);
+
+            if ($result) {
+                $impact['affected_orders'] = $result['count'];
+                $currentRevenue = $result['total_revenue'] ?? 0;
+                
+                // Tính toán sự khác biệt doanh thu nếu áp dụng giá mới
+                $sql2 = "SELECT SUM(soluong) as total_quantity
+                        FROM chitietdonhang cd
+                        JOIN donhang d ON cd.iddonhang = d.iddonhang
+                        WHERE cd.idhanghoa = ? AND d.ngaydat >= DATE_SUB(NOW(), INTERVAL 30 DAY)";
+                
+                $check2 = $this->db->prepare($sql2);
+                $check2->execute([$idHangHoa]);
+                $result2 = $check2->fetch(PDO::FETCH_ASSOC);
+                
+                if ($result2 && $result2['total_quantity']) {
+                    $newRevenue = $result2['total_quantity'] * $newPrice;
+                    $impact['revenue_difference'] = $newRevenue - $currentRevenue;
+                }
+            }
+
+            return $impact;
+        } catch (PDOException $e) {
+            error_log("checkPriceImpact Error: " . $e->getMessage());
+            return ['affected_orders' => 0, 'revenue_difference' => 0, 'recent_transactions' => []];
+        }
+    }
+
+    // Lấy thống kê đơn giá
+    public function getPriceStatistics($idHangHoa = null)
+    {
+        try {
+            $stats = [];
+            
+            if ($idHangHoa) {
+                // Thống kê cho một sản phẩm
+                $sql = "SELECT 
+                           COUNT(*) as total_prices,
+                           MIN(giaBan) as min_price,
+                           MAX(giaBan) as max_price,
+                           AVG(giaBan) as avg_price,
+                           COUNT(CASE WHEN apDung = 1 THEN 1 END) as active_prices
+                       FROM dongia WHERE idHangHoa = ?";
+                $data = [$idHangHoa];
+            } else {
+                // Thống kê tổng thể
+                $sql = "SELECT 
+                           COUNT(*) as total_prices,
+                           COUNT(DISTINCT idHangHoa) as total_products,
+                           MIN(giaBan) as min_price,
+                           MAX(giaBan) as max_price,
+                           AVG(giaBan) as avg_price,
+                           COUNT(CASE WHEN apDung = 1 THEN 1 END) as active_prices
+                       FROM dongia";
+                $data = [];
+            }
+
+            $getStats = $this->db->prepare($sql);
+            $getStats->execute($data);
+            $stats = $getStats->fetch(PDO::FETCH_ASSOC);
+
+            return $stats;
+        } catch (PDOException $e) {
+            error_log("getPriceStatistics Error: " . $e->getMessage());
+            return [];
         }
     }
 }

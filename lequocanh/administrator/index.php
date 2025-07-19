@@ -1,5 +1,10 @@
 <?php
-session_start();
+// Use SessionManager for safe session handling
+require_once __DIR__ . '/elements_LQA/mod/sessionManager.php';
+require_once __DIR__ . '/elements_LQA/config/logger_config.php';
+
+// Start session safely
+SessionManager::start();
 
 // Check if user is logged in
 if (!isset($_SESSION['USER']) && !isset($_SESSION['ADMIN'])) {

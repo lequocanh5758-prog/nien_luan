@@ -1,5 +1,34 @@
 <?php
-require '../../elements_LQA/mod/dongiaCls.php';
+// Tìm đường dẫn đúng đến dongiaCls.php
+$dongiaPaths = [
+    '../../elements_LQA/mod/dongiaCls.php',
+    '../mod/dongiaCls.php',
+    './elements_LQA/mod/dongiaCls.php',
+    './administrator/elements_LQA/mod/dongiaCls.php',
+    __DIR__ . '/../mod/dongiaCls.php'
+];
+
+$foundDongia = false;
+foreach ($dongiaPaths as $path) {
+    if (file_exists($path)) {
+        require_once $path;
+        $foundDongia = true;
+        break;
+    }
+}
+
+if (!$foundDongia) {
+    if (class_exists('Logger')) {
+        Logger::error("Could not find dongiaCls.php file", ['paths_checked' => $dongiaPaths]);
+    } else {
+        if (class_exists('Logger')) {
+        Logger::error("Cannot find dongiaCls.php file", ['paths_checked' => $dongiaPaths]);
+    } else {
+        error_log("Không thể tìm thấy file dongiaCls.php");
+    }
+    }
+    die("Không thể tải file dongiaCls.php");
+}
 $idDongia = $_REQUEST['idDongia'];
 $dg = new Dongia();
 $dongia = $dg->dongiaGetbyId($idDongia);

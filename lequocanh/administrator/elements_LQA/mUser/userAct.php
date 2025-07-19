@@ -1,5 +1,12 @@
 <?php
-session_start();
+// Include new infrastructure for better logging and session management
+require_once __DIR__ . '/../config/logger_config.php';
+
+// Safe session start
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 require '../../elements_LQA/mod/userCls.php';
 require '../../elements_LQA/mod/giohangCls.php';
 
@@ -90,8 +97,8 @@ if ($requestAction) {
             $passwordold = isset($_POST['passwordold']) ? $_POST['passwordold'] : '';
             $passwordnew = isset($_POST['passwordnew']) ? $_POST['passwordnew'] : '';
 
-            // Log để debug
-            error_log("Change password request - ID: $iduser, Old Pass: $passwordold, New Pass: $passwordnew");
+            // Log password change attempt (without sensitive data)
+            Logger::info("Password change request", ['user_id' => $iduser]);
 
             // Validate dữ liệu
             if (empty($iduser) || empty($passwordold) || empty($passwordnew)) {
@@ -238,8 +245,8 @@ if ($requestAction) {
             $username = trim($_REQUEST['username']); // Loại bỏ khoảng trắng thừa
             $password = $_REQUEST['password'];
 
-            // Ghi log chi tiết để debug
-            error_log("DEBUG LOGIN: Đang thử đăng nhập với username: '$username', password: '$password'");
+            // Log login attempt (without password for security)
+            Logger::info("Login attempt", ['username' => $username]);
 
             // Kiểm tra trực tiếp trong cơ sở dữ liệu
             $db = Database::getInstance()->getConnection();
@@ -249,38 +256,40 @@ if ($requestAction) {
             $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
             if ($user) {
-                error_log("DEBUG LOGIN: Tìm thấy user trong DB: " . json_encode($user));
+                Logger::debug("User found in database", ['username' => $username, 'user_id' => $user['iduser'] ?? 'unknown']);
 
                 // Kiểm tra mật khẩu
                 if ($user['password'] === $password) {
-                    error_log("DEBUG LOGIN: Mật khẩu khớp");
+                    Logger::debug("Password verification successful", ['username' => $username]);
 
                     // Kiểm tra setlock
                     if ($user['setlock'] == 1) {
-                        error_log("DEBUG LOGIN: Tài khoản đã kích hoạt (setlock=1)");
+                        Logger::debug("Account already activated", ['username' => $username]);
                     } else {
-                        error_log("DEBUG LOGIN: Tài khoản chưa kích hoạt (setlock=" . $user['setlock'] . ")");
+                        Logger::info("Account auto-activation", ['username' => $username, 'previous_setlock' => $user['setlock']]);
 
                         // Tự động kích hoạt tài khoản
                         $update_sql = "UPDATE user SET setlock = 1 WHERE iduser = ?";
                         $update_stmt = $db->prepare($update_sql);
                         $update_stmt->execute([$user['iduser']]);
-                        error_log("DEBUG LOGIN: Đã tự động kích hoạt tài khoản");
+                        Logger::info("Account activated successfully", ['username' => $username]);
                     }
                 } else {
-                    error_log("DEBUG LOGIN: Mật khẩu không khớp. DB: '" . $user['password'] . "', Input: '$password'");
+                    Logger::warning("Password verification failed", ['username' => $username]);
                 }
             } else {
-                error_log("DEBUG LOGIN: Không tìm thấy user với username: '$username'");
+                Logger::warning("User not found in database", ['username' => $username]);
 
-                // Kiểm tra xem có user nào gần giống không
-                $sql_like = "SELECT * FROM user WHERE username LIKE ?";
-                $stmt_like = $db->prepare($sql_like);
-                $stmt_like->execute(['%' . $username . '%']);
-                $similar_users = $stmt_like->fetchAll(PDO::FETCH_ASSOC);
+                // Kiểm tra xem có user nào gần giống không (chỉ trong development)
+                if (Logger::DEBUG <= 1) { // Only in debug mode
+                    $sql_like = "SELECT username FROM user WHERE username LIKE ?";
+                    $stmt_like = $db->prepare($sql_like);
+                    $stmt_like->execute(['%' . $username . '%']);
+                    $similar_users = $stmt_like->fetchAll(PDO::FETCH_COLUMN);
 
-                if (count($similar_users) > 0) {
-                    error_log("DEBUG LOGIN: Tìm thấy các user tương tự: " . json_encode($similar_users));
+                    if (count($similar_users) > 0) {
+                        Logger::debug("Similar usernames found", ['similar_count' => count($similar_users)]);
+                    }
                 }
             }
 
@@ -292,8 +301,7 @@ if ($requestAction) {
 
                 if ($isAdminUser) {
                     $_SESSION['ADMIN'] = $username;
-                    // Ghi log để debug
-                    error_log("DEBUG LOGIN: Đã thiết lập SESSION['ADMIN'] = '$username' (Admin/Manager)");
+                    Logger::info("Admin session established", ['username' => $username, 'role' => 'admin']);
 
                     // Ghi nhật ký đăng nhập
                     if ($foundNhatKyHelper) {
@@ -315,19 +323,18 @@ if ($requestAction) {
                     if (isset($_SESSION['redirect_after_login'])) {
                         $redirect_url = $_SESSION['redirect_after_login'];
                         unset($_SESSION['redirect_after_login']);
-                        error_log("DEBUG LOGIN: Admin/Manager - Chuyển hướng đến URL được lưu: $redirect_url");
+                        Logger::info("Admin redirect to saved URL", ['username' => $username, 'url' => $redirect_url]);
                         header('Location: ' . $redirect_url);
                     } else {
                         $redirect_url = 'http://' . $_SERVER['HTTP_HOST'] . '/administrator/index.php?req=userview&result=ok';
-                        error_log("DEBUG LOGIN: Admin/Manager - Chuyển hướng đến trang quản trị: $redirect_url");
+                        Logger::info("Admin redirect to default admin page", ['username' => $username]);
                         header('Location: ' . $redirect_url);
                     }
                     // Đảm bảo dừng thực thi script sau khi chuyển hướng
                     exit();
                 } else {
                     $_SESSION['USER'] = $username;
-                    // Ghi log để debug
-                    error_log("DEBUG LOGIN: Đã thiết lập SESSION['USER'] = '$username'");
+                    Logger::info("User session established", ['username' => $username, 'role' => 'user']);
 
                     // Ghi nhật ký đăng nhập
                     if ($foundNhatKyHelper) {
@@ -351,35 +358,34 @@ if ($requestAction) {
                     // Đặt cookie sau khi đăng nhập thành công
                     $time_login = date('H:i - d/m/Y');
                     setcookie($username, $time_login, time() + (86400 * 30), '/');
-                    error_log("DEBUG LOGIN: Đã thiết lập cookie cho user '$username'");
+                    Logger::debug("User cookie set", ['username' => $username]);
 
                     // Kiểm tra xem có URL chuyển hướng sau đăng nhập không
                     if (isset($_SESSION['redirect_after_login'])) {
                         $redirect_url = $_SESSION['redirect_after_login'];
                         unset($_SESSION['redirect_after_login']);
-                        error_log("DEBUG LOGIN: Chuyển hướng đến URL được lưu: $redirect_url");
+                        Logger::info("User redirect to saved URL", ['username' => $username, 'url' => $redirect_url]);
                         header('Location: ' . $redirect_url);
                     } else {
                         // Sử dụng đường dẫn tuyệt đối
                         $redirect_url = 'http://' . $_SERVER['HTTP_HOST'] . '/index.php';
-                        error_log("DEBUG LOGIN: Chuyển hướng đến trang chủ: $redirect_url");
+                        Logger::info("User redirect to homepage", ['username' => $username]);
                         header('Location: ' . $redirect_url);
                     }
                     // Đảm bảo dừng thực thi script sau khi chuyển hướng
                     exit();
                 }
             } else {
-                error_log("DEBUG LOGIN: Đăng nhập thất bại cho username: '$username'");
+                Logger::warning("Login failed", ['username' => $username]);
                 $redirect_url = 'http://' . $_SERVER['HTTP_HOST'] . '/administrator/userLogin.php?error=1';
-                error_log("DEBUG LOGIN: Chuyển hướng đến trang đăng nhập với thông báo lỗi: $redirect_url");
+                Logger::info("Redirect to login page with error", ['username' => $username]);
                 header('Location: ' . $redirect_url);
                 exit();
             }
             break;
 
         case 'userlogout':
-            // Ghi log để debug
-            error_log("Đang xử lý đăng xuất...");
+            Logger::info("Processing logout request");
 
             // Thiết lập múi giờ Việt Nam
             date_default_timezone_set('Asia/Ho_Chi_Minh');

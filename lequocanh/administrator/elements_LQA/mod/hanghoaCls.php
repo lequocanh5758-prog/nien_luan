@@ -184,12 +184,61 @@ class hanghoa
 
     public function HanghoaDelete($idhanghoa)
     {
-        $sql = "DELETE from hanghoa where idhanghoa = ?";
-        $data = array($idhanghoa);
+        try {
+            // Kiểm tra các ràng buộc trước khi xóa
+            $relatedData = $this->checkRelatedData($idhanghoa);
 
-        $del = $this->db->prepare($sql);
-        $del->execute($data);
-        return $del->rowCount();
+            if (!empty($relatedData)) {
+                // Trả về thông tin về các bảng có liên quan
+                return [
+                    'success' => false,
+                    'error_type' => 'foreign_key_constraint',
+                    'message' => 'Không thể xóa hàng hóa vì còn dữ liệu liên quan',
+                    'related_tables' => $relatedData
+                ];
+            }
+
+            // Nếu không có ràng buộc, thực hiện xóa
+            $sql = "DELETE from hanghoa where idhanghoa = ?";
+            $data = array($idhanghoa);
+
+            $del = $this->db->prepare($sql);
+            $del->execute($data);
+
+            $rowCount = $del->rowCount();
+
+            return [
+                'success' => true,
+                'rows_affected' => $rowCount,
+                'message' => $rowCount > 0 ? 'Xóa hàng hóa thành công' : 'Không tìm thấy hàng hóa để xóa'
+            ];
+        } catch (PDOException $e) {
+            // Xử lý lỗi foreign key constraint
+            if ($e->getCode() == '23000' && strpos($e->getMessage(), 'foreign key constraint') !== false) {
+                // Phân tích thông báo lỗi để lấy tên bảng
+                $errorMessage = $e->getMessage();
+                $tableName = 'không xác định';
+
+                if (preg_match('/`([^`]+)`\.`([^`]+)`/', $errorMessage, $matches)) {
+                    $tableName = $matches[2]; // Tên bảng
+                }
+
+                return [
+                    'success' => false,
+                    'error_type' => 'foreign_key_constraint',
+                    'message' => 'Không thể xóa hàng hóa vì còn dữ liệu liên quan trong bảng: ' . $tableName,
+                    'technical_error' => $errorMessage,
+                    'suggested_action' => $this->getSuggestedAction($tableName)
+                ];
+            }
+
+            // Lỗi khác
+            return [
+                'success' => false,
+                'error_type' => 'database_error',
+                'message' => 'Lỗi cơ sở dữ liệu: ' . $e->getMessage()
+            ];
+        }
     }
 
     public function HanghoaUpdate($tenhanghoa, $id_hinhanh, $mota, $giathamkhao, $idloaihang, $idThuongHieu, $idDonViTinh, $idNhanVien, $idhanghoa, $ghichu = '')
@@ -284,29 +333,111 @@ class hanghoa
         }
     }
 
+    /**
+     * Kiểm tra dữ liệu liên quan trước khi xóa hàng hóa
+     */
+    public function checkRelatedData($idhanghoa)
+    {
+        $relatedData = [];
+
+        try {
+            // Kiểm tra bảng tồn kho
+            $sql = "SELECT COUNT(*) as count FROM tonkho WHERE idhanghoa = ?";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([$idhanghoa]);
+            $count = $stmt->fetchColumn();
+            if ($count > 0) {
+                $relatedData['tonkho'] = [
+                    'table_name' => 'tonkho',
+                    'display_name' => 'Tồn kho',
+                    'count' => $count,
+                    'description' => 'Hàng hóa này còn có ' . $count . ' bản ghi tồn kho'
+                ];
+            }
+
+            // Kiểm tra bảng chi tiết hóa đơn
+            $sql = "SELECT COUNT(*) as count FROM chitiethoadon WHERE idhanghoa = ?";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([$idhanghoa]);
+            $count = $stmt->fetchColumn();
+            if ($count > 0) {
+                $relatedData['chitiethoadon'] = [
+                    'table_name' => 'chitiethoadon',
+                    'display_name' => 'Chi tiết hóa đơn',
+                    'count' => $count,
+                    'description' => 'Hàng hóa này có trong ' . $count . ' hóa đơn'
+                ];
+            }
+
+            // Kiểm tra bảng chi tiết phiếu nhập
+            $sql = "SELECT COUNT(*) as count FROM chitietphieunhap WHERE idhanghoa = ?";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([$idhanghoa]);
+            $count = $stmt->fetchColumn();
+            if ($count > 0) {
+                $relatedData['chitietphieunhap'] = [
+                    'table_name' => 'chitietphieunhap',
+                    'display_name' => 'Chi tiết phiếu nhập',
+                    'count' => $count,
+                    'description' => 'Hàng hóa này có trong ' . $count . ' phiếu nhập'
+                ];
+            }
+
+            // Kiểm tra bảng thuộc tính hàng hóa
+            $sql = "SELECT COUNT(*) as count FROM thuoctinhhh WHERE idhanghoa = ?";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([$idhanghoa]);
+            $count = $stmt->fetchColumn();
+            if ($count > 0) {
+                $relatedData['thuoctinhhh'] = [
+                    'table_name' => 'thuoctinhhh',
+                    'display_name' => 'Thuộc tính hàng hóa',
+                    'count' => $count,
+                    'description' => 'Hàng hóa này có ' . $count . ' thuộc tính'
+                ];
+            }
+
+            // Kiểm tra bảng đơn giá
+            $sql = "SELECT COUNT(*) as count FROM dongia WHERE idhanghoa = ?";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([$idhanghoa]);
+            $count = $stmt->fetchColumn();
+            if ($count > 0) {
+                $relatedData['dongia'] = [
+                    'table_name' => 'dongia',
+                    'display_name' => 'Đơn giá',
+                    'count' => $count,
+                    'description' => 'Hàng hóa này có ' . $count . ' mức giá'
+                ];
+            }
+        } catch (PDOException $e) {
+            error_log("Error checking related data: " . $e->getMessage());
+        }
+
+        return $relatedData;
+    }
+
+    /**
+     * Đưa ra gợi ý hành động dựa trên bảng có liên quan
+     */
+    private function getSuggestedAction($tableName)
+    {
+        $suggestions = [
+            'tonkho' => 'Hãy xóa tất cả bản ghi tồn kho của hàng hóa này trước khi xóa hàng hóa.',
+            'chitiethoadon' => 'Hàng hóa này đã được bán trong các hóa đơn. Không nên xóa để đảm bảo tính toàn vẹn dữ liệu.',
+            'chitietphieunhap' => 'Hàng hóa này đã được nhập kho. Không nên xóa để đảm bảo tính toàn vẹn dữ liệu.',
+            'thuoctinhhh' => 'Hãy xóa tất cả thuộc tính của hàng hóa này trước.',
+            'dongia' => 'Hãy xóa tất cả đơn giá của hàng hóa này trước.'
+        ];
+
+        return isset($suggestions[$tableName]) ? $suggestions[$tableName] : 'Hãy xóa dữ liệu liên quan trước khi xóa hàng hóa này.';
+    }
+
     public function CheckRelations($idhanghoa)
     {
-        $tablesWithRelations = []; // Mảng để lưu tên các bảng có liên kết
-
-        // Kiểm tra liên kết với bảng thuộc tính hàng hóa (ví dụ)
-        $sql = "SELECT COUNT(*) FROM thuoctinhhh WHERE idhanghoa = ?";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([$idhanghoa]);
-        if ($stmt->fetchColumn() > 0) {
-            $tablesWithRelations[] = 'thuoctinhhh';
-        }
-
-        // Kiểm tra liên kết với bảng đơn giá (ví dụ)
-        $sql = "SELECT COUNT(*) FROM dongia WHERE idhanghoa = ?";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([$idhanghoa]);
-        if ($stmt->fetchColumn() > 0) {
-            $tablesWithRelations[] = 'dongia';
-        }
-
-        // Thêm các bảng khác mà bạn muốn kiểm tra ở đây
-
-        return $tablesWithRelations; // Trả về danh sách các bảng có liên kết
+        // Giữ lại method cũ để tương thích
+        $relatedData = $this->checkRelatedData($idhanghoa);
+        return array_keys($relatedData);
     }
 
     public function GetAllThuongHieu()

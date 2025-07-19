@@ -219,3 +219,37 @@ Data: Array
 )
 
 2025-04-12 05:59:21 - Success, rows affected: 0
+2025-06-19 01:42:21 - Update parameters:
+idhanghoa: 45 (type: integer)
+idThuocTinh: 7 (type: integer)
+tenThuocTinhHH: Đen, Tím, Trắng, Vànggggg (type: string)
+idThuocTinhHH: 30 (type: integer)
+2025-06-19 01:42:21 - SQL Query: UPDATE thuoctinhhh 
+                SET idhanghoa = ?, idThuocTinh = ?, tenThuocTinhHH = ?
+                WHERE idThuocTinhHH = ?
+Data: Array
+(
+    [0] => 45
+    [1] => 7
+    [2] => Đen, Tím, Trắng, Vànggggg
+    [3] => 30
+)
+
+2025-06-19 01:42:21 - Success, rows affected: 1
+2025-06-19 01:42:21 - Update parameters:
+idhanghoa: 45 (type: integer)
+idThuocTinh: 7 (type: integer)
+tenThuocTinhHH: Đen, Tím, Trắng, Vànggggg (type: string)
+idThuocTinhHH: 30 (type: integer)
+2025-06-19 01:42:21 - SQL Query: UPDATE thuoctinhhh 
+                SET idhanghoa = ?, idThuocTinh = ?, tenThuocTinhHH = ?
+                WHERE idThuocTinhHH = ?
+Data: Array
+(
+    [0] => 45
+    [1] => 7
+    [2] => Đen, Tím, Trắng, Vànggggg
+    [3] => 30
+)
+
+2025-06-19 01:42:21 - Success, rows affected: 0

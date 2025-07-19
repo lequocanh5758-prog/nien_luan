@@ -7,8 +7,8 @@ $debug['POST'] = $_POST;
 $debug['GET'] = $_GET;
 $debug['REQUEST'] = $_REQUEST;
 
-// Try to get ID from various sources
-$idThuocTinh = isset($_POST['idThuocTinh']) ? $_POST['idThuocTinh'] : (isset($_GET['idThuocTinh']) ? $_GET['idThuocTinh'] : (isset($_REQUEST['idThuocTinh']) ? $_REQUEST['idThuocTinh'] : (isset($_REQUEST['id']) ? $_REQUEST['id'] : null)));
+// Try to get ID from various sources - support both jscript.js and thuoctinhView.php
+$idThuocTinh = $_POST['idThuocTinh'] ?? $_GET['idThuocTinh'] ?? $_REQUEST['idThuocTinh'] ?? $_REQUEST['id'] ?? $_GET['id'] ?? null;
 
 if (!$idThuocTinh) {
     echo json_encode([
@@ -143,15 +143,15 @@ if (!$item) {
     $(document).ready(function() {
         // Close button event
         $("#close-btn-tt").on("click", function() {
-            // Emit a custom event that can be caught by the parent window
-            window.parent.postMessage('closePopup', '*');
-            // Also hide the parent element if we're in a native popup
-            $(this).closest("#w_update_tt").hide();
+            // Hide the popup
+            $("#w_update_tt").hide();
         });
 
-        // Xử lý submit form
-        $("#update-form").on("submit", function(e) {
+        // Xử lý submit form - sử dụng off() để tránh duplicate handlers
+        $("#update-form").off("submit").on("submit", function(e) {
             e.preventDefault();
+
+            console.log("=== FORM SUBMIT STARTED ===");
 
             // Hiển thị trạng thái đang xử lý
             $('#noteForm').html('<span style="color:blue">Đang xử lý...</span>');
@@ -159,33 +159,81 @@ if (!$item) {
             console.log("Form submitted");
 
             var formData = new FormData(this);
-            formData.append("reqact", "updatethuoctinh");
+
+            // Debug: log form data
+            console.log("Form data entries:");
+            for (var pair of formData.entries()) {
+                console.log(pair[0] + ': ' + pair[1]);
+            }
+
+            console.log("About to send AJAX request...");
 
             $.ajax({
-                url: "./elements_LQA/mthuoctinh/thuoctinhAct.php",
+                url: "./elements_LQA/mthuoctinh/thuoctinhAct.php?reqact=updatethuoctinh",
                 type: "POST",
                 data: formData,
                 contentType: false,
                 processData: false,
                 dataType: 'json',
                 success: function(response) {
-                    console.log("Update response:", response);
+                    console.log("=== AJAX SUCCESS ===");
+                    console.log("Raw response:", response);
+                    console.log("Response type:", typeof response);
 
-                    if (response.success) {
+                    // Kiểm tra nếu response là string, thử parse JSON
+                    if (typeof response === 'string') {
+                        console.log("Response is string, trying to parse JSON...");
+                        try {
+                            response = JSON.parse(response);
+                            console.log("Parsed JSON:", response);
+                        } catch (e) {
+                            console.error("Failed to parse JSON response:", response);
+                            console.error("Parse error:", e);
+                            $('#noteForm').html('<span style="color:red">Lỗi: Server trả về dữ liệu không hợp lệ</span>');
+                            return;
+                        }
+                    }
+
+                    if (response && response.success) {
+                        console.log("Update successful!");
                         $('#noteForm').html('<span style="color:green">Cập nhật thành công!</span>');
 
                         // Đóng popup sau 1 giây và reload trang
                         setTimeout(function() {
+                            console.log("Closing popup and reloading...");
                             $("#w_update_tt").hide();
                             window.location.reload(true);
                         }, 1000);
                     } else {
-                        $('#noteForm').html('<span style="color:red">Lỗi: ' + (response.message || 'Không thể cập nhật') + '</span>');
+                        console.log("Update failed:", response);
+                        $('#noteForm').html('<span style="color:red">Lỗi: ' + (response && response.message ? response.message : 'Không thể cập nhật') + '</span>');
                     }
                 },
                 error: function(xhr, status, error) {
-                    console.error("Update error:", error, xhr.responseText);
-                    $('#noteForm').html('<span style="color:red">Lỗi kết nối đến máy chủ</span>');
+                    console.error("=== AJAX ERROR ===");
+                    console.error("Error:", error);
+                    console.error("Status:", status);
+                    console.error("XHR Status Code:", xhr.status);
+                    console.error("Response Text:", xhr.responseText);
+                    console.error("Ready State:", xhr.readyState);
+
+                    var errorMsg = 'Lỗi kết nối đến máy chủ';
+                    if (xhr.status === 404) {
+                        errorMsg = 'Không tìm thấy file xử lý (404)';
+                        console.error("File not found - check path: ./elements_LQA/mthuoctinh/thuoctinhAct.php");
+                    } else if (xhr.status === 500) {
+                        errorMsg = 'Lỗi máy chủ (500): ' + (xhr.responseText || 'Không có thông tin chi tiết');
+                        console.error("Server error - check PHP logs");
+                    } else if (xhr.status === 0) {
+                        errorMsg = 'Không thể kết nối đến máy chủ. Kiểm tra đường dẫn file.';
+                        console.error("Network error or CORS issue");
+                    } else if (xhr.responseText) {
+                        errorMsg = 'Lỗi: ' + xhr.responseText.substring(0, 200);
+                        console.error("Server returned error response");
+                    }
+
+                    $('#noteForm').html('<span style="color:red">' + errorMsg + '</span>');
+                    console.error("=== END AJAX ERROR ===");
                 }
             });
         });
