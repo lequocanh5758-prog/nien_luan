@@ -760,3 +760,50 @@ REQUEST: Array
 
 --------------------------------------
 2025-07-18 02:39:58 - Update result: Success
+2025-07-19 13:03:40 - Hanghoa Update request:
+idhanghoa: 143
+tenhanghoa: iPhone 13 Pro.
+POST: Array
+(
+    [idhanghoa] => 143
+    [debug_log] => true
+    [ajax] => false
+    [redirect] => ./index.php?req=hanghoaview
+    [tenhanghoa] => iPhone 13 Pro.
+    [mota] => Điện thoại thông minh cao cấp của Apple với màn hình Super Retina XDR OLED, chip A15 Bionic
+    [giathamkhao] => 3000
+    [id_hinhanh] => 177
+    [idloaihang] => 2
+    [idThuongHieu] => 1
+    [idDonViTinh] => 1
+    [idNhanVien] => 4
+)
+
+GET: Array
+(
+    [reqact] => updatehanghoa
+)
+
+REQUEST: Array
+(
+    [reqact] => updatehanghoa
+    [idhanghoa] => 143
+    [debug_log] => true
+    [ajax] => false
+    [redirect] => ./index.php?req=hanghoaview
+    [tenhanghoa] => iPhone 13 Pro.
+    [mota] => Điện thoại thông minh cao cấp của Apple với màn hình Super Retina XDR OLED, chip A15 Bionic
+    [giathamkhao] => 3000
+    [id_hinhanh] => 177
+    [idloaihang] => 2
+    [idThuongHieu] => 1
+    [idDonViTinh] => 1
+    [idNhanVien] => 4
+    [abuse_interstitial] => 7d7cfb004083.ngrok-free.app
+    [PHPSESSID] => 1fe62fe78a39f0e060e7f6ff61997325
+    [admin] => 12:41 - 19/07/2025
+    [khachhang] => 13:01 - 19/07/2025
+)
+
+--------------------------------------
+2025-07-19 13:03:40 - Update result: Success

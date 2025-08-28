@@ -170,17 +170,33 @@ try {
         }
     }
 
+    // Xác định phương thức thanh toán
+    $paymentMethod = $_POST['payment_method'] ?? 'bank_transfer';
+
+    // Xác định trạng thái thanh toán dựa trên phương thức
+    if ($paymentMethod == 'cod') {
+        $paymentStatus = 'pending'; // COD chờ thanh toán khi nhận hàng
+    } elseif ($paymentMethod == 'bank_transfer') {
+        $paymentStatus = 'pending'; // Chuyển khoản chờ xác nhận
+    } else {
+        $paymentStatus = 'pending'; // Mặc định chờ thanh toán
+    }
+
     // Thêm đơn hàng vào bảng don_hang với trạng thái thông báo
     if ($hasNotificationColumns) {
         $insertOrderSql = "INSERT INTO don_hang (ma_don_hang_text, ma_nguoi_dung, dia_chi_giao_hang, tong_tien, trang_thai, phuong_thuc_thanh_toan, trang_thai_thanh_toan, pending_read, ngay_tao, ngay_cap_nhat)
-                          VALUES (?, ?, ?, ?, 'pending', 'bank_transfer', 'pending', 0, NOW(), NOW())";
+                          VALUES (?, ?, ?, ?, 'pending', ?, ?, 0, NOW(), NOW())";
     } else {
         $insertOrderSql = "INSERT INTO don_hang (ma_don_hang_text, ma_nguoi_dung, dia_chi_giao_hang, tong_tien, trang_thai, phuong_thuc_thanh_toan, trang_thai_thanh_toan, ngay_tao, ngay_cap_nhat)
-                          VALUES (?, ?, ?, ?, 'pending', 'bank_transfer', 'pending', NOW(), NOW())";
+                          VALUES (?, ?, ?, ?, 'pending', ?, ?, NOW(), NOW())";
     }
 
     $insertOrderStmt = $conn->prepare($insertOrderSql);
-    $insertOrderStmt->execute([$orderCode, $userId, $shippingAddress, $totalAmount]);
+    if ($hasNotificationColumns) {
+        $insertOrderStmt->execute([$orderCode, $userId, $shippingAddress, $totalAmount, $paymentMethod, $paymentStatus]);
+    } else {
+        $insertOrderStmt->execute([$orderCode, $userId, $shippingAddress, $totalAmount, $paymentMethod, $paymentStatus]);
+    }
 
     // Lấy ID của đơn hàng vừa thêm
     $orderId = $conn->lastInsertId();
@@ -249,6 +265,40 @@ try {
     unset($_SESSION['order_details']);
     unset($_SESSION['total_amount']);
     unset($_SESSION['order_code']);
+
+    // Gửi thông báo cho khách hàng dựa trên phương thức thanh toán
+    if ($userId) {
+        require_once '../mod/CustomerNotificationManager.php';
+        $notificationManager = new CustomerNotificationManager();
+
+        // Debug log
+        error_log("Creating notification for user: $userId, payment method: $paymentMethod, order: $orderCode, order_id: $orderId");
+
+        if ($paymentMethod == 'cod') {
+            // Thông báo COD - cần duyệt thủ công
+            $title = "📦 Đơn hàng COD đã được tạo";
+            $message = "Đơn hàng #{$orderCode} đã được tạo thành công. " .
+                "Đơn hàng sẽ được xử lý và giao trong thời gian sớm nhất. " .
+                "Bạn sẽ thanh toán khi nhận hàng.";
+            $result = $notificationManager->createNotification($userId, $title, $message, 'order_created', $orderId);
+            error_log("COD notification created: " . ($result ? 'success' : 'failed'));
+        } elseif ($paymentMethod == 'bank_transfer') {
+            // Thông báo chuyển khoản - chờ thanh toán
+            $title = "🏦 Đơn hàng chờ thanh toán";
+            $message = "Đơn hàng #{$orderCode} đã được tạo. " .
+                "Vui lòng chuyển khoản theo thông tin được cung cấp để hoàn tất đơn hàng.";
+            $result = $notificationManager->createNotification($userId, $title, $message, 'payment_pending', $orderId);
+            error_log("Bank transfer notification created: " . ($result ? 'success' : 'failed'));
+        } else {
+            // For any other payment method (momo, etc.)
+            $title = "📦 Đơn hàng đã được tạo";
+            $message = "Đơn hàng #{$orderCode} đã được tạo thành công với phương thức thanh toán: $paymentMethod";
+            $result = $notificationManager->createNotification($userId, $title, $message, 'order_created', $orderId);
+            error_log("General notification created: " . ($result ? 'success' : 'failed'));
+        }
+    } else {
+        error_log("No user ID found for notification creation");
+    }
 
     // Lưu thông báo thành công vào session
     $_SESSION['payment_success'] = true;

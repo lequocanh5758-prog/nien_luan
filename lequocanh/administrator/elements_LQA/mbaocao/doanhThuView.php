@@ -561,59 +561,88 @@ foreach ($reportData as $item) {
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.16.9/xlsx.full.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Chuyển đổi dữ liệu từ chuỗi sang số
-    const chartData = <?php echo json_encode($chartData); ?>.map(value => parseFloat(value));
-
-    // Khởi tạo biểu đồ
-    const ctx = document.getElementById('revenueChart').getContext('2d');
-    const revenueChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: <?php echo json_encode($chartLabels); ?>,
-            datasets: [{
-                label: 'Doanh thu',
-                data: chartData,
-                backgroundColor: 'rgba(0, 123, 255, 0.5)',
-                borderColor: 'rgba(0, 123, 255, 1)',
-                borderWidth: 1
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        callback: function(value) {
-                            return value.toLocaleString('vi-VN') + ' đ';
-                        }
-                    }
-                }
+    // Debug logging
+    console.log('Chart labels:', <?php echo json_encode($chartLabels); ?>);
+    console.log('Chart data raw:', <?php echo json_encode($chartData); ?>);
+    
+    // Chuyển đổi dữ liệu từ chuỗi sang số với kiểm tra an toàn
+    const rawChartData = <?php echo json_encode($chartData); ?>;
+    const chartData = Array.isArray(rawChartData) ? rawChartData.map(value => parseFloat(value) || 0) : [];
+    
+    console.log('Chart data processed:', chartData);
+    
+    // Kiểm tra canvas element
+    const canvasElement = document.getElementById('revenueChart');
+    if (!canvasElement) {
+        console.error('Canvas element not found!');
+        const container = document.querySelector('.report-chart');
+        if (container) {
+            container.innerHTML = '<div class="alert alert-danger">Lỗi: Không tìm thấy canvas element để vẽ biểu đồ</div>';
+        }
+        return;
+    }
+    
+    // Khởi tạo biểu đồ với try-catch
+    try {
+        const ctx = canvasElement.getContext('2d');
+        const revenueChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: <?php echo json_encode($chartLabels); ?>,
+                datasets: [{
+                    label: 'Doanh thu',
+                    data: chartData,
+                    backgroundColor: 'rgba(0, 123, 255, 0.5)',
+                    borderColor: 'rgba(0, 123, 255, 1)',
+                    borderWidth: 1
+                }]
             },
-            plugins: {
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            return 'Doanh thu: ' + context.raw.toLocaleString('vi-VN') + ' đ';
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return value.toLocaleString('vi-VN') + ' đ';
+                            }
                         }
                     }
                 },
-                legend: {
-                    display: true,
-                    position: 'top'
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return 'Doanh thu: ' + context.raw.toLocaleString('vi-VN') + ' đ';
+                            }
+                        }
+                    },
+                    legend: {
+                        display: true,
+                        position: 'top'
+                    }
                 }
             }
+        });
+        
+        console.log('Chart created successfully:', revenueChart);
+        
+        // Kiểm tra và hiển thị thông báo nếu không có dữ liệu
+        if (chartData.length === 0 || chartData.every(value => value === 0)) {
+            const chartContainer = document.querySelector('.report-chart');
+            const noDataMessage = document.createElement('div');
+            noDataMessage.className = 'alert alert-info';
+            noDataMessage.textContent = 'Không có dữ liệu doanh thu trong khoảng thời gian này';
+            chartContainer.appendChild(noDataMessage);
         }
-    });
-
-    // Kiểm tra và hiển thị thông báo nếu không có dữ liệu
-    if (chartData.length === 0 || chartData.every(value => value === 0)) {
-        const chartContainer = document.querySelector('.report-chart');
-        const noDataMessage = document.createElement('div');
-        noDataMessage.className = 'alert alert-info';
-        noDataMessage.textContent = 'Không có dữ liệu doanh thu trong khoảng thời gian này';
-        chartContainer.appendChild(noDataMessage);
+        
+    } catch (error) {
+        console.error('Error creating chart:', error);
+        const container = document.querySelector('.report-chart');
+        if (container) {
+            container.innerHTML = '<div class="alert alert-danger">Lỗi tạo biểu đồ: ' + error.message + '</div>';
+        }
     }
 });
 
@@ -648,53 +677,6 @@ function exportToExcel() {
     });
     XLSX.writeFile(wb, 'bao-cao-doanh-thu.xlsx');
 }
-
-// Đặt giá trị mặc định cho các trường ngày tháng nếu chưa có
-window.onload = function() {
-const startDateInput = document.getElementById('startDate');
-const endDateInput = document.getElementById('endDate');
-
-if (startDateInput && !startDateInput.value) {
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    startDateInput.value = thirtyDaysAgo.toISOString().split('T')[0];
-}
-
-if (endDateInput && !endDateInput.value) {
-    const today = new Date();
-    endDateInput.value = today.toISOString().split('T')[0];
-}
-
-// Kiểm tra định dạng ngày khi submit form
-document.getElementById('reportForm').addEventListener('submit', function(e) {
-    const startDate = startDateInput.value;
-    const endDate = endDateInput.value;
-
-    // Kiểm tra nếu ngày không hợp lệ
-    if (startDate && !isValidDate(startDate)) {
-        e.preventDefault();
-        alert('Ngày bắt đầu không hợp lệ. Vui lòng sử dụng định dạng YYYY-MM-DD.');
-        return false;
-    }
-
-    if (endDate && !isValidDate(endDate)) {
-        e.preventDefault();
-        alert('Ngày kết thúc không hợp lệ. Vui lòng sử dụng định dạng YYYY-MM-DD.');
-        return false;
-    }
-
-    // Kiểm tra nếu ngày bắt đầu lớn hơn ngày kết thúc
-    if (startDate && endDate && new Date(startDate) > new Date(endDate)) {
-        if (!confirm('Ngày bắt đầu lớn hơn ngày kết thúc. Bạn có muốn tiếp tục không?')) {
-            e.preventDefault();
-            return false;
-        }
-    }
-});
-};
-
-});
-};
 
 // Kiểm tra định dạng ngày hợp lệ (YYYY-MM-DD)
 function isValidDate(dateString) {

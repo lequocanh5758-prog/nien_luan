@@ -1,4 +1,12 @@
 <?php
+// Start output buffering to prevent header issues
+ob_start();
+
+// Error reporting for debugging
+error_reporting(E_ALL);
+ini_set('display_errors', 0); // Don't display errors to user
+ini_set('log_errors', 1);
+
 // Include new infrastructure for better logging and session management
 require_once __DIR__ . '/../config/logger_config.php';
 
@@ -326,7 +334,7 @@ if ($requestAction) {
                         Logger::info("Admin redirect to saved URL", ['username' => $username, 'url' => $redirect_url]);
                         header('Location: ' . $redirect_url);
                     } else {
-                        $redirect_url = 'http://' . $_SERVER['HTTP_HOST'] . '/administrator/index.php?req=userview&result=ok';
+                        $redirect_url = 'http://' . $_SERVER['HTTP_HOST'] . '/lequocanh/administrator/index.php?req=userview&result=ok';
                         Logger::info("Admin redirect to default admin page", ['username' => $username]);
                         header('Location: ' . $redirect_url);
                     }
@@ -368,7 +376,7 @@ if ($requestAction) {
                         header('Location: ' . $redirect_url);
                     } else {
                         // Sử dụng đường dẫn tuyệt đối
-                        $redirect_url = 'http://' . $_SERVER['HTTP_HOST'] . '/index.php';
+                        $redirect_url = 'http://' . $_SERVER['HTTP_HOST'] . '/lequocanh/index.php';
                         Logger::info("User redirect to homepage", ['username' => $username]);
                         header('Location: ' . $redirect_url);
                     }
@@ -377,7 +385,7 @@ if ($requestAction) {
                 }
             } else {
                 Logger::warning("Login failed", ['username' => $username]);
-                $redirect_url = 'http://' . $_SERVER['HTTP_HOST'] . '/administrator/userLogin.php?error=1';
+                $redirect_url = 'http://' . $_SERVER['HTTP_HOST'] . '/lequocanh/administrator/userLogin.php?error=1';
                 Logger::info("Redirect to login page with error", ['username' => $username]);
                 header('Location: ' . $redirect_url);
                 exit();
@@ -470,3 +478,6 @@ if ($requestAction) {
 } else {
     header('Location: ../../index.php?req=userview');
 }
+
+// Clean and flush output buffer
+ob_end_clean();

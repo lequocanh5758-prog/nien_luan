@@ -8,7 +8,7 @@ SessionManager::start();
 
 // Check if user is logged in
 if (!isset($_SESSION['USER']) && !isset($_SESSION['ADMIN'])) {
-    header('location:UserLogin.php');
+    header('location:userLogin.php');
     exit(); // Add exit to prevent further execution
 }
 

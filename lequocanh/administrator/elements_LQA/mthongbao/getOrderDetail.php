@@ -50,8 +50,8 @@ $db = Database::getInstance();
 $conn = $db->getConnection();
 
 try {
-    // Lấy thông tin đơn hàng
-    $orderSql = "SELECT * FROM orders WHERE id = ? AND user_id = ?";
+    // Lấy thông tin đơn hàng - sử dụng bảng don_hang
+    $orderSql = "SELECT * FROM don_hang WHERE id = ? AND ma_nguoi_dung = ?";
     $orderStmt = $conn->prepare($orderSql);
     $orderStmt->execute([$orderId, $userId]);
     $order = $orderStmt->fetch(PDO::FETCH_ASSOC);
@@ -62,8 +62,8 @@ try {
         exit();
     }
     
-    // Đánh dấu đơn hàng đã đọc
-    $status = $order['status'];
+    // Đánh dấu đơn hàng đã đọc - sử dụng bảng don_hang
+    $status = $order['trang_thai']; // Đổi tên field
     $field = '';
     
     switch ($status) {
@@ -79,45 +79,52 @@ try {
     }
     
     if (!empty($field)) {
-        $updateReadSql = "UPDATE orders SET $field = 1 WHERE id = ? AND user_id = ?";
-        $updateReadStmt = $conn->prepare($updateReadSql);
-        $updateReadStmt->execute([$orderId, $userId]);
+        // Kiểm tra xem cột có tồn tại không
+        $checkColumnSql = "SHOW COLUMNS FROM don_hang LIKE '$field'";
+        $checkColumnStmt = $conn->prepare($checkColumnSql);
+        $checkColumnStmt->execute();
+        
+        if ($checkColumnStmt->rowCount() > 0) {
+            $updateReadSql = "UPDATE don_hang SET $field = 1 WHERE id = ? AND ma_nguoi_dung = ?";
+            $updateReadStmt = $conn->prepare($updateReadSql);
+            $updateReadStmt->execute([$orderId, $userId]);
+        }
     }
     
-    // Lấy danh sách sản phẩm trong đơn hàng
+    // Lấy danh sách sản phẩm trong đơn hàng - sử dụng bảng chi_tiet_don_hang
     $orderItemsSql = "SELECT oi.*, h.tenhanghoa, h.hinhanh 
-                     FROM order_items oi
-                     JOIN hanghoa h ON oi.product_id = h.idhanghoa
-                     WHERE oi.order_id = ?";
+                     FROM chi_tiet_don_hang oi
+                     JOIN hanghoa h ON oi.ma_san_pham = h.idhanghoa
+                     WHERE oi.ma_don_hang = ?";
     $orderItemsStmt = $conn->prepare($orderItemsSql);
     $orderItemsStmt->execute([$orderId]);
     $orderItems = $orderItemsStmt->fetchAll(PDO::FETCH_ASSOC);
     
-    // Định dạng lại thông tin đơn hàng
+    // Định dạng lại thông tin đơn hàng - sử dụng field tiếng Việt
     $formattedOrder = [
         'id' => $order['id'],
-        'order_code' => $order['order_code'],
-        'total_amount' => $order['total_amount'],
-        'status' => $order['status'],
-        'status_text' => getStatusText($order['status']),
-        'status_class' => getStatusClass($order['status']),
-        'payment_method' => $order['payment_method'] == 'bank_transfer' ? 'Chuyển khoản ngân hàng' : $order['payment_method'],
-        'created_at' => date('d/m/Y H:i', strtotime($order['created_at'])),
-        'updated_at' => date('d/m/Y H:i', strtotime($order['updated_at'])),
-        'shipping_address' => $order['shipping_address'] ?? '',
+        'order_code' => $order['ma_don_hang_text'],
+        'total_amount' => $order['tong_tien'],
+        'status' => $order['trang_thai'],
+        'status_text' => getStatusText($order['trang_thai']),
+        'status_class' => getStatusClass($order['trang_thai']),
+        'payment_method' => $order['phuong_thuc_thanh_toan'] == 'bank_transfer' ? 'Chuyển khoản ngân hàng' : $order['phuong_thuc_thanh_toan'],
+        'created_at' => date('d/m/Y H:i', strtotime($order['ngay_tao'])),
+        'updated_at' => isset($order['ngay_cap_nhat']) ? date('d/m/Y H:i', strtotime($order['ngay_cap_nhat'])) : '',
+        'shipping_address' => $order['dia_chi_giao_hang'] ?? '',
         'items' => []
     ];
     
-    // Định dạng lại thông tin sản phẩm
+    // Định dạng lại thông tin sản phẩm - sử dụng field tiếng Việt
     foreach ($orderItems as $item) {
         $formattedOrder['items'][] = [
             'id' => $item['id'],
-            'product_id' => $item['product_id'],
+            'product_id' => $item['ma_san_pham'],
             'product_name' => $item['tenhanghoa'],
             'product_image' => $item['hinhanh'],
-            'quantity' => $item['quantity'],
-            'price' => $item['price'],
-            'total' => $item['price'] * $item['quantity']
+            'quantity' => $item['so_luong'],
+            'price' => $item['gia'],
+            'total' => $item['gia'] * $item['so_luong']
         ];
     }
     

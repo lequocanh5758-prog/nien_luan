@@ -3,6 +3,47 @@
         window.history.back();
     }
 
+    // Function để thêm sản phẩm vào giỏ hàng bằng AJAX
+    function addToCart(productId) {
+        // Tạo XMLHttpRequest
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', 'administrator/elements_LQA/mgiohang/giohangAct.php?action=add&productId=' + productId + '&quantity=1', true);
+        
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState === 4) {
+                if (xhr.status === 200) {
+                    // Thành công
+                    alert('✅ Đã thêm sản phẩm vào giỏ hàng!');
+                    
+                    // Cập nhật số lượng trong giỏ hàng trên navbar (nếu có)
+                    updateCartCount();
+                } else {
+                    // Lỗi
+                    alert('❌ Có lỗi xảy ra khi thêm sản phẩm vào giỏ hàng!');
+                }
+            }
+        };
+        
+        xhr.send();
+    }
+    
+    // Function để cập nhật số lượng giỏ hàng
+    function updateCartCount() {
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', 'administrator/elements_LQA/mgiohang/getCartCount.php', true);
+        
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState === 4 && xhr.status === 200) {
+                var cartBadge = document.querySelector('.badge');
+                if (cartBadge) {
+                    cartBadge.textContent = xhr.responseText;
+                }
+            }
+        };
+        
+        xhr.send();
+    }
+
     // Xử lý thông báo khi thêm giỏ hàng thành công hoặc có lỗi
     document.addEventListener('DOMContentLoaded', function() {
         // Kiểm tra xem URL có chứa tham số cartAdded không
@@ -52,6 +93,7 @@ if (isset($_GET['reqHanghoa'])) {
 }
 ?>
 <link rel="stylesheet" href="public_files/mycss.css">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 <script src="administrator/elements_LQA/js_LQA/jscript.js"></script>
 
 <div class="card mb-3">
@@ -118,50 +160,42 @@ if (isset($_GET['reqHanghoa'])) {
                     </div>
                 <?php endif; ?>
 
-                <!-- Add the cart icon here -->
-                <?php if (isset($_SESSION['USER'])): ?>
-                    <a href="administrator/elements_LQA/mgiohang/giohangAct.php?action=add&productId=<?php echo $obj->idhanghoa; ?>&quantity=1"
-                        class="btn btn-primary ms-2">
-                        <div style="display: flex; flex-direction: column; align-items: center;">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor"
-                                class="bi bi-cart-fill" viewBox="0 0 16 16">
-                                <path
-                                    d="M0 1.5A.5.5 0 0 1 .5 1H2a.5.5 0 0 1 .485.379L2.89 3H14.5a.5.5 0 0 1 .491.592l-1.5 8A.5.5 0 0 1 13 12H4a.5.5 0 0 1-.491-.408L2.01 3.607 1.61 2H.5a.5.5 0 0 1-.5-.5M5 12a2 2 0 1 0 0 4 2 2 0 0 0 0-4m7 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4m-7 1a1 1 0 1 1 0 2 1 1 0 0 1 0-2m7 0a1 1 0 1 1 0 2 1 1 0 0 1 0-2" />
-                            </svg>
-                            <!-- Giỏ hàng -->
-                        </div>
-                    </a>
-                <?php elseif (isset($_SESSION['ADMIN'])): ?>
-                    <!-- Không hiển thị nút giỏ hàng cho admin -->
-                <?php else: ?>
-                    <a href="administrator/userLogin.php" class="btn btn-primary ms-2"
-                        onclick="alert('Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng');">
-                        <div style="display: flex; flex-direction: column; align-items: center;">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor"
-                                class="bi bi-cart-fill" viewBox="0 0 16 16">
-                                <path
-                                    d="M0 1.5A.5.5 0 0 1 .5 1H2a.5.5 0 0 1 .485.379L2.89 3H14.5a.5.5 0 0 1 .491.592l-1.5 8A.5.5 0 0 1 13 12H4a.5.5 0 0 1-.491-.408L2.01 3.607 1.61 2H.5a.5.5 0 0 1-.5-.5M5 12a2 2 0 1 0 0 4 2 2 0 0 0 0-4m7 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4m-7 1a1 1 0 1 1 0 2 1 1 0 0 1 0-2m7 0a1 1 0 1 1 0 2 1 1 0 0 1 0-2" />
-                            </svg>
-                            <!-- Giỏ hàng -->
-                        </div>
-                    </a>
-                <?php endif; ?>
+                <!-- Action buttons -->
+                <div style="margin-top: 20px; margin-bottom: 15px;">
+                    
+                    <!-- Add to cart button -->
+                    <?php if (isset($_SESSION['USER'])): ?>
+                        <button onclick="addToCart(<?php echo $obj->idhanghoa; ?>)" 
+                               style="background-color: #0d6efd; color: white; padding: 12px 20px; margin: 5px; border-radius: 5px; border: none; cursor: pointer; font-weight: bold;">
+                            🛒 Thêm vào giỏ hàng
+                        </button>
+                    <?php else: ?>
+                        <button onclick="alert('Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng!'); window.location.href='administrator/userLogin.php';" 
+                               style="background-color: #0d6efd; color: white; padding: 12px 20px; margin: 5px; border-radius: 5px; border: none; cursor: pointer; font-weight: bold;">
+                            🛒 Thêm vào giỏ hàng
+                        </button>
+                    <?php endif; ?>
 
-                <!-- Existing Buy button -->
-                <?php if (isset($_SESSION['USER'])): ?>
-                    <a href="./purchase.php?productId=<?php echo $obj->idhanghoa; ?>" class="btn btn-success"
-                        onclick="return confirm('Bạn có chắc chắn muốn mua sản phẩm này?');">
-                        Mua
-                    </a>
-                <?php elseif (isset($_SESSION['ADMIN'])): ?>
-                    <!-- Không hiển thị nút mua cho admin -->
-                <?php else: ?>
-                    <a href="administrator/userLogin.php" class="btn btn-success"
-                        onclick="alert('Vui lòng đăng nhập để mua sản phẩm');">
-                        Mua
-                    </a>
-                <?php endif; ?>
-                <button onclick="goBack()" class="btn btn-secondary">Quay lại</button>
+                    <!-- Buy now button -->
+                    <?php if (isset($_SESSION['USER'])): ?>
+                        <a href="administrator/elements_LQA/mgiohang/giohangView.php" 
+                           onclick="addToCart(<?php echo $obj->idhanghoa; ?>);"
+                           style="background-color: #198754; color: white; padding: 12px 20px; margin: 5px; border-radius: 5px; text-decoration: none; display: inline-block; font-weight: bold;">
+                            💰 Mua ngay
+                        </a>
+                    <?php else: ?>
+                        <button onclick="alert('Vui lòng đăng nhập để mua sản phẩm!'); window.location.href='administrator/userLogin.php';" 
+                               style="background-color: #198754; color: white; padding: 12px 20px; margin: 5px; border-radius: 5px; border: none; cursor: pointer; font-weight: bold;">
+                            💰 Mua ngay
+                        </button>
+                    <?php endif; ?>
+                    
+                    <!-- Back button -->
+                    <button onclick="goBack()" 
+                            style="background-color: #6c757d; color: white; padding: 12px 20px; margin: 5px; border-radius: 5px; border: none; cursor: pointer; font-weight: bold;">
+                        ⬅️ Quay lại
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -176,6 +210,57 @@ if (isset($_GET['reqHanghoa'])) {
     .text-danger {
         font-weight: bold;
         color: #dc3545 !important;
+    }
+    
+    /* Thêm style cho các nút */
+    .btn-lg {
+        font-weight: bold;
+        padding: 10px 20px;
+        margin: 5px;
+        border-radius: 5px;
+        text-decoration: none;
+        display: inline-block;
+        border: none;
+        cursor: pointer;
+    }
+
+    .btn-primary {
+        background-color: #0d6efd;
+        border-color: #0d6efd;
+        color: white;
+    }
+
+    .btn-success {
+        background-color: #198754;
+        border-color: #198754;
+        color: white;
+    }
+    
+    .btn-secondary {
+        background-color: #6c757d;
+        border-color: #6c757d;
+        color: white;
+    }
+    
+    .d-flex {
+        display: flex !important;
+        flex-wrap: wrap;
+    }
+    
+    .gap-2 {
+        gap: 0.5rem;
+    }
+    
+    .me-2 {
+        margin-right: 0.5rem;
+    }
+    
+    .mt-4 {
+        margin-top: 1.5rem;
+    }
+    
+    .mb-3 {
+        margin-bottom: 1rem;
     }
 </style>
 

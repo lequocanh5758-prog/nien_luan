@@ -3,7 +3,7 @@ if (session_status() == PHP_SESSION_NONE) {
     session_start();
 }
 if (!isset($_SESSION['ADMIN'])) {
-    header('Location: ../../userLogin.php');
+    header('Location: ./userLogin.php');
     exit();
 }
 

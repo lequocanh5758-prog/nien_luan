@@ -14,6 +14,14 @@ if (isset($_GET['clear_session']) && $_GET['clear_session'] == '1') {
     exit();
 }
 
+// Kiểm tra nếu người dùng vừa quay về từ trang thanh toán
+$showPaymentSuccess = false;
+if (isset($_GET['payment_success']) && $_GET['payment_success'] == '1') {
+    $showPaymentSuccess = true;
+    // Log để debug
+    error_log('User returned from successful payment - Session USER: ' . (isset($_SESSION['USER']) ? $_SESSION['USER'] : 'Not set'));
+}
+
 require_once './administrator/elements_LQA/mod/giohangCls.php';
 require_once './administrator/elements_LQA/mod/database.php';
 
@@ -51,6 +59,41 @@ if (isset($_SESSION['USER'])) {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <title>Cửa Hàng Điện Thoại</title>
+
+    <!-- Fix dropdown z-index for ngrok -->
+    <style>
+        /* Fix dropdown user menu - đảm bảo hiển thị trên navbar category */
+        .navbar {
+            z-index: 1030 !important;
+        }
+
+        .navbar.bg-dark {
+            z-index: 1020 !important;
+            position: relative;
+        }
+
+        .dropdown-menu {
+            z-index: 1080 !important;
+            position: absolute !important;
+            background-color: white !important;
+            border: 1px solid rgba(0, 0, 0, 0.15) !important;
+            border-radius: 0.5rem !important;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15) !important;
+        }
+
+        .navbar-nav .dropdown .dropdown-menu {
+            position: absolute !important;
+            z-index: 1080 !important;
+            top: 100% !important;
+            left: auto !important;
+            right: 0 !important;
+            transform: none !important;
+        }
+
+        #userDropdown+.dropdown-menu {
+            z-index: 1090 !important;
+        }
+    </style>
 
 </head>
 
@@ -167,8 +210,7 @@ if (isset($_SESSION['USER'])) {
                                     </li>
                                 </ul>
                                 <div class="notification-footer">
-                                    <a href="./administrator/index.php?req=don_hang">Đơn hàng của tôi</a>
-                                    <a href="./administrator/index.php?req=lichsumuahang">Lịch sử mua hàng</a>
+                                    <a href="./customer/order_history.php">Lịch sử mua hàng</a>
                                 </div>
                             </div>
 
@@ -246,6 +288,17 @@ if (isset($_SESSION['USER'])) {
             <?php require './apart/menuLoaihang.php'; ?>
         </div>
     </nav>
+
+    <!-- Payment Success Alert -->
+    <?php if ($showPaymentSuccess): ?>
+        <div class="container mt-3">
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                <i class="fas fa-check-circle me-2"></i>
+                <strong>Thanh toán thành công!</strong> Cảm ơn bạn đã mua hàng. Đơn hàng của bạn đang được xử lý.
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        </div>
+    <?php endif; ?>
 
     <!-- Main Content -->
     <main class="container py-4">

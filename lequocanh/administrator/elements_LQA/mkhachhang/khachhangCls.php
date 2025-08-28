@@ -317,23 +317,43 @@ class KhachHang {
      * @return float Tổng chi tiêu
      */
     public function getTotalSpent($username) {
-        // Kiểm tra xem bảng orders có tồn tại không
-        $stmt = $this->conn->query("SHOW TABLES LIKE 'orders'");
-        $ordersExists = $stmt->rowCount() > 0;
+        // Kiểm tra xem bảng don_hang có tồn tại không
+        $stmt = $this->conn->query("SHOW TABLES LIKE 'don_hang'");
+        $donHangExists = $stmt->rowCount() > 0;
 
-        if (!$ordersExists) {
-            return 0;
+        if (!$donHangExists) {
+            // Nếu không có bảng don_hang, thử kiểm tra bảng orders
+            $stmt = $this->conn->query("SHOW TABLES LIKE 'orders'");
+            $ordersExists = $stmt->rowCount() > 0;
+            
+            if (!$ordersExists) {
+                return 0;
+            }
+            
+            // Sử dụng bảng orders (fallback)
+            try {
+                $sql = "SELECT COALESCE(SUM(total_amount), 0) as total_spent
+                        FROM orders
+                        WHERE user_id = ? AND status = 'approved'";
+                $stmt = $this->conn->prepare($sql);
+                $stmt->execute([$username]);
+                return $stmt->fetch(PDO::FETCH_ASSOC)['total_spent'];
+            } catch (PDOException $e) {
+                error_log("Lỗi khi lấy tổng chi tiêu từ bảng orders: " . $e->getMessage());
+                return 0;
+            }
         }
 
+        // Sử dụng bảng don_hang (preferred)
         try {
-            $sql = "SELECT COALESCE(SUM(total_amount), 0) as total_spent
-                    FROM orders
-                    WHERE user_id = ? AND status = 'approved'";
+            $sql = "SELECT COALESCE(SUM(tong_tien), 0) as total_spent
+                    FROM don_hang
+                    WHERE ma_nguoi_dung = ? AND trang_thai = 'approved'";
             $stmt = $this->conn->prepare($sql);
             $stmt->execute([$username]);
             return $stmt->fetch(PDO::FETCH_ASSOC)['total_spent'];
         } catch (PDOException $e) {
-            error_log("Lỗi khi lấy tổng chi tiêu: " . $e->getMessage());
+            error_log("Lỗi khi lấy tổng chi tiêu từ bảng don_hang: " . $e->getMessage());
             return 0;
         }
     }
@@ -344,23 +364,43 @@ class KhachHang {
      * @return int Số lượng đơn hàng
      */
     public function getOrderCount($username) {
-        // Kiểm tra xem bảng orders có tồn tại không
-        $stmt = $this->conn->query("SHOW TABLES LIKE 'orders'");
-        $ordersExists = $stmt->rowCount() > 0;
+        // Kiểm tra xem bảng don_hang có tồn tại không
+        $stmt = $this->conn->query("SHOW TABLES LIKE 'don_hang'");
+        $donHangExists = $stmt->rowCount() > 0;
 
-        if (!$ordersExists) {
-            return 0;
+        if (!$donHangExists) {
+            // Nếu không có bảng don_hang, thử kiểm tra bảng orders
+            $stmt = $this->conn->query("SHOW TABLES LIKE 'orders'");
+            $ordersExists = $stmt->rowCount() > 0;
+            
+            if (!$ordersExists) {
+                return 0;
+            }
+            
+            // Sử dụng bảng orders (fallback)
+            try {
+                $sql = "SELECT COUNT(*) as order_count
+                        FROM orders
+                        WHERE user_id = ?";
+                $stmt = $this->conn->prepare($sql);
+                $stmt->execute([$username]);
+                return $stmt->fetch(PDO::FETCH_ASSOC)['order_count'];
+            } catch (PDOException $e) {
+                error_log("Lỗi khi lấy số lượng đơn hàng từ bảng orders: " . $e->getMessage());
+                return 0;
+            }
         }
 
+        // Sử dụng bảng don_hang (preferred)
         try {
             $sql = "SELECT COUNT(*) as order_count
-                    FROM orders
-                    WHERE user_id = ?";
+                    FROM don_hang
+                    WHERE ma_nguoi_dung = ?";
             $stmt = $this->conn->prepare($sql);
             $stmt->execute([$username]);
             return $stmt->fetch(PDO::FETCH_ASSOC)['order_count'];
         } catch (PDOException $e) {
-            error_log("Lỗi khi lấy số lượng đơn hàng: " . $e->getMessage());
+            error_log("Lỗi khi lấy số lượng đơn hàng từ bảng don_hang: " . $e->getMessage());
             return 0;
         }
     }

@@ -27,9 +27,16 @@ if (!$giohang->canUseCart()) {
 
 // Kiểm tra xem có dữ liệu sản phẩm được gửi từ form không
 if (!isset($_POST['selected_products']) || empty($_POST['selected_products'])) {
-    // Nếu không có sản phẩm được chọn, chuyển hướng về trang giỏ hàng
-    header('Location: giohangView.php');
-    exit();
+    // Tạo fake data cho test nhanh qua ngrok
+    if (isset($_GET['test']) && $_GET['test'] == '1') {
+        $_POST['selected_products'] = json_encode([
+            ['productId' => 1, 'quantity' => 1]
+        ]);
+    } else {
+        // Nếu không có sản phẩm được chọn, chuyển hướng về trang giỏ hàng
+        header('Location: giohangView.php');
+        exit();
+    }
 }
 
 // Lấy dữ liệu sản phẩm từ form
@@ -81,8 +88,8 @@ foreach ($selectedProducts as $product) {
     $hinhanh = $hanghoa->GetHinhAnhById($productInfo->hinhanh);
     $imageSrc = "";
 
-    // Tạm thời tắt displayImage để tránh lỗi 500
-    $imageSrc = "../img_LQA/no-image.png";
+    // Sử dụng placeholder image online để tránh lỗi 404
+    $imageSrc = "https://via.placeholder.com/80x80/cccccc/666666?text=No+Image";
 
     // Tính tổng tiền cho sản phẩm
     $subtotal = $productInfo->giathamkhao * $quantity;
@@ -295,6 +302,11 @@ $transferContent = $orderCode;
                         <h5>Chuyển khoản ngân hàng</h5>
                         <p class="text-muted">Quét mã QR để thanh toán qua ứng dụng ngân hàng</p>
                     </div>
+                    <div class="payment-method" id="cod-payment">
+                        <i class="fas fa-truck" style="font-size: 2rem; color: #28a745; margin-bottom: 10px;"></i>
+                        <h5>Thanh toán khi nhận hàng (COD)</h5>
+                        <p class="text-muted">Thanh toán bằng tiền mặt khi nhận hàng</p>
+                    </div>
                 </div>
 
                 <!-- Thông tin thanh toán MoMo -->
@@ -390,6 +402,28 @@ $transferContent = $orderCode;
                         </div>
                     <?php endif; ?>
                 </div>
+
+                <!-- Thông tin thanh toán COD -->
+                <div class="qr-container" id="cod-payment-details" style="display: none;">
+                    <h5>Thanh toán khi nhận hàng (COD)</h5>
+                    <div class="text-center">
+                        <i class="fas fa-truck" style="font-size: 80px; color: #28a745; margin-bottom: 20px;"></i>
+                        <p class="lead">Bạn sẽ thanh toán bằng tiền mặt khi nhận hàng</p>
+                        <div class="alert alert-success">
+                            <h6><i class="fas fa-check-circle me-2"></i>Ưu điểm của COD:</h6>
+                            <ul class="list-unstyled mb-0">
+                                <li><i class="fas fa-check me-2"></i>Không cần thanh toán trước</li>
+                                <li><i class="fas fa-check me-2"></i>Kiểm tra hàng trước khi thanh toán</li>
+                                <li><i class="fas fa-check me-2"></i>An toàn và tiện lợi</li>
+                            </ul>
+                        </div>
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>Lưu ý:</strong> Vui lòng chuẩn bị đủ tiền mặt khi nhận hàng.
+                            Số tiền cần thanh toán: <strong><?php echo number_format($totalAmount, 0, ',', '.'); ?> đ</strong>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -415,8 +449,10 @@ $transferContent = $orderCode;
             const processingPayment = document.getElementById('processingPayment');
             const momoPaymentMethod = document.getElementById('momo-payment');
             const bankTransferMethod = document.getElementById('bank-transfer');
+            const codPaymentMethod = document.getElementById('cod-payment');
             const momoDetails = document.getElementById('momo-payment-details');
             const bankDetails = document.getElementById('bank-transfer-details');
+            const codDetails = document.getElementById('cod-payment-details');
 
             let selectedPaymentMethod = 'bank-transfer'; // Mặc định
 
@@ -448,10 +484,24 @@ $transferContent = $orderCode;
                 // Chuyển sang chuyển khoản
                 bankTransferMethod.classList.add('active');
                 momoPaymentMethod.classList.remove('active');
+                codPaymentMethod.classList.remove('active');
                 bankDetails.style.display = 'block';
                 momoDetails.style.display = 'none';
+                codDetails.style.display = 'none';
                 selectedPaymentMethod = 'bank-transfer';
                 confirmPaymentBtn.textContent = 'Xác nhận đã thanh toán';
+            });
+
+            codPaymentMethod.addEventListener('click', function() {
+                // Chuyển sang COD
+                codPaymentMethod.classList.add('active');
+                momoPaymentMethod.classList.remove('active');
+                bankTransferMethod.classList.remove('active');
+                codDetails.style.display = 'block';
+                momoDetails.style.display = 'none';
+                bankDetails.style.display = 'none';
+                selectedPaymentMethod = 'cod';
+                confirmPaymentBtn.textContent = 'Xác nhận đặt hàng COD';
             });
 
             confirmPaymentBtn.addEventListener('click', function(e) {
@@ -469,6 +519,19 @@ $transferContent = $orderCode;
                     }
                     // Xử lý thanh toán MoMo
                     processMoMoPayment(shippingAddress);
+                    return;
+                }
+
+                if (selectedPaymentMethod === 'cod') {
+                    console.log('✅ COD payment selected!');
+                    // Lấy địa chỉ giao hàng
+                    const shippingAddress = document.getElementById('shipping-address').value.trim();
+                    if (!shippingAddress) {
+                        alert('Vui lòng nhập địa chỉ giao hàng!');
+                        return;
+                    }
+                    // Xử lý đặt hàng COD
+                    processCODPayment(shippingAddress);
                     return;
                 }
 
@@ -492,6 +555,8 @@ $transferContent = $orderCode;
             function processMoMoPayment(shippingAddress) {
                 console.log('🚀 processMoMoPayment called!');
                 console.log('Shipping address:', shippingAddress);
+                console.log('Order code:', '<?php echo $orderCode; ?>');
+                console.log('Amount:', '<?php echo $totalAmount; ?>');
 
                 // Tạo form data cho MoMo
                 const formData = new FormData();
@@ -500,8 +565,15 @@ $transferContent = $orderCode;
                 formData.append('shipping_address', shippingAddress);
                 formData.append('amount', '<?php echo $totalAmount; ?>');
 
-                // Gửi request đến MoMo payment handler (thật)
-                fetch('momo_payment.php', {
+                // Debug: Log URL được gọi
+                const currentUrl = window.location.origin;
+                const relativePath = './momo_payment.php';
+                console.log('🌐 Current URL:', currentUrl);
+                console.log('🔗 Relative API Path:', relativePath);
+                console.log('🔗 Full URL:', window.location.href);
+                
+                // Gửi request đến MoMo payment handler (sử dụng đường dẫn tương đối)
+                fetch('./momo_payment.php', {
                         method: 'POST',
                         body: formData
                     })
@@ -567,6 +639,51 @@ $transferContent = $orderCode;
                     .catch(error => {
                         console.error('Lỗi:', error);
                         alert('Đã xảy ra lỗi khi xử lý thanh toán. Vui lòng thử lại.');
+                        confirmPaymentBtn.disabled = false;
+                        processingPayment.style.display = 'none';
+                    });
+            }
+
+            function processCODPayment(shippingAddress) {
+                console.log('🚚 processCODPayment called!');
+                console.log('Shipping address:', shippingAddress);
+
+                // Hiển thị thông báo đang xử lý
+                confirmPaymentBtn.disabled = true;
+                processingPayment.style.display = 'block';
+
+                // Tạo form data cho COD
+                const formData = new FormData();
+                formData.append('payment_method', 'cod');
+                formData.append('order_code', '<?php echo $orderCode; ?>');
+                formData.append('shipping_address', shippingAddress);
+
+                // Gửi request
+                fetch('payment_confirm.php', {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(response => {
+                        if (response.redirected) {
+                            window.location.href = response.url;
+                        } else {
+                            return response.text().then(text => {
+                                if (text.includes('order_success.php')) {
+                                    const match = text.match(/order_success\.php\?order_id=(\d+)/);
+                                    if (match && match[1]) {
+                                        window.location.href = 'order_success.php?order_id=' + match[1];
+                                    } else {
+                                        window.location.href = 'giohangView.php';
+                                    }
+                                } else {
+                                    window.location.href = 'giohangView.php';
+                                }
+                            });
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Lỗi COD:', error);
+                        alert('Đã xảy ra lỗi khi xử lý đặt hàng COD. Vui lòng thử lại.');
                         confirmPaymentBtn.disabled = false;
                         processingPayment.style.display = 'none';
                     });

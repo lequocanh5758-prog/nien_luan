@@ -197,7 +197,7 @@ body {
 .navbar {
   position: sticky;
   top: 0;
-  z-index: 1000;
+  z-index: 1030; /* Navbar chính có z-index cao hơn navbar category */
 }
 
 #lvThree {
@@ -764,6 +764,7 @@ body {
   border: none;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   border-radius: 10px;
+  z-index: 1060 !important; /* Đảm bảo dropdown luôn hiển thị trên cùng */
 }
 
 .dropdown-item {
@@ -970,6 +971,12 @@ body {
   background-color: #343a40 !important;
 }
 
+/* Navbar category có z-index thấp hơn để dropdown user hiển thị đúng */
+.navbar.bg-dark {
+  z-index: 1020 !important;
+  position: relative;
+}
+
 .navbar-nav.main-menu {
   display: flex;
   align-items: center;
@@ -1037,6 +1044,18 @@ body {
     margin-top: 0 !important;
   }
 }
+/* Dropdown menu user - đảm bảo hiển thị trên cùng */
+#userDropdown + .dropdown-menu {
+  z-index: 1070 !important;
+  position: absolute;
+  background-color: white !important;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+  min-width: 200px;
+  padding: 0.5rem 0;
+}
+
 .dropdown-menu {
   display: none;
   position: absolute;
@@ -2032,6 +2051,20 @@ body {
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
   display: none;
   border: 1px solid #ddd;
+}
+
+/* Fix cho dropdown user menu - đảm bảo hiển thị trên navbar category */
+.navbar-nav .dropdown {
+  position: static;
+}
+
+.navbar-nav .dropdown .dropdown-menu {
+  position: absolute !important;
+  z-index: 1080 !important;
+  top: 100% !important;
+  left: auto !important;
+  right: 0 !important;
+  transform: none !important;
 }
 
 /* Add responsive adjustments */

@@ -1,4 +1,5 @@
 <?php
+
 /**
  * MoMo IPN Handler
  * Xử lý thông báo thanh toán từ MoMo (Instant Payment Notification)
@@ -52,41 +53,64 @@ if ($signature == $partnerSignature) {
     // Signature valid, process the payment
     $response['resultCode'] = 0;
     $response['message'] = 'Success';
-    
+
     // Update order status in database
     try {
         $db = Database::getInstance()->getConnection();
-        
+
         if ($resultCode == 0) {
-            // Payment successful
-            $updateSql = "UPDATE don_hang SET 
-                         trang_thai_thanh_toan = 'paid',
-                         ngay_cap_nhat = NOW()
-                         WHERE ma_don_hang_text = ?";
-            
-            $stmt = $db->prepare($updateSql);
-            $result = $stmt->execute([$orderId]);
-            
+            // Payment successful - Kiểm tra xem đơn hàng đã tồn tại chưa
+            $checkOrderSql = "SELECT id FROM don_hang WHERE ma_don_hang_text = ?";
+            $checkStmt = $db->prepare($checkOrderSql);
+            $checkStmt->execute([$orderId]);
+            $existingOrder = $checkStmt->fetch(PDO::FETCH_ASSOC);
+
+            if ($existingOrder) {
+                // Cập nhật đơn hàng đã tồn tại
+                $updateSql = "UPDATE don_hang SET
+                             trang_thai_thanh_toan = 'paid',
+                             phuong_thuc_thanh_toan = 'momo',
+                             ngay_cap_nhat = NOW()
+                             WHERE ma_don_hang_text = ?";
+
+                $stmt = $db->prepare($updateSql);
+                $result = $stmt->execute([$orderId]);
+            } else {
+                // Tạo đơn hàng mới từ session hoặc extraData
+                $extraData = json_decode(base64_decode($_POST['extraData'] ?? ''), true);
+                $userId = $extraData['user_id'] ?? 'guest';
+                $shippingAddress = $extraData['shipping_address'] ?? 'Không có địa chỉ';
+
+                $insertSql = "INSERT INTO don_hang (ma_don_hang_text, ma_nguoi_dung, dia_chi_giao_hang,
+                             tong_tien, trang_thai, phuong_thuc_thanh_toan, trang_thai_thanh_toan,
+                             ngay_tao, ngay_cap_nhat)
+                             VALUES (?, ?, ?, ?, 'pending', 'momo', 'paid', NOW(), NOW())";
+
+                $stmt = $db->prepare($insertSql);
+                $result = $stmt->execute([$orderId, $userId, $shippingAddress, $amount]);
+            }
+
             logMoMoTransaction('PAYMENT_SUCCESS', [
                 'orderId' => $orderId,
                 'transId' => $transId,
                 'amount' => $amount,
-                'database_update' => $result
+                'database_update' => $result,
+                'order_created' => !$existingOrder
             ]);
-            
+
             // Send notification email if needed
             sendPaymentNotification($orderId, $transId, $amount);
-            
         } else {
             // Payment failed
-            $updateSql = "UPDATE don_hang SET 
+            $updateSql = "UPDATE don_hang SET
                          trang_thai_thanh_toan = 'failed',
+                         phuong_thuc_thanh_toan = 'momo',
                          ngay_cap_nhat = NOW()
                          WHERE ma_don_hang_text = ?";
-            
+
             $stmt = $db->prepare($updateSql);
             $result = $stmt->execute([$orderId]);
-            
+
             logMoMoTransaction('PAYMENT_FAILED', [
                 'orderId' => $orderId,
                 'resultCode' => $resultCode,
@@ -94,14 +118,12 @@ if ($signature == $partnerSignature) {
                 'database_update' => $result
             ]);
         }
-        
     } catch (Exception $e) {
         logMoMoTransaction('DATABASE_ERROR', [
             'error' => $e->getMessage(),
             'orderId' => $orderId
         ]);
     }
-    
 } else {
     logMoMoTransaction('SIGNATURE_MISMATCH', [
         'received_signature' => $signature,
@@ -117,30 +139,32 @@ echo json_encode($response);
 /**
  * Log MoMo transaction
  */
-function logMoMoTransaction($type, $data) {
+function logMoMoTransaction($type, $data)
+{
     $logFile = __DIR__ . '/../logs/momo_transactions.log';
     $logDir = dirname($logFile);
-    
+
     if (!is_dir($logDir)) {
         mkdir($logDir, 0755, true);
     }
-    
+
     $logEntry = [
         'timestamp' => date('Y-m-d H:i:s'),
         'type' => $type,
         'data' => $data
     ];
-    
+
     file_put_contents($logFile, json_encode($logEntry) . "\n", FILE_APPEND | LOCK_EX);
 }
 
 /**
  * Gửi thông báo thanh toán thành công
  */
-function sendPaymentNotification($orderId, $transId, $amount) {
+function sendPaymentNotification($orderId, $transId, $amount)
+{
     try {
         $db = Database::getInstance()->getConnection();
-        
+
         // Lấy thông tin đơn hàng
         $orderSql = "SELECT dh.*, u.email, u.ten as customer_name 
                     FROM don_hang dh 
@@ -149,7 +173,7 @@ function sendPaymentNotification($orderId, $transId, $amount) {
         $orderStmt = $db->prepare($orderSql);
         $orderStmt->execute([$orderId]);
         $order = $orderStmt->fetch(PDO::FETCH_ASSOC);
-        
+
         if ($order && !empty($order['email'])) {
             // Tạo nội dung email
             $subject = 'Xác nhận thanh toán đơn hàng #' . $order['id'];
@@ -166,10 +190,10 @@ function sendPaymentNotification($orderId, $transId, $amount) {
             <p>Đơn hàng của bạn đang được xử lý và sẽ được giao sớm nhất có thể.</p>
             <p>Cảm ơn bạn đã mua hàng!</p>
             ";
-            
+
             // Gửi email (cần cấu hình mail server)
             // mail($order['email'], $subject, $message, 'Content-Type: text/html; charset=UTF-8');
-            
+
             // Log email notification
             logMoMoTransaction('EMAIL_NOTIFICATION_SENT', [
                 'orderId' => $orderId,
@@ -177,7 +201,6 @@ function sendPaymentNotification($orderId, $transId, $amount) {
                 'transId' => $transId
             ]);
         }
-        
     } catch (Exception $e) {
         logMoMoTransaction('EMAIL_NOTIFICATION_ERROR', [
             'error' => $e->getMessage(),
@@ -185,4 +208,3 @@ function sendPaymentNotification($orderId, $transId, $amount) {
         ]);
     }
 }
-?>

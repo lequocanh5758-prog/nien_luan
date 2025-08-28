@@ -73,20 +73,26 @@ class MoMoConfig
      */
     public static function getBaseUrl()
     {
-        // HƯỚNG DẪN: Thay đổi URL dưới đây theo ngrok hoặc domain thực tế
-
-        // Option 1: Ngrok URL (cập nhật thủ công khi ngrok thay đổi)
-        // Thêm header để bypass ngrok warning
+        // Auto-detect current domain
+        if (isset($_SERVER['HTTP_HOST'])) {
+            $protocol = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https' : 'http';
+            $host = $_SERVER['HTTP_HOST'];
+            
+            // Thêm header để bypass ngrok warning nếu là ngrok
+            if (strpos($host, '.ngrok') !== false || strpos($host, '.ngrok-free.app') !== false) {
+                if (!headers_sent()) {
+                    header('ngrok-skip-browser-warning: true');
+                }
+            }
+            
+            return $protocol . '://' . $host;
+        }
+        
+        // Fallback: Manual ngrok URL (cập nhật khi ngrok thay đổi)
         if (!headers_sent()) {
             header('ngrok-skip-browser-warning: true');
         }
-        return 'https://7d7cfb004083.ngrok-free.app';
-
-        // Option 2: Domain thực tế (cho production)
-        // return 'https://yourdomain.com';
-
-        // Option 3: Localhost (chỉ để test, MoMo callback sẽ không hoạt động)
-        // return 'http://localhost';
+        return 'https://35c18a86f8c6.ngrok-free.app';
     }
 
 
@@ -96,7 +102,7 @@ class MoMoConfig
      */
     public static function getReturnUrl()
     {
-        return self::getBaseUrl() . '/administrator/elements_LQA/mgiohang/momo_return.php';
+        return self::getBaseUrl() . '/lequocanh/administrator/elements_LQA/mgiohang/momo_return.php';
     }
 
     /**
@@ -104,6 +110,6 @@ class MoMoConfig
      */
     public static function getNotifyUrl()
     {
-        return self::getBaseUrl() . '/payment/notify.php';
+        return self::getBaseUrl() . '/lequocanh/payment/notify.php';
     }
 }

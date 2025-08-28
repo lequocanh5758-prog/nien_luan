@@ -110,7 +110,7 @@ if (isset($_GET['req'])) {
             break;
 
         case 'lichsumuahang':
-            require './elements_LQA/mkhachhang/lichsumuahangView.php';
+            require './elements_LQA/mkhachhang/lichsumuahangController.php';
             break;
 
         case 'baocaoview':

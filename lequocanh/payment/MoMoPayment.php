@@ -196,7 +196,7 @@ class MoMoPayment
     private function saveTransaction($orderId, $requestId, $amount, $orderInfo, $status)
     {
         // Kết nối database (sử dụng connection có sẵn)
-        require_once $_SERVER['DOCUMENT_ROOT'] . '/administrator/elements_LQA/mPDO.php';
+        require_once __DIR__ . '/../administrator/elements_LQA/mPDO.php';
 
         try {
             $pdo = new mPDO();
@@ -213,7 +213,7 @@ class MoMoPayment
      */
     private function updateTransactionStatus($orderId, $status, $transId = null, $message = null)
     {
-        require_once $_SERVER['DOCUMENT_ROOT'] . '/administrator/elements_LQA/mPDO.php';
+        require_once __DIR__ . '/../administrator/elements_LQA/mPDO.php';
 
         try {
             $pdo = new mPDO();
@@ -257,7 +257,7 @@ class MoMoPayment
      */
     public function getTransaction($orderId)
     {
-        require_once $_SERVER['DOCUMENT_ROOT'] . '/administrator/elements_LQA/mPDO.php';
+        require_once __DIR__ . '/../administrator/elements_LQA/mPDO.php';
 
         try {
             $pdo = new mPDO();

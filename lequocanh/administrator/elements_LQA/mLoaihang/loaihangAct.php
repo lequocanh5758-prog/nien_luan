@@ -51,19 +51,31 @@ if (isset($_GET['reqact'])) {
             break;
 
         case 'deleteloaihang':
-            $idloaihang = $_REQUEST['idloaihang'];
-            $lh = new loaihang();
-            $kq = $lh->LoaihangDelete($idloaihang);
-            if ($kq) {
-                // Check if it's an AJAX request
-                if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
-                    sendJsonResponse(true, 'Xóa loại hàng thành công');
+            try {
+                $idloaihang = $_REQUEST['idloaihang'];
+                $lh = new loaihang();
+                $kq = $lh->LoaihangDelete($idloaihang);
+                
+                if ($kq > 0) {
+                    // Check if it's an AJAX request
+                    if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
+                        sendJsonResponse(true, 'Xóa loại hàng thành công');
+                    } else {
+                        // Redirect for regular form submit
+                        header("location:../../index.php?req=loaihangview&success=delete");
+                    }
                 } else {
-                    // Redirect for regular form submit
-                    header("location:../../index.php?req=loaihangview");
+                    sendJsonResponse(false, 'Không tìm thấy loại hàng để xóa');
                 }
-            } else {
-                sendJsonResponse(false, 'Xóa loại hàng thất bại');
+            } catch (Exception $e) {
+                // Xử lý lỗi từ class loaihang
+                $errorMessage = $e->getMessage();
+                if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
+                    sendJsonResponse(false, $errorMessage);
+                } else {
+                    // Redirect with error message
+                    header("location:../../index.php?req=loaihangview&error=" . urlencode($errorMessage));
+                }
             }
             break;
 

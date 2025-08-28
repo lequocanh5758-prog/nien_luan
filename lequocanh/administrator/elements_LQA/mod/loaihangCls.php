@@ -38,11 +38,34 @@ class loaihang
 
     public function LoaihangDelete($idloaihang)
     {
-        $sql = "DELETE FROM loaihang WHERE idloaihang = ?";
-        $data = array($idloaihang);
-        $del = $this->db->prepare($sql);
-        $del->execute($data);
-        return $del->rowCount();
+        try {
+            // Kiểm tra xem có hàng hóa nào đang sử dụng loại hàng này không
+            $checkSql = "SELECT COUNT(*) as count FROM hanghoa WHERE idloaihang = ?";
+            $checkStmt = $this->db->prepare($checkSql);
+            $checkStmt->execute(array($idloaihang));
+            $result = $checkStmt->fetch(PDO::FETCH_ASSOC);
+            
+            if ($result['count'] > 0) {
+                // Có hàng hóa đang sử dụng loại hàng này
+                throw new Exception("Không thể xóa loại hàng này vì vẫn có {$result['count']} sản phẩm đang sử dụng. Vui lòng xóa các sản phẩm thuộc loại này trước hoặc chuyển chúng sang loại khác.");
+            }
+            
+            // Nếu không có ràng buộc, thực hiện xóa
+            $sql = "DELETE FROM loaihang WHERE idloaihang = ?";
+            $data = array($idloaihang);
+            $del = $this->db->prepare($sql);
+            $del->execute($data);
+            return $del->rowCount();
+            
+        } catch (PDOException $e) {
+            // Xử lý lỗi database
+            if ($e->getCode() == '23000') {
+                throw new Exception("Không thể xóa loại hàng này vì vẫn có sản phẩm đang sử dụng. Vui lòng xóa các sản phẩm thuộc loại này trước.");
+            }
+            throw new Exception("Lỗi cơ sở dữ liệu: " . $e->getMessage());
+        } catch (Exception $e) {
+            throw $e;
+        }
     }
 
     public function LoaihangUpdate($tenloaihang, $hinhanh, $mota, $idloaihang)
@@ -62,5 +85,29 @@ class loaihang
         $getOne->setFetchMode(PDO::FETCH_OBJ);
         $getOne->execute($data);
         return $getOne->fetch();
+    }
+    
+    /**
+     * Lấy danh sách sản phẩm thuộc loại hàng cụ thể
+     */
+    public function getHanghoaByLoaihang($idloaihang)
+    {
+        $sql = "SELECT idhanghoa, tenhanghoa FROM hanghoa WHERE idloaihang = ? LIMIT 10";
+        $stmt = $this->db->prepare($sql);
+        $stmt->setFetchMode(PDO::FETCH_OBJ);
+        $stmt->execute(array($idloaihang));
+        return $stmt->fetchAll();
+    }
+    
+    /**
+     * Đếm số lượng sản phẩm thuộc loại hàng
+     */
+    public function countHanghoaByLoaihang($idloaihang)
+    {
+        $sql = "SELECT COUNT(*) as count FROM hanghoa WHERE idloaihang = ?";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute(array($idloaihang));
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $result['count'];
     }
 }

@@ -136,6 +136,30 @@ if ($isSuccess && isset($_SESSION['order_details'])) {
         $pdo = new mPDO();
         $tonkho = new mtonkho();
 
+        // Create notifications for successful payment
+        if ($userId && $pendingOrder && isset($pendingOrder['order_id'])) {
+            require_once '../mod/CustomerNotificationManager.php';
+            $notificationManager = new CustomerNotificationManager();
+
+            // Get order from database
+            $orderQuery = "SELECT * FROM don_hang WHERE ma_don_hang_text = ?";
+            $orderResult = $pdo->executeS($orderQuery, [$orderId], true);
+
+            if ($orderResult && count($orderResult) > 0) {
+                $dbOrder = $orderResult[0];
+
+                // Send payment confirmed notification
+                $notificationManager->notifyPaymentConfirmed($dbOrder['id'], $userId);
+
+                // If order is already approved, send approved notification too
+                if ($dbOrder['trang_thai'] == 'approved') {
+                    $notificationManager->notifyOrderApproved($dbOrder['id'], $userId);
+                }
+
+                error_log('Created notifications for order #' . $dbOrder['id'] . ' user: ' . $userId);
+            }
+        }
+
         // Xóa từng sản phẩm đã thanh toán khỏi giỏ hàng và cập nhật tồn kho
         foreach ($_SESSION['order_details'] as $item) {
             // 1. Cập nhật tồn kho (giảm số lượng)
@@ -425,12 +449,25 @@ if ($isSuccess && isset($_SESSION['order_details'])) {
                         <?php if ($isSuccess): ?>
                             <div class="alert alert-info mb-3">
                                 <i class="fas fa-info-circle me-2"></i>
-                                <strong>Thanh toán hoàn tất!</strong> 
+                                <strong>Thanh toán hoàn tất!</strong>
                             </div>
-                            <a href="../../../index.php" class="btn btn-primary btn-return">
+                            <?php
+                            // Always redirect customers to main shopping page after payment
+                            // Even if they have admin privileges, they're shopping as customers
+                            $continueShoppingUrl = '../../../index.php';
+
+                            // Debug log
+                            error_log('MoMo Return - Redirect URL: ' . $continueShoppingUrl);
+                            error_log('MoMo Return - Session USER: ' . ($_SESSION['USER'] ?? 'Not set'));
+                            error_log('MoMo Return - Session ADMIN: ' . ($_SESSION['ADMIN'] ?? 'Not set'));
+                            ?>
+                            <a href="<?php echo $continueShoppingUrl; ?>" class="btn btn-primary btn-return">
                                 <i class="fas fa-shopping-bag me-2"></i>Tiếp tục mua hàng
                             </a>
-                            <button onclick="window.print()" class="btn btn-outline-secondary ms-3">
+                            <a href="../../../customer/order_history.php" class="btn btn-success ms-2">
+                                <i class="fas fa-history me-2"></i>Lịch sử mua hàng
+                            </a>
+                            <button onclick="window.print()" class="btn btn-outline-secondary ms-2">
                                 <i class="fas fa-print me-2"></i>In hóa đơn
                             </button>
                         <?php else: ?>

@@ -35,11 +35,17 @@ class hanghoa
         $sql = 'SELECT h.*,
                 t.tenTH AS ten_thuonghieu,
                 d.tenDonViTinh AS ten_donvitinh,
-                n.tenNV AS ten_nhanvien
+                n.tenNV AS ten_nhanvien,
+                CASE 
+                    WHEN h.hinhanh IS NOT NULL AND h.hinhanh != 0 AND h.hinhanh != "" 
+                    THEN 0 
+                    ELSE 1 
+                END as image_priority
                 FROM hanghoa h
                 LEFT JOIN thuonghieu t ON h.idThuongHieu = t.idThuongHieu
                 LEFT JOIN donvitinh d ON h.idDonViTinh = d.idDonViTinh
-                LEFT JOIN nhanvien n ON h.idNhanVien = n.idNhanVien';
+                LEFT JOIN nhanvien n ON h.idNhanVien = n.idNhanVien
+                ORDER BY image_priority ASC, h.tenhanghoa ASC';
         $getAll = $this->db->prepare($sql);
         $getAll->setFetchMode(PDO::FETCH_OBJ);
         $getAll->execute();
@@ -271,7 +277,15 @@ class hanghoa
 
     public function HanghoaGetbyIdloaihang($idloaihang)
     {
-        $sql = 'select * from hanghoa where idloaihang=?';
+        $sql = 'SELECT *,
+                CASE 
+                    WHEN hinhanh IS NOT NULL AND hinhanh != 0 AND hinhanh != "" 
+                    THEN 0 
+                    ELSE 1 
+                END as image_priority
+                FROM hanghoa 
+                WHERE idloaihang = ?
+                ORDER BY image_priority ASC, tenhanghoa ASC';
         $data = array($idloaihang);
 
         $getOne = $this->db->prepare($sql);
