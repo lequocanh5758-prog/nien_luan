@@ -26,9 +26,9 @@ class hanghoa
         return "({$prefix}{$info['column']} IS NULL OR {$prefix}{$info['column']} != 2)";
     }
 
-    public function __construct()
+    public function __construct(?PDO $db = null)
     {
-        $this->db = Database::getInstance()->getConnection();
+        $this->db = $db ?: Database::getInstance()->getConnection();
     }
 
     private function getStatusColumnInfo()
@@ -93,73 +93,41 @@ class hanghoa
 
     public function HanghoaAdd($tenhanghoa, $mota, $giathamkhao, $id_hinhanh, $idloaihang, $idThuongHieu, $idDonViTinh, $idNhanVien, $ghichu = '')
     {
-
-        $log_file = dirname(__FILE__) . '/hanghoa_class_debug.log';
-
         try {
-
-            $log_data = date('Y-m-d H:i:s') . " - HanghoaAdd() được gọi với các tham số:\n";
-            $log_data .= "tenhanghoa: $tenhanghoa\n";
-            $log_data .= "mota: $mota\n";
-            $log_data .= "giathamkhao: $giathamkhao\n";
-            $log_data .= "id_hinhanh: " . ($id_hinhanh ?: "NULL") . "\n";
-            $log_data .= "idloaihang: $idloaihang\n";
-            $log_data .= "idThuongHieu: " . ($idThuongHieu ?: "NULL") . "\n";
-            $log_data .= "idDonViTinh: " . ($idDonViTinh ?: "NULL") . "\n";
-            $log_data .= "idNhanVien: " . ($idNhanVien ?: "NULL") . "\n";
-            $log_data .= "ghichu: " . ($ghichu ?: "") . "\n";
-            file_put_contents($log_file, $log_data, FILE_APPEND);
-
             $id_hinhanh = ($id_hinhanh === '') ? 0 : $id_hinhanh;
             $idThuongHieu = ($idThuongHieu === '' || $idThuongHieu === 0 || $idThuongHieu === '0') ? null : $idThuongHieu;
             $idDonViTinh = ($idDonViTinh === '' || $idDonViTinh === 0 || $idDonViTinh === '0') ? null : $idDonViTinh;
             $idNhanVien = ($idNhanVien === '' || $idNhanVien === 0 || $idNhanVien === '0') ? null : $idNhanVien;
 
             if (!$this->db || !($this->db instanceof PDO)) {
-                $error_msg = "Lỗi: Không có kết nối database hợp lệ";
-                file_put_contents($log_file, date('Y-m-d H:i:s') . " - $error_msg\n", FILE_APPEND);
                 return false;
             }
 
             if (empty($tenhanghoa) || empty($giathamkhao) || empty($idloaihang)) {
-                $error_msg = "Lỗi: Thiếu thông tin bắt buộc (tên hàng hóa, giá tham khảo hoặc loại hàng)";
-                file_put_contents($log_file, date('Y-m-d H:i:s') . " - $error_msg\n", FILE_APPEND);
                 return false;
             }
 
             try {
                 $checkColumns = $this->db->query("SHOW COLUMNS FROM hanghoa");
                 $columns = $checkColumns->fetchAll(PDO::FETCH_COLUMN);
-                $log_columns = date('Y-m-d H:i:s') . " - Các cột trong bảng hanghoa: " . implode(", ", $columns) . "\n";
-                file_put_contents($log_file, $log_columns, FILE_APPEND);
             } catch (Exception $e) {
-                $log_column_error = date('Y-m-d H:i:s') . " - Lỗi khi kiểm tra cấu trúc bảng: " . $e->getMessage() . "\n";
-                file_put_contents($log_file, $log_column_error, FILE_APPEND);
+                $columns = [];
             }
 
             $ghichu = "";
 
             if (in_array('hinhanh', $columns)) {
                 $sql = "INSERT INTO hanghoa (tenhanghoa, mota, giathamkhao, hinhanh, idloaihang, idThuongHieu, idDonViTinh, idNhanVien, ghichu) VALUES (?,?,?,?,?,?,?,?,?)";
-                $data = array($tenhanghoa, $mota, $giathamkhao, $id_hinhanh, $idloaihang, $idThuongHieu, $idDonViTinh, $idNhanVien, $ghichu);
             } else {
-
                 $sql = "INSERT INTO hanghoa (tenhanghoa, mota, giathamkhao, id_hinhanh, idloaihang, idThuongHieu, idDonViTinh, idNhanVien, ghichu) VALUES (?,?,?,?,?,?,?,?,?)";
-                $data = array($tenhanghoa, $mota, $giathamkhao, $id_hinhanh, $idloaihang, $idThuongHieu, $idDonViTinh, $idNhanVien, $ghichu);
             }
-
-            $log_sql = date('Y-m-d H:i:s') . " - SQL: $sql\n";
-            $log_sql .= "Data: " . print_r($data, true) . "\n";
-            file_put_contents($log_file, $log_sql, FILE_APPEND);
+            $data = array($tenhanghoa, $mota, $giathamkhao, $id_hinhanh, $idloaihang, $idThuongHieu, $idDonViTinh, $idNhanVien, $ghichu);
 
             $add = $this->db->prepare($sql);
             $result = $add->execute($data);
 
             if ($result) {
-                $rowCount = $add->rowCount();
                 $lastId = $this->db->lastInsertId();
-                $log_success = date('Y-m-d H:i:s') . " - Thêm hàng hóa thành công. Rows affected: $rowCount, Last Insert ID: $lastId\n";
-                file_put_contents($log_file, $log_success, FILE_APPEND);
 
                 try {
                     $checkTonkhoTable = $this->db->query("SHOW TABLES LIKE 'tonkho'");
@@ -167,49 +135,31 @@ class hanghoa
                         $insertTonkho = "INSERT INTO tonkho (idhanghoa, soLuong, soLuongToiThieu, viTri) VALUES (?, 0, 0, NULL)";
                         $stmtTonkho = $this->db->prepare($insertTonkho);
                         $stmtTonkho->execute([$lastId]);
-                        $log_tonkho = date('Y-m-d H:i:s') . " - Đã thêm vào bảng tonkho cho hàng hóa ID: $lastId\n";
-                        file_put_contents($log_file, $log_tonkho, FILE_APPEND);
                     }
                 } catch (Exception $tonkhoEx) {
-                    $log_tonkho_error = date('Y-m-d H:i:s') . " - Lỗi khi thêm vào bảng tonkho: " . $tonkhoEx->getMessage() . "\n";
-                    file_put_contents($log_file, $log_tonkho_error, FILE_APPEND);
+                    // tonkho table may not exist - non-critical
                 }
 
                 return $lastId;
             } else {
                 $error_info = print_r($add->errorInfo(), true);
-                $log_error = date('Y-m-d H:i:s') . " - Thêm hàng hóa thất bại. Error info: $error_info\n";
-                file_put_contents($log_file, $log_error, FILE_APPEND);
 
                 if (strpos($error_info, "Unknown column") !== false) {
-
                     $describeStmt = $this->db->query("DESCRIBE hanghoa");
                     $columns = $describeStmt->fetchAll(PDO::FETCH_COLUMN);
-
                     $imageColumn = in_array('hinhanh', $columns) ? 'hinhanh' : 'id_hinhanh';
-
                     $sql = "INSERT INTO hanghoa (tenhanghoa, mota, giathamkhao, $imageColumn, idloaihang, idThuongHieu, idDonViTinh, idNhanVien) VALUES (?,?,?,?,?,?,?,?)";
                     $add = $this->db->prepare($sql);
                     $result = $add->execute($data);
 
                     if ($result) {
-                        $lastId = $this->db->lastInsertId();
-                        $log_retry_success = date('Y-m-d H:i:s') . " - Thêm hàng hóa thành công sau khi thử lại. Last Insert ID: $lastId\n";
-                        file_put_contents($log_file, $log_retry_success, FILE_APPEND);
-                        return $lastId;
-                    } else {
-                        $retry_error_info = print_r($add->errorInfo(), true);
-                        $log_retry_error = date('Y-m-d H:i:s') . " - Thêm hàng hóa thất bại sau khi thử lại. Error info: $retry_error_info\n";
-                        file_put_contents($log_file, $log_retry_error, FILE_APPEND);
+                        return $this->db->lastInsertId();
                     }
                 }
 
                 return false;
             }
         } catch (Exception $e) {
-            $log_exception = date('Y-m-d H:i:s') . " - Exception: " . $e->getMessage() . "\n";
-            $log_exception .= "Stack trace: " . $e->getTraceAsString() . "\n";
-            file_put_contents($log_file, $log_exception, FILE_APPEND);
             return false;
         }
     }
@@ -435,9 +385,9 @@ class hanghoa
             $sql = "SELECT COALESCE(AVG(rating), 0) as avg_rating,
                            COUNT(*) as review_count
                     FROM product_reviews 
-                    WHERE ma_san_pham = ? 
+                    WHERE product_id = ? 
                     AND is_approved = 1
-                    AND (status = 'visible' OR status IS NULL)";
+                    AND (status = 'approved' OR status IS NULL)";
 
             $stmt = $this->db->prepare($sql);
             $stmt->execute([$idhanghoa]);
@@ -445,7 +395,7 @@ class hanghoa
 
             return [
                 'average' => round($result->avg_rating, 1),
-                'count' => (int)$result->review_count
+                'count' => (int) $result->review_count
             ];
         } catch (PDOException $e) {
             error_log("Error getting average rating: " . $e->getMessage());
@@ -458,11 +408,11 @@ class hanghoa
         try {
 
             $sql = "SELECT COUNT(*) FROM product_reviews 
-                    WHERE ma_san_pham = ? AND is_approved = 1
-                    AND (status = 'visible' OR status IS NULL)";
+                    WHERE product_id = ? AND is_approved = 1
+                    AND (status = 'approved' OR status IS NULL)";
             $stmt = $this->db->prepare($sql);
             $stmt->execute([$idhanghoa]);
-            return (int)$stmt->fetchColumn();
+            return (int) $stmt->fetchColumn();
         } catch (PDOException $e) {
             error_log("Error getting review count: " . $e->getMessage());
             return 0;
@@ -604,10 +554,10 @@ class hanghoa
     public function GetAllHinhAnh()
     {
         try {
-            $sql = 'SELECT h.*,
-                    (SELECT COUNT(*) FROM hanghoa WHERE hinhanh = h.id) as usage_count
-                    FROM hinhanh h
-                    ORDER BY h.ngay_tao DESC';
+            $sql = 'SELECT h.*, LENGTH(h.du_lieu) as file_size,
+                (SELECT COUNT(*) FROM hanghoa WHERE hinhanh = h.id) as usage_count
+                FROM hinhanh h
+                ORDER BY h.ngay_tao DESC';
             $getAll = $this->db->prepare($sql);
             $getAll->setFetchMode(PDO::FETCH_OBJ);
             $getAll->execute();
@@ -620,7 +570,8 @@ class hanghoa
 
     public function GetHinhAnhById($id)
     {
-        if (!$id) return null;
+        if (!$id)
+            return null;
 
         try {
             error_log("GetHinhAnhById - Bắt đầu tìm hình ảnh với ID: " . $id);
@@ -652,12 +603,14 @@ class hanghoa
             $hinhanh = $stmt->fetch(PDO::FETCH_OBJ);
 
             if ($hinhanh) {
+                error_log("GetHinhAnhById - ID: " . $id . ", ten_file: " . ($hinhanh->ten_file ?? 'N/A'));
 
-                error_log("GetHinhAnhById - ID: " . $id . ", đường dẫn gốc: " . $hinhanh->duong_dan);
-                error_log("GetHinhAnhById - Thông tin đầy đủ: " . print_r($hinhanh, true));
+                if (!empty($hinhanh->du_lieu)) {
+                    error_log("GetHinhAnhById - Found DB data (" . strlen($hinhanh->du_lieu) . " bytes)");
+                    return $hinhanh;
+                }
 
                 if (strpos($hinhanh->duong_dan, 'data:image') === 0) {
-
                     error_log("GetHinhAnhById - Đường dẫn là base64");
                     return $hinhanh;
                 } else {
@@ -706,26 +659,16 @@ class hanghoa
     private static $hasCheckedFileHashColumn = false;
     private static $fileHashColumnExists = false;
 
-    public function ThemHinhAnh($ten_file, $loai_file, $duong_dan, $file_hash = null)
+    public function ThemHinhAnh($ten_file, $loai_file, $duong_dan, $file_hash = null, $binary_data = null)
     {
         try {
-
-            if (!self::$hasCheckedFileHashColumn) {
-                $checkColumnSql = "SHOW COLUMNS FROM hinhanh LIKE 'file_hash'";
-                $checkColumnStmt = $this->db->prepare($checkColumnSql);
-                $checkColumnStmt->execute();
-
-                self::$fileHashColumnExists = ($checkColumnStmt->rowCount() > 0);
-                self::$hasCheckedFileHashColumn = true;
-
-                if (!self::$fileHashColumnExists) {
-                    $addColumnSql = "ALTER TABLE hinhanh ADD COLUMN file_hash VARCHAR(32) NULL";
-                    $this->db->exec($addColumnSql);
-                    self::$fileHashColumnExists = true;
-                }
-            }
-
-            if ($file_hash) {
+            // Đảm bảo cột du_lieu tồn tại (đã xử lý qua migration, nhưng code này giúp an toàn hơn)
+            if ($binary_data !== null) {
+                $sql = "INSERT INTO hinhanh (ten_file, loai_file, duong_dan, du_lieu, trang_thai, ngay_tao, file_hash)
+                        VALUES (?, ?, ?, ?, 0, CURRENT_TIMESTAMP, ?)";
+                $stmt = $this->db->prepare($sql);
+                return $stmt->execute([$ten_file, $loai_file, $duong_dan, $binary_data, $file_hash]);
+            } else if ($file_hash) {
                 $sql = "INSERT INTO hinhanh (ten_file, loai_file, duong_dan, trang_thai, ngay_tao, file_hash)
                         VALUES (?, ?, ?, 0, CURRENT_TIMESTAMP, ?)";
                 $stmt = $this->db->prepare($sql);
@@ -1259,7 +1202,7 @@ class hanghoa
 
                         $hasProductId = $this->db->query("SHOW COLUMNS FROM product_reviews LIKE 'product_id'");
                         $hasMaSanPham = $this->db->query("SHOW COLUMNS FROM product_reviews LIKE 'ma_san_pham'");
-                        
+
                         if ($hasProductId && $hasProductId->rowCount() > 0) {
                             $productCol = 'product_id';
                         } elseif ($hasMaSanPham && $hasMaSanPham->rowCount() > 0) {
@@ -1267,10 +1210,10 @@ class hanghoa
                         } else {
                             $productCol = null;
                         }
-                        
+
                         if ($productCol) {
-                            $ratingSelect = "(SELECT COALESCE(AVG(pr.rating), 0) FROM product_reviews pr WHERE pr.$productCol = h.idhanghoa AND (pr.status = 'approved' OR pr.is_approved = 1)) as average_rating";
-                            $reviewCountSelect = "(SELECT COUNT(*) FROM product_reviews pr WHERE pr.$productCol = h.idhanghoa AND (pr.status = 'approved' OR pr.is_approved = 1)) as review_count";
+                            $ratingSelect = "(SELECT COALESCE(AVG(pr.rating), 0) FROM product_reviews pr WHERE pr.$productCol = h.idhanghoa AND pr.is_approved = 1 AND (pr.status = 'approved' OR pr.status IS NULL)) as average_rating";
+                            $reviewCountSelect = "(SELECT COUNT(*) FROM product_reviews pr WHERE pr.$productCol = h.idhanghoa AND pr.is_approved = 1 AND (pr.status = 'approved' OR pr.status IS NULL)) as review_count";
                         }
                     }
                 }
@@ -1295,10 +1238,10 @@ class hanghoa
 
                     $colorAttrStmt = $this->db->query("SELECT idThuocTinh FROM thuoctinh WHERE tenThuocTinh LIKE '%màu%' OR tenThuocTinh LIKE '%color%' LIMIT 1");
                     $colorAttr = $colorAttrStmt->fetch(PDO::FETCH_ASSOC);
-                    
+
                     if ($colorAttr) {
                         $colorAttrId = $colorAttr['idThuocTinh'];
-                        
+
                         $colorMapping = [
                             'red' => 'Đỏ',
                             'blue' => 'Xanh dương',
@@ -1313,17 +1256,17 @@ class hanghoa
                             'brown' => 'Nâu',
                             'silver' => 'Bạc'
                         ];
-                        
+
                         $colorOrConditions = [];
                         foreach ($filters['colors'] as $colorEn) {
                             $colorEn = trim($colorEn);
 
                             $colorVi = isset($colorMapping[$colorEn]) ? $colorMapping[$colorEn] : $colorEn;
-                            
+
                             $colorOrConditions[] = "LOWER(TRIM(tt.tenThuocTinhHH)) = LOWER(?)";
                             $params[] = $colorVi;
                         }
-                        
+
                         $colorCondition = "tt.idThuocTinh = $colorAttrId AND (" . implode(' OR ', $colorOrConditions) . ")";
                         $filterConditions[] = $colorCondition;
                     }
@@ -1369,16 +1312,20 @@ class hanghoa
 
             if (isset($filters['min_rating']) && $filters['min_rating'] > 0) {
 
-                $ratingThreshold = $filters['min_rating'] - 0.5;
-                if ($ratingThreshold < 0.5) $ratingThreshold = 0.5;
-                
+                $exactRating = (int)$filters['min_rating'];
+                $ratingMin = $exactRating - 0.5;
+                $ratingMax = $exactRating + 0.5;
+
                 $hasProductId = $this->db->query("SHOW COLUMNS FROM product_reviews LIKE 'product_id'");
                 $filterProductCol = ($hasProductId && $hasProductId->rowCount() > 0) ? 'product_id' : 'ma_san_pham';
-                
-                $conditions[] = "(SELECT COALESCE(AVG(pr.rating), 0) FROM product_reviews pr WHERE pr.$filterProductCol = h.idhanghoa AND (pr.status = 'approved' OR pr.is_approved = 1)) >= ?";
-                $params[] = $ratingThreshold;
-                
-                $conditions[] = "(SELECT COUNT(*) FROM product_reviews pr WHERE pr.$filterProductCol = h.idhanghoa AND (pr.status = 'approved' OR pr.is_approved = 1)) > 0";
+
+                $conditions[] = "(SELECT COALESCE(AVG(pr.rating), 0) FROM product_reviews pr WHERE pr.$filterProductCol = h.idhanghoa AND pr.is_approved = 1 AND (pr.status = 'approved' OR pr.status IS NULL)) >= ?";
+                $params[] = $ratingMin;
+
+                $conditions[] = "(SELECT COALESCE(AVG(pr.rating), 0) FROM product_reviews pr WHERE pr.$filterProductCol = h.idhanghoa AND pr.is_approved = 1 AND (pr.status = 'approved' OR pr.status IS NULL)) < ?";
+                $params[] = $ratingMax;
+
+                $conditions[] = "(SELECT COUNT(*) FROM product_reviews pr WHERE pr.$filterProductCol = h.idhanghoa AND pr.is_approved = 1 AND (pr.status = 'approved' OR pr.status IS NULL)) > 0";
             }
 
             if (!empty($joins)) {
@@ -1477,8 +1424,8 @@ class hanghoa
             $priceRange = $priceStmt->fetch(PDO::FETCH_OBJ);
 
             if ($priceRange) {
-                $options['price_range']['min'] = (int)$priceRange->min_price;
-                $options['price_range']['max'] = (int)$priceRange->max_price;
+                $options['price_range']['min'] = (int) $priceRange->min_price;
+                $options['price_range']['max'] = (int) $priceRange->max_price;
             }
 
             return $options;
@@ -1591,7 +1538,7 @@ class hanghoa
 
         $excludeClause = "";
         $params = [$current->idhanghoa, $current->idThuongHieu, $current->idloaihang, $current->giathamkhao];
-        
+
         if (!empty($excludeIds)) {
             $placeholders = implode(',', array_fill(0, count($excludeIds), '?'));
             $excludeClause = "AND h.idhanghoa NOT IN ({$placeholders})";
@@ -1626,13 +1573,13 @@ class hanghoa
 
         $excludeClause = "";
         $params = [$current->idhanghoa, $current->idloaihang, $priceMin, $priceMax];
-        
+
         if (!empty($excludeIds)) {
             $placeholders = implode(',', array_fill(0, count($excludeIds), '?'));
             $excludeClause = "AND h.idhanghoa NOT IN ({$placeholders})";
             $params = array_merge($params, $excludeIds);
         }
-        
+
         $params[] = $current->giathamkhao;
 
         $sql = "SELECT h.* FROM hanghoa h
@@ -1660,7 +1607,7 @@ class hanghoa
 
         $excludeClause = "";
         $params = [$current->idhanghoa, $current->idThuongHieu, $current->giathamkhao];
-        
+
         if (!empty($excludeIds)) {
             $placeholders = implode(',', array_fill(0, count($excludeIds), '?'));
             $excludeClause = "AND h.idhanghoa NOT IN ({$placeholders})";
@@ -1691,7 +1638,7 @@ class hanghoa
 
         $excludeClause = "";
         $params = [$current->idhanghoa, $current->idloaihang, $current->giathamkhao];
-        
+
         if (!empty($excludeIds)) {
             $placeholders = implode(',', array_fill(0, count($excludeIds), '?'));
             $excludeClause = "AND h.idhanghoa NOT IN ({$placeholders})";
@@ -1719,7 +1666,7 @@ class hanghoa
 
         $priceMin = $current->giathamkhao * 0.7;
         $priceMax = $current->giathamkhao * 1.3;
-        
+
         if (!empty($excludeIds)) {
             $placeholders = str_repeat('?,', count($excludeIds) - 1) . '?';
             $sql = "SELECT h.* FROM hanghoa h
@@ -1732,7 +1679,7 @@ class hanghoa
                         ABS(h.giathamkhao - ?) ASC,
                         h.tenhanghoa ASC
                     LIMIT " . intval($limit);
-            
+
             $params = array_merge(
                 [$current->idhanghoa, $priceMin, $priceMax],
                 $excludeIds,
@@ -1748,10 +1695,10 @@ class hanghoa
                         ABS(h.giathamkhao - ?) ASC,
                         h.tenhanghoa ASC
                     LIMIT " . intval($limit);
-            
+
             $params = [$current->idhanghoa, $priceMin, $priceMax, $current->giathamkhao];
         }
-        
+
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
         return $stmt->fetchAll(PDO::FETCH_OBJ);
@@ -1769,7 +1716,7 @@ class hanghoa
                         CASE WHEN h.hinhanh IS NOT NULL AND h.hinhanh != 0 AND h.hinhanh != '' THEN 0 ELSE 1 END,
                         h.idhanghoa DESC
                     LIMIT " . intval($limit);
-            
+
             $params = array_merge([$current->idhanghoa], $excludeIds);
         } else {
             $sql = "SELECT h.* FROM hanghoa h
@@ -1779,10 +1726,10 @@ class hanghoa
                         CASE WHEN h.hinhanh IS NOT NULL AND h.hinhanh != 0 AND h.hinhanh != '' THEN 0 ELSE 1 END,
                         h.idhanghoa DESC
                     LIMIT " . intval($limit);
-            
+
             $params = [$current->idhanghoa];
         }
-        
+
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
         return $stmt->fetchAll(PDO::FETCH_OBJ);
@@ -1800,7 +1747,7 @@ class hanghoa
                 return "Không xác định";
             }
 
-            switch ((int)$product->trang_thai) {
+            switch ((int) $product->trang_thai) {
                 case 2:
                     return "Ngừng bán";
                 case 3:
@@ -1834,7 +1781,7 @@ class hanghoa
             $stmt->execute([$idhanghoa]);
             $result = $stmt->fetch(PDO::FETCH_OBJ);
 
-            return $result ? (int)$result->soLuong : 0;
+            return $result ? (int) $result->soLuong : 0;
         } catch (PDOException $e) {
             error_log("Error getting product quantity: " . $e->getMessage());
             return 0;
@@ -1873,7 +1820,7 @@ class hanghoa
             $stmt->execute([$idhanghoa]);
             $result = $stmt->fetch(PDO::FETCH_OBJ);
 
-            return $result ? (int)$result->trang_thai : 1;
+            return $result ? (int) $result->trang_thai : 1;
         } catch (PDOException $e) {
             error_log("Error getting product status value: " . $e->getMessage());
             return 1;
@@ -1950,7 +1897,7 @@ class hanghoa
 
             $result = $stmt->fetch();
 
-            return $result && isset($result->soLuong) ? (int)$result->soLuong : 0;
+            return $result && isset($result->soLuong) ? (int) $result->soLuong : 0;
         } catch (Exception $e) {
 
             return 0;

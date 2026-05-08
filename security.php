@@ -36,10 +36,12 @@ class Security {
         // Ẩn thông tin server
         header_remove('X-Powered-By');
         
-        // HTTPOnly và Secure cookies
+        // HTTPOnly cookies, Secure only on HTTPS
         ini_set('session.cookie_httponly', 1);
-        ini_set('session.cookie_secure', 1);
         ini_set('session.cookie_samesite', 'Strict');
+        if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') {
+            ini_set('session.cookie_secure', 1);
+        }
     }
     
     public static function sanitizeInput($data) {
@@ -67,31 +69,50 @@ class Security {
     }
     
     public static function checkRateLimit($identifier, $max_attempts = 5, $time_window = 300) {
-        if (session_status() === PHP_SESSION_NONE && !headers_sent()) {
-            session_start();
+        $cacheDir = __DIR__ . '/cache/ratelimit';
+        if (!is_dir($cacheDir)) {
+            mkdir($cacheDir, 0755, true);
         }
-        
+
+        // Probabilistic cleanup: ~1% chance per request to avoid unbounded growth
+        if (random_int(1, 100) === 1) {
+            self::cleanupRateLimit($cacheDir, $time_window);
+        }
+
         $key = 'rate_limit_' . md5($identifier);
+        $file = $cacheDir . '/' . $key . '.json';
         $now = time();
-        
-        if (!isset($_SESSION[$key])) {
-            $_SESSION[$key] = ['count' => 1, 'start' => $now];
-            return true;
+
+        if (file_exists($file)) {
+            $data = json_decode(file_get_contents($file), true);
+            if ($data && $now - $data['start'] > $time_window) {
+                $data = ['count' => 1, 'start' => $now];
+            } elseif ($data && $data['count'] >= $max_attempts) {
+                return false;
+            } elseif ($data) {
+                $data['count']++;
+            } else {
+                $data = ['count' => 1, 'start' => $now];
+            }
+        } else {
+            $data = ['count' => 1, 'start' => $now];
         }
-        
-        $data = $_SESSION[$key];
-        
-        if ($now - $data['start'] > $time_window) {
-            $_SESSION[$key] = ['count' => 1, 'start' => $now];
-            return true;
-        }
-        
-        if ($data['count'] >= $max_attempts) {
-            return false;
-        }
-        
-        $_SESSION[$key]['count']++;
+
+        file_put_contents($file, json_encode($data));
         return true;
+    }
+
+    /**
+     * Remove rate limit files older than the time window.
+     */
+    private static function cleanupRateLimit($cacheDir, $time_window) {
+        $files = glob($cacheDir . '/rate_limit_*.json');
+        $now = time();
+        foreach ($files as $file) {
+            if ($now - filemtime($file) > $time_window * 2) {
+                @unlink($file);
+            }
+        }
     }
     
     public static function validateFileUpload($file, $allowed_types = [], $max_size = 5242880) {
@@ -128,6 +149,9 @@ class Security {
         return $errors;
     }
     
+    /**
+     * @deprecated Use prepared statements instead. addslashes() does NOT prevent SQL injection.
+     */
     public static function sanitizeSQL($value) {
         return addslashes(strip_tags(trim($value)));
     }
