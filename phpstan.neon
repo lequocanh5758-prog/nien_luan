@@ -1,0 +1,18 @@
+parameters:
+    level: 4
+    paths:
+        - lequocanh/app
+        - lequocanh/includes
+        - lequocanh/api
+    excludePaths:
+        - */vendor/*
+        - */cache/*
+        - */graphify-out/*
+    ignoreErrors:
+        # Legacy codebase: suppress unknown class errors for classes loaded via autoloader
+        - '#Function safe[A-Z]+ not found#'
+        - '#Function cache_remember not found#'
+        - '#Function perf_init not found#'
+        - '#Function perf_footer not found#'
+    bootstrapFiles:
+        - lequocanh/includes/helpers.php
