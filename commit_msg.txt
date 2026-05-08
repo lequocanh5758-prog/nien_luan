@@ -1,9 +1,8 @@
-refactor: add PSR-4 namespaces to app/ classes
+docs: consolidate 28 orphaned .md files into docs/
 
-- Add namespace declarations: App\Services, App\Models, App\Controllers
-- Replace require_once with use statements for global classes (Database, QueryCache, PDO, etc.)
-- Update autoloader with legacy class map (Database, QueryCache, ConfigManager)
-- Update helper functions to use fully qualified class names
-- Update navbar.php to use FQN for UserService
-- Clean up phpstan.neon: remove no-longer-needed ignore patterns
-- All PHPStan (0 errors) and PHPCS (0 errors/warnings) checks pass
+Organize scattered documentation into structured docs/ folder:
+- docs/ (root-level guides)
+- docs/admin/ (admin guides: TOAST, bcrypt, chart fix)
+- docs/features/ (price logic, promotions, marketing, dongia)
+- docs/database/ (shipping, import, PHP fix guides)
+- docs/components/ (featured products docs)
