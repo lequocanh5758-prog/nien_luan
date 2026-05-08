@@ -14,14 +14,14 @@ class FeaturedProductsDisplay
     public function getFeaturedProducts($limit = 8)
     {
         $sql = "SELECT h.*, 
-                       th.tenthuonghieu,
+                       th.tenTH AS tenthuonghieu,
                        lh.tenloaihang,
-                       (SELECT hinhanh FROM hinhanh WHERE idhanghoa = h.idhanghoa LIMIT 1) as image
+                       h.hinhanh as image_id
                 FROM hanghoa h
-                LEFT JOIN thuonghieu th ON h.idthuonghieu = th.idthuonghieu
+                LEFT JOIN thuonghieu th ON h.idThuongHieu = th.idThuongHieu
                 LEFT JOIN loaihang lh ON h.idloaihang = lh.idloaihang
                 WHERE h.is_featured = 1 
-                  AND h.trangthai = 1
+                  AND h.trang_thai = 1
                 ORDER BY h.created_at DESC
                 LIMIT :limit";
 
@@ -34,14 +34,14 @@ class FeaturedProductsDisplay
     public function getNewProducts($limit = 8)
     {
         $sql = "SELECT h.*, 
-                       th.tenthuonghieu,
+                       th.tenTH AS tenthuonghieu,
                        lh.tenloaihang,
-                       (SELECT hinhanh FROM hinhanh WHERE idhanghoa = h.idhanghoa LIMIT 1) as image
+                       h.hinhanh as image_id
                 FROM hanghoa h
-                LEFT JOIN thuonghieu th ON h.idthuonghieu = th.idthuonghieu
+                LEFT JOIN thuonghieu th ON h.idThuongHieu = th.idThuongHieu
                 LEFT JOIN loaihang lh ON h.idloaihang = lh.idloaihang
                 WHERE h.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
-                  AND h.trangthai = 1
+                  AND h.trang_thai = 1
                 ORDER BY h.created_at DESC
                 LIMIT :limit";
 
@@ -54,17 +54,17 @@ class FeaturedProductsDisplay
     public function getPromotionProducts($limit = 8)
     {
         $sql = "SELECT h.*, 
-                       th.tenthuonghieu,
+                       th.tenTH AS tenthuonghieu,
                        lh.tenloaihang,
-                       (SELECT hinhanh FROM hinhanh WHERE idhanghoa = h.idhanghoa LIMIT 1) as image,
-                       ROUND(((h.giagoc - h.giakhuyenmai) / h.giagoc * 100), 0) as discount_percent
+                       h.hinhanh as image_id,
+                       ROUND(((h.giathamkhao - h.giakhuyenmai) / h.giathamkhao * 100), 0) as discount_percent
                 FROM hanghoa h
-                LEFT JOIN thuonghieu th ON h.idthuonghieu = th.idthuonghieu
+                LEFT JOIN thuonghieu th ON h.idThuongHieu = th.idThuongHieu
                 LEFT JOIN loaihang lh ON h.idloaihang = lh.idloaihang
                 WHERE h.giakhuyenmai IS NOT NULL 
                   AND h.giakhuyenmai > 0
-                  AND h.giakhuyenmai < h.giagoc
-                  AND h.trangthai = 1
+                  AND h.giakhuyenmai < h.giathamkhao
+                  AND h.trang_thai = 1
                 ORDER BY discount_percent DESC, h.created_at DESC
                 LIMIT :limit";
 
@@ -347,7 +347,8 @@ $promotionProducts = $featuredDisplay->getPromotionProducts(8);
     <?php if (count($featuredProducts) > 0): ?>
         <div class="products-grid">
             <?php foreach ($featuredProducts as $product): ?>
-                <div class="product-card" onclick="window.location.href='?p=chitietsanpham&id=<?= $product->idhanghoa ?>'">
+                <div class="product-card">
+                    <a href="./index.php?reqHanghoa=<?= $product->idhanghoa ?>" style="text-decoration:none;color:inherit;display:block;">
                     <div class="product-image">
                         <span class="product-badge badge-featured">
                             <i class="fas fa-star"></i> Nổi bật
@@ -371,34 +372,37 @@ $promotionProducts = $featuredDisplay->getPromotionProducts(8);
                                 <?= $statusText ?>
                             </span>
                         <?php endif; ?>
-                        <?php if ($product->image): ?>
-                            <img src="<?= htmlspecialchars($product->image) ?>" alt="<?= htmlspecialchars($product->tenhanghoa) ?>">
+                        <?php if (!empty($product->image_id) && $product->image_id > 0): ?>
+                            <img src="administrator/elements_LQA/mhanghoa/displayImage.php?id=<?= $product->image_id ?>" alt="<?= htmlspecialchars($product->tenhanghoa) ?>">
                         <?php else: ?>
-                            <img src="assets/images/no-image.png" alt="No image">
+                            <img src="administrator/elements_LQA/mhanghoa/displayImage.php?id=0" alt="No image">
                         <?php endif; ?>
                     </div>
                     <div class="product-info">
                         <div class="product-brand"><?= htmlspecialchars($product->tenthuonghieu ?? 'N/A') ?></div>
                         <div class="product-name"><?= htmlspecialchars($product->tenhanghoa) ?></div>
                         <div class="product-price">
-                            <?php if ($product->giakhuyenmai && $product->giakhuyenmai < $product->giagoc): ?>
+                            <?php if ($product->giakhuyenmai && $product->giakhuyenmai < $product->giathamkhao): ?>
                                 <span class="price-current"><?= number_format($product->giakhuyenmai) ?>đ</span>
-                                <span class="price-original"><?= number_format($product->giagoc) ?>đ</span>
+                                <span class="price-original"><?= number_format($product->giathamkhao) ?>đ</span>
                             <?php else: ?>
-                                <span class="price-current"><?= number_format($product->giagoc) ?>đ</span>
+                                <span class="price-current"><?= number_format($product->giathamkhao) ?>đ</span>
                             <?php endif; ?>
                         </div>
                         <div class="product-actions">
-                            <button class="btn-view">Xem chi tiết</button>
+                            <span class="btn-view">Xem chi tiết</span>
                             <?php
                             $isUnavailable = isset($product->trang_thai) && ($product->trang_thai == 2 || $product->trang_thai == 3);
                             ?>
-                            <button class="btn-cart <?= $isUnavailable ? 'btn-disabled' : '' ?>"
-                                onclick="event.stopPropagation(); <?= $isUnavailable ? "alert('Sản phẩm này không thể mua'); return false;" : "addToCart(" . $product->idhanghoa . ")" ?>"
-                                <?= $isUnavailable ? 'disabled' : '' ?>>
-                                <i class="fas fa-shopping-cart"></i>
-                            </button>
                         </div>
+                    </div>
+                    </a>
+                    <div style="padding:0 20px 20px 20px;">
+                        <button class="btn-cart <?= $isUnavailable ? 'btn-disabled' : '' ?>" style="width:100%;"
+                            onclick="<?= $isUnavailable ? "alert('Sản phẩm này không thể mua'); return false;" : "addToCart(" . $product->idhanghoa . ")" ?>"
+                            <?= $isUnavailable ? 'disabled' : '' ?>>
+                            <i class="fas fa-shopping-cart"></i> Thêm vào giỏ
+                        </button>
                     </div>
                 </div>
             <?php endforeach; ?>
@@ -421,34 +425,38 @@ $promotionProducts = $featuredDisplay->getPromotionProducts(8);
     <?php if (count($newProducts) > 0): ?>
         <div class="products-grid">
             <?php foreach ($newProducts as $product): ?>
-                <div class="product-card" onclick="window.location.href='?p=chitietsanpham&id=<?= $product->idhanghoa ?>'">
+                <div class="product-card">
+                    <a href="./index.php?reqHanghoa=<?= $product->idhanghoa ?>" style="text-decoration:none;color:inherit;display:block;">
                     <div class="product-image">
                         <span class="product-badge badge-new">
                             <i class="fas fa-sparkles"></i> Mới
                         </span>
-                        <?php if ($product->image): ?>
-                            <img src="<?= htmlspecialchars($product->image) ?>" alt="<?= htmlspecialchars($product->tenhanghoa) ?>">
+                        <?php if (!empty($product->image_id) && $product->image_id > 0): ?>
+                            <img src="administrator/elements_LQA/mhanghoa/displayImage.php?id=<?= $product->image_id ?>" alt="<?= htmlspecialchars($product->tenhanghoa) ?>">
                         <?php else: ?>
-                            <img src="assets/images/no-image.png" alt="No image">
+                            <img src="administrator/elements_LQA/mhanghoa/displayImage.php?id=0" alt="No image">
                         <?php endif; ?>
                     </div>
                     <div class="product-info">
                         <div class="product-brand"><?= htmlspecialchars($product->tenthuonghieu ?? 'N/A') ?></div>
                         <div class="product-name"><?= htmlspecialchars($product->tenhanghoa) ?></div>
                         <div class="product-price">
-                            <?php if ($product->giakhuyenmai && $product->giakhuyenmai < $product->giagoc): ?>
+                            <?php if ($product->giakhuyenmai && $product->giakhuyenmai < $product->giathamkhao): ?>
                                 <span class="price-current"><?= number_format($product->giakhuyenmai) ?>đ</span>
-                                <span class="price-original"><?= number_format($product->giagoc) ?>đ</span>
+                                <span class="price-original"><?= number_format($product->giathamkhao) ?>đ</span>
                             <?php else: ?>
-                                <span class="price-current"><?= number_format($product->giagoc) ?>đ</span>
+                                <span class="price-current"><?= number_format($product->giathamkhao) ?>đ</span>
                             <?php endif; ?>
                         </div>
                         <div class="product-actions">
-                            <button class="btn-view">Xem chi tiết</button>
-                            <button class="btn-cart" onclick="event.stopPropagation(); addToCart(<?= $product->idhanghoa ?>)">
-                                <i class="fas fa-shopping-cart"></i>
-                            </button>
+                            <span class="btn-view">Xem chi tiết</span>
                         </div>
+                    </div>
+                    </a>
+                    <div style="padding:0 20px 20px 20px;">
+                        <button class="btn-cart" style="width:100%;" onclick="addToCart(<?= $product->idhanghoa ?>)">
+                            <i class="fas fa-shopping-cart"></i> Thêm vào giỏ
+                        </button>
                     </div>
                 </div>
             <?php endforeach; ?>
@@ -471,16 +479,17 @@ $promotionProducts = $featuredDisplay->getPromotionProducts(8);
     <?php if (count($promotionProducts) > 0): ?>
         <div class="products-grid">
             <?php foreach ($promotionProducts as $product): ?>
-                <div class="product-card" onclick="window.location.href='?p=chitietsanpham&id=<?= $product->idhanghoa ?>'">
+                <div class="product-card">
+                    <a href="./index.php?reqHanghoa=<?= $product->idhanghoa ?>" style="text-decoration:none;color:inherit;display:block;">
                     <div class="product-image">
                         <span class="discount-badge">-<?= $product->discount_percent ?>%</span>
                         <span class="product-badge badge-sale">
                             <i class="fas fa-fire"></i> Sale
                         </span>
-                        <?php if ($product->image): ?>
-                            <img src="<?= htmlspecialchars($product->image) ?>" alt="<?= htmlspecialchars($product->tenhanghoa) ?>">
+                        <?php if (!empty($product->image_id) && $product->image_id > 0): ?>
+                            <img src="administrator/elements_LQA/mhanghoa/displayImage.php?id=<?= $product->image_id ?>" alt="<?= htmlspecialchars($product->tenhanghoa) ?>">
                         <?php else: ?>
-                            <img src="assets/images/no-image.png" alt="No image">
+                            <img src="administrator/elements_LQA/mhanghoa/displayImage.php?id=0" alt="No image">
                         <?php endif; ?>
                     </div>
                     <div class="product-info">
@@ -488,14 +497,17 @@ $promotionProducts = $featuredDisplay->getPromotionProducts(8);
                         <div class="product-name"><?= htmlspecialchars($product->tenhanghoa) ?></div>
                         <div class="product-price">
                             <span class="price-current"><?= number_format($product->giakhuyenmai) ?>đ</span>
-                            <span class="price-original"><?= number_format($product->giagoc) ?>đ</span>
+                            <span class="price-original"><?= number_format($product->giathamkhao) ?>đ</span>
                         </div>
                         <div class="product-actions">
-                            <button class="btn-view">Xem chi tiết</button>
-                            <button class="btn-cart" onclick="event.stopPropagation(); addToCart(<?= $product->idhanghoa ?>)">
-                                <i class="fas fa-shopping-cart"></i>
-                            </button>
+                            <span class="btn-view">Xem chi tiết</span>
                         </div>
+                    </div>
+                    </a>
+                    <div style="padding:0 20px 20px 20px;">
+                        <button class="btn-cart" style="width:100%;" onclick="addToCart(<?= $product->idhanghoa ?>)">
+                            <i class="fas fa-shopping-cart"></i> Thêm vào giỏ
+                        </button>
                     </div>
                 </div>
             <?php endforeach; ?>
@@ -512,22 +524,23 @@ $promotionProducts = $featuredDisplay->getPromotionProducts(8);
 <script src="administrator/js_LQA/toast-notification.js"></script>
 <script>
     function addToCart(productId) {
-
-        fetch('?p=giohang&action=add', {
-                method: 'POST',
+        fetch('administrator/elements_LQA/mgiohang/giohangAct.php?action=add&productId=' + productId + '&quantity=1', {
+                method: 'GET',
                 headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: 'idhanghoa=' + productId + '&soluong=1'
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
             })
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
                     Toast.success('Đã thêm vào giỏ hàng!');
-
                     setTimeout(() => location.reload(), 1000);
                 } else {
-                    Toast.error('Có lỗi xảy ra!');
+                    if (data.redirect) {
+                        window.location.href = data.redirect;
+                    } else {
+                        Toast.error(data.message || 'Có lỗi xảy ra!');
+                    }
                 }
             })
             .catch(error => {

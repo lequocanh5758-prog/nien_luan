@@ -36,8 +36,8 @@ $allNews = $newsManager->getPublishedNews(100);
             <?php foreach ($allNews as $news): ?>
             <div class="col">
                 <div class="card h-100 shadow-sm">
-                    <?php if ($news['image_url']): ?>
-                    <img src="<?php echo htmlspecialchars($news['image_url']); ?>" 
+                    <?php if ($news['featured_image']): ?>
+                    <img src="/lequocanh/administrator/elements_LQA/madmin/displayImage.php?type=news&id=<?php echo $news['id']; ?>" 
                          class="card-img-top" 
                          alt="<?php echo htmlspecialchars($news['title']); ?>"
                          style="height: 200px; object-fit: cover;">
@@ -56,7 +56,7 @@ $allNews = $newsManager->getPublishedNews(100);
                             </small>
                             <small class="text-muted">
                                 <i class="far fa-clock"></i> 
-                                <?php echo date('d/m/Y', strtotime($news['published_at'])); ?>
+                                <?php echo date('d/m/Y', strtotime($news['published_date'])); ?>
                             </small>
                         </div>
                         <a href="news_detail.php?id=<?php echo $news['id']; ?>" class="btn btn-primary btn-sm">

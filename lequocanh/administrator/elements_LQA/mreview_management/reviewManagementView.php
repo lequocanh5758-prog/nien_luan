@@ -242,6 +242,25 @@
 <div class="review-management">
     <h1><i class="fas fa-comments"></i> Quản Lý Bình Luận</h1>
     
+    <!-- Tabs -->
+    <ul class="nav nav-tabs mb-3" id="reviewTabs">
+        <li class="nav-item">
+            <a class="nav-link active" data-bs-toggle="tab" href="#tabReviews" onclick="loadReviews(1)">
+                <i class="fas fa-comments me-1"></i> Bình luận
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" data-bs-toggle="tab" href="#tabReports" onclick="loadReports(1)">
+                <i class="fas fa-flag me-1"></i> Báo cáo
+                <span class="badge bg-danger" id="reportBadge" style="display:none;">0</span>
+            </a>
+        </li>
+    </ul>
+    
+    <div class="tab-content">
+        <!-- Tab Bình luận -->
+        <div class="tab-pane fade show active" id="tabReviews">
+    
     <!-- Stats Cards -->
     <div class="stats-cards" id="statsCards">
         <div class="stat-card">
@@ -296,6 +315,33 @@
     
     <!-- Pagination -->
     <div class="pagination" id="pagination"></div>
+        </div>
+        
+        <!-- Tab Báo cáo -->
+        <div class="tab-pane fade" id="tabReports">
+            <div class="filters">
+                <select id="reportStatusFilter" class="form-select" style="width: 200px;">
+                    <option value="all">Tất cả</option>
+                    <option value="pending" selected>Chưa xem</option>
+                    <option value="resolved">Đã xem</option>
+                </select>
+                <button onclick="loadReports(1)" class="btn btn-primary">
+                    <i class="fas fa-search"></i> Tìm kiếm
+                </button>
+                <button onclick="loadReports(1)" class="btn btn-secondary">
+                    <i class="fas fa-sync"></i> Làm mới
+                </button>
+            </div>
+            
+            <div class="reviews-table">
+                <div id="reportsList" class="loading">
+                    <p class="text-muted text-center py-4">Chọn tab "Báo cáo" để xem danh sách</p>
+                </div>
+            </div>
+            
+            <div class="pagination" id="reportsPagination"></div>
+        </div>
+    </div>
 </div>
 
 <!-- Modal for actions -->
@@ -311,6 +357,7 @@
     </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 let currentPage = 1;
 let currentAction = null;
@@ -364,29 +411,29 @@ function renderReviews(reviews) {
             <div class="review-content">
                 <h4>${escapeHtml(review.product_name || 'Sản phẩm')}</h4>
                 <div class="review-meta">
-                    <span><i class="fas fa-user"></i> ${escapeHtml(review.user_name)}</span>
+                    <span><i class="fas fa-user"></i> ${escapeHtml(review.user_name || 'Không rõ')}</span>
                     <span><i class="fas fa-star text-warning"></i> ${review.rating}/5</span>
-                    <span><i class="fas fa-clock"></i> ${formatDate(review.ngay_tao)}</span>
+                    <span><i class="fas fa-clock"></i> ${formatDate(review.created_at)}</span>
                     ${review.report_count > 0 ? `<span class="text-danger"><i class="fas fa-flag"></i> ${review.report_count} khiếu nại</span>` : ''}
                 </div>
-                <div class="review-text">${escapeHtml(review.comment || 'Không có nội dung')}</div>
+                <div class="review-text">${escapeHtml(review.review_text || review.comment || 'Không có nội dung')}</div>
                 ${review.admin_note ? `<div class="text-muted small"><i class="fas fa-info-circle"></i> ${escapeHtml(review.admin_note)}</div>` : ''}
             </div>
             
             <div class="review-status">
-                <span class="status-badge status-${review.status}">${getStatusText(review.status)}</span>
+                <span class="status-badge status-${review.status === 'approved' ? 'visible' : review.status === 'rejected' ? 'deleted' : 'hidden'}">${getStatusText(review.status)}</span>
             </div>
             
             <div class="review-actions">
-                ${review.status === 'visible' ? 
+                ${review.status === 'approved' ? 
                     `<button onclick="showActionModal('hide', ${review.id})" class="action-btn btn-hide">
                         <i class="fas fa-eye-slash"></i> Ẩn
                     </button>` : ''}
-                ${review.status === 'hidden' ? 
+                ${review.status === 'rejected' ? 
                     `<button onclick="showActionModal('show', ${review.id})" class="action-btn btn-show">
                         <i class="fas fa-eye"></i> Hiện
                     </button>` : ''}
-                ${review.status !== 'deleted' ? 
+                ${review.status !== 'rejected' ? 
                     `<button onclick="showActionModal('delete', ${review.id})" class="action-btn btn-delete">
                         <i class="fas fa-trash"></i> Xóa
                     </button>` : ''}
@@ -454,8 +501,45 @@ function closeModal() {
 }
 
 async function confirmAction() {
+    if (currentReportAction && currentReportId) {
+        // Xử lý báo cáo
+        try {
+            const note = document.getElementById('modalNote').value;
+            const resolveAction = currentReportAction === 'resolve' ? 'approve' : 'reject';
+            
+            const formData = new FormData();
+            formData.append('action', 'resolve_report');
+            formData.append('report_id', currentReportId);
+            formData.append('action_type', resolveAction);
+            formData.append('response', note);
+            
+            const response = await fetch('../api/review_management.php', {
+                method: 'POST',
+                body: formData,
+                credentials: 'include'
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                closeModal();
+                loadReports(currentReportPage);
+                alert(result.data.message);
+            } else {
+                alert(result.error);
+            }
+        } catch (error) {
+            console.error('Report action error:', error);
+            alert('Có lỗi xảy ra: ' + error.message);
+        }
+        currentReportAction = null;
+        currentReportId = null;
+        return;
+    }
+    
     if (!currentAction || !currentReviewId) return;
     
+    // Xử lý bình luận (giữ nguyên)
     try {
         const note = document.getElementById('modalNote').value;
         const formData = new FormData();
@@ -499,9 +583,9 @@ function getInitials(name) {
 
 function getStatusText(status) {
     const statusMap = {
-        'visible': 'Đang hiển thị',
-        'hidden': 'Đã ẩn',
-        'deleted': 'Đã xóa'
+        'approved': 'Đang hiển thị',
+        'pending': 'Chờ duyệt',
+        'rejected': 'Đã ẩn'
     };
     return statusMap[status] || status;
 }
@@ -520,4 +604,135 @@ function escapeHtml(text) {
 loadReviews(1);
 
 setInterval(() => loadReviews(currentPage), 30000);
+
+// ========== REPORTS ==========
+let currentReportPage = 1;
+let currentReportId = null;
+let currentReportAction = null;
+
+async function loadReports(page = 1) {
+    try {
+        const status = document.getElementById('reportStatusFilter').value;
+        const url = `../api/review_management.php?action=reports&page=${page}&status=${status}`;
+        const response = await fetch(url, { credentials: 'include' });
+        const result = await response.json();
+        
+        if (!result.success) {
+            throw new Error(result.error);
+        }
+        
+        renderReports(result.data.reports);
+        renderReportsPagination(result.data.pagination);
+        currentReportPage = page;
+    } catch (error) {
+        console.error('Load reports error:', error);
+        document.getElementById('reportsList').innerHTML = 
+            '<div class="alert alert-danger m-3">Không thể tải dữ liệu báo cáo</div>';
+    }
+}
+
+function renderReports(reports) {
+    const container = document.getElementById('reportsList');
+    
+    if (!reports || reports.length === 0) {
+        container.innerHTML = '<p class="text-center p-4">Không có báo cáo nào</p>';
+        return;
+    }
+    
+    container.innerHTML = reports.map(r => {
+        const isPending = r.status === 'pending';
+        const statusBadge = isPending 
+            ? '<span class="status-badge status-hidden">Chưa xem</span>'
+            : '<span class="status-badge status-visible">Đã xem</span>';
+        
+        const actionBtn = isPending 
+            ? `<button onclick="markReportViewed(${r.id})" style="background:#28a745;color:white;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-weight:bold;">
+                   <i class="fas fa-check me-1"></i> Đã xem
+               </button>`
+            : `<button onclick="markReportPending(${r.id})" style="background:#ffc107;color:#333;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-weight:bold;">
+                   <i class="fas fa-undo me-1"></i> Đánh dấu chưa xem
+               </button>`;
+        
+        return `
+        <div class="review-row" style="grid-template-columns: 60px 1fr 120px 150px;">
+            <div class="review-avatar">${getInitials(r.reporter_name)}</div>
+            <div class="review-content">
+                <h4>${escapeHtml(r.reason || '')}</h4>
+                <div class="review-meta">
+                    <span><i class="fas fa-user"></i> ${escapeHtml(r.reporter_name || 'Không rõ')}</span>
+                    <span><i class="fas fa-clock"></i> ${formatDate(r.created_at)}</span>
+                    <span><i class="fas fa-box"></i> ${escapeHtml(r.product_name || '')}</span>
+                </div>
+                ${r.description ? `<div class="review-text"><i class="fas fa-comment-dots me-1"></i>${escapeHtml(r.description)}</div>` : ''}
+                <div class="mt-2 p-2" style="background:#fff3cd; border-radius:6px; border-left: 3px solid #ffc107;">
+                    <small class="text-muted">Bình luận bị báo cáo:</small>
+                    <div>"${escapeHtml(r.review_comment || '')}" - ${r.review_rating || 0}★</div>
+                </div>
+            </div>
+            <div class="review-status">${statusBadge}</div>
+            <div>${actionBtn}</div>
+        </div>`;
+    }).join('');
+}
+
+function renderReportsPagination(pagination) {
+    const container = document.getElementById('reportsPagination');
+    if (pagination.total_pages <= 1) { container.innerHTML = ''; return; }
+    
+    let html = '';
+    html += `<button ${pagination.page === 1 ? 'disabled' : ''} onclick="loadReports(${pagination.page - 1})"><i class="fas fa-chevron-left"></i></button>`;
+    for (let i = 1; i <= pagination.total_pages; i++) {
+        if (i === 1 || i === pagination.total_pages || (i >= pagination.page - 2 && i <= pagination.page + 2)) {
+            html += `<button class="${i === pagination.page ? 'active' : ''}" onclick="loadReports(${i})">${i}</button>`;
+        }
+    }
+    html += `<button ${pagination.page === pagination.total_pages ? 'disabled' : ''} onclick="loadReports(${pagination.page + 1})"><i class="fas fa-chevron-right"></i></button>`;
+    container.innerHTML = html;
+}
+
+async function markReportViewed(reportId) {
+    try {
+        const formData = new FormData();
+        formData.append('action', 'mark_report_viewed');
+        formData.append('report_id', reportId);
+        
+        const response = await fetch('../api/review_management.php', {
+            method: 'POST',
+            body: formData,
+            credentials: 'include'
+        });
+        
+        const result = await response.json();
+        if (result.success) {
+            loadReports(currentReportPage);
+        } else {
+            alert(result.error || 'Lỗi');
+        }
+    } catch (error) {
+        alert('Có lỗi xảy ra');
+    }
+}
+
+async function markReportPending(reportId) {
+    try {
+        const formData = new FormData();
+        formData.append('action', 'mark_report_pending');
+        formData.append('report_id', reportId);
+        
+        const response = await fetch('../api/review_management.php', {
+            method: 'POST',
+            body: formData,
+            credentials: 'include'
+        });
+        
+        const result = await response.json();
+        if (result.success) {
+            loadReports(currentReportPage);
+        } else {
+            alert(result.error || 'Lỗi');
+        }
+    } catch (error) {
+        alert('Có lỗi xảy ra');
+    }
+}
 </script>

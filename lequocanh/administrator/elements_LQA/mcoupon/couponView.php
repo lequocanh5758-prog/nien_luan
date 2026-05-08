@@ -391,7 +391,7 @@ if (isset($_GET['edit'])) {
                         
                         <!-- Actions -->
                         <div class="mt-3 d-flex gap-2">
-                            <a href="?req=coupon&edit=<?= $coupon->id ?>" class="btn btn-sm btn-outline-primary">
+                            <a href="index.php?req=coupon&edit=<?= $coupon->id ?>" class="btn btn-sm btn-outline-primary" style="text-decoration:none;">
                                 <i class="fas fa-edit"></i> Sửa
                             </a>
                             <form method="POST" class="d-inline">

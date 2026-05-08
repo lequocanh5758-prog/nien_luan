@@ -383,24 +383,23 @@ $l = count($list_hanghoa);
                             if (isset($_SESSION['ADMIN'])) {
                             ?>
                                 <a
-                                    href="./elements_LQA/mhanghoa/hanghoaAct.php?reqact=deletehanghoa&idhanghoa=<?php echo $u->idhanghoa; ?>">
-                                    <img src="./elements_LQA/img_LQA/Delete.png" class="iconimg">
+                                    href="./elements_LQA/mhanghoa/hanghoaAct.php?reqact=deletehanghoa&idhanghoa=<?php echo $u->idhanghoa; ?>"
+                                    onclick="return confirm('Bạn có chắc muốn xóa không?');">
+                                    <i class="fas fa-trash-alt" style="font-size:18px; color:#dc3545;"></i>
                                 </a>
                             <?php
                             } else {
                             ?>
-                                <img src="./elements_LQA/img_LQA/Delete.png" class="iconimg">
+                                <i class="fas fa-trash-alt" style="font-size:18px; color:#ccc;"></i>
                             <?php
                             }
                             ?>
-                            <img src="./elements_LQA/img_LQA/Update.png"
-                                class="iconimg generic-update-btn"
+                            <i class="fas fa-edit generic-update-btn" style="font-size:18px; color:#007bff; cursor:pointer;"
                                 data-module="mhanghoa"
                                 data-update-url="./elements_LQA/mhanghoa/hanghoaUpdate.php"
                                 data-id-param="idhanghoa"
                                 data-title="Cập nhật Hàng hóa"
-                                data-id="<?php echo htmlspecialchars($u->idhanghoa); ?>"
-                                alt="Update">
+                                data-id="<?php echo htmlspecialchars($u->idhanghoa); ?>"></i>
                         </td>
                     </tr>
             <?php
@@ -482,13 +481,15 @@ $l = count($list_hanghoa);
         background: #fff;
         border: 2px solid #3498db;
         box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-        border-radius: 5px;
-        padding: 15px;
-        z-index: 9999;
+        border-radius: 8px;
+        padding: 0;
+        z-index: 10001;
         display: none;
-        width: 600px;
-        max-height: 80vh;
+        width: 650px;
+        max-width: 95vw;
+        max-height: 85vh;
         overflow-y: auto;
+        pointer-events: auto;
     }
 
     .update-popup-wrapper {
@@ -497,18 +498,18 @@ $l = count($list_hanghoa);
 
     #w_close_btn_hh {
         position: absolute;
-        top: 5px;
-        right: 5px;
+        top: 10px;
+        right: 10px;
         background: #f44336;
         color: white;
-        width: 25px;
-        height: 25px;
+        width: 28px;
+        height: 28px;
         border-radius: 50%;
         text-align: center;
-        line-height: 25px;
+        line-height: 28px;
         font-weight: bold;
         cursor: pointer;
-        z-index: 10000;
+        z-index: 10002;
     }
 
     .product-image-container {

@@ -89,7 +89,7 @@ if ($timeSlot == 0) {
             'type' => 'banner',
             'id' => $banner['id'],
             'title' => $banner['title'],
-            'image' => $banner['image_url'],
+            'image' => '/lequocanh/administrator/elements_LQA/madmin/displayImage.php?type=banner&id=' . $banner['id'],
             'link' => $banner['link_url'],
             'description' => $banner['description'],
             'position' => $banner['position']
@@ -165,7 +165,7 @@ if ($timeSlot == 0) {
             'type' => 'banner',
             'id' => $banner['id'],
             'title' => $banner['title'],
-            'image' => $banner['image_url'],
+            'image' => '/lequocanh/administrator/elements_LQA/madmin/displayImage.php?type=banner&id=' . $banner['id'],
             'link' => $banner['link_url'],
             'description' => $banner['description'],
             'position' => $banner['position']
@@ -241,7 +241,7 @@ if ($timeSlot == 0) {
             'type' => 'banner',
             'id' => $banner['id'],
             'title' => $banner['title'],
-            'image' => $banner['image_url'],
+            'image' => '/lequocanh/administrator/elements_LQA/madmin/displayImage.php?type=banner&id=' . $banner['id'],
             'link' => $banner['link_url'],
             'description' => $banner['description'],
             'position' => $banner['position']
@@ -254,7 +254,7 @@ if ($timeSlot == 0) {
             'type' => 'banner',
             'id' => $banner['id'],
             'title' => $banner['title'],
-            'image' => $banner['image_url'],
+            'image' => '/lequocanh/administrator/elements_LQA/madmin/displayImage.php?type=banner&id=' . $banner['id'],
             'link' => $banner['link_url'],
             'description' => $banner['description'],
             'position' => $banner['position']

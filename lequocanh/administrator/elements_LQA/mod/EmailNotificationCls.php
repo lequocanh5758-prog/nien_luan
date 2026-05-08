@@ -14,9 +14,9 @@ class EmailNotification
     const TEMPLATE_ORDER_CANCELLED = 'order_cancelled';
     const TEMPLATE_PAYMENT_RECEIVED = 'payment_received';
 
-    public function __construct()
+    public function __construct(?PDO $db = null)
     {
-        $this->db = Database::getInstance()->getConnection();
+        $this->db = $db ?: Database::getInstance()->getConnection();
         $this->loadConfig();
         $this->ensureTableExists();
     }

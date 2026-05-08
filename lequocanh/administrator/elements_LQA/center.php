@@ -16,9 +16,6 @@ if (isset($_GET['req'])) {
     if ($isAdmin) {
 
         $hasAccess = true;
-    } else if ($isNhanVien) {
-
-        $hasAccess = $phanQuyen->checkAccessForEmployee($request, $username);
     } else {
 
         $hasAccess = $phanQuyen->checkAccess($request, $username);
@@ -142,8 +139,8 @@ if (isset($_GET['req'])) {
             break;
 
         case 'doanhThuView':
-            require __DIR__ . '/mbaocao/doanhThuView.php';
-            break;
+            header('Location: index.php?req=loiNhuanView');
+            exit;
 
         case 'sanPhamBanChayView':
             require __DIR__ . '/mbaocao/sanPhamBanChayView.php';
@@ -208,6 +205,7 @@ if (isset($_GET['req'])) {
         case 'coupon':
             require __DIR__ . '/mcoupon/couponView.php';
             break;
+
     }
 } else {
     require __DIR__ . '/default.php';

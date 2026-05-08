@@ -261,9 +261,50 @@ $products = $stmt->fetchAll(PDO::FETCH_OBJ);
                 
                 <div class="alert alert-info">
                     <i class="fas fa-lightbulb"></i> 
-                    <strong>Mẹo:</strong> Sản phẩm nổi bật sẽ hiển thị ưu tiên trên trang chủ. Bạn có thể đánh dấu thủ công từ trang quản lý sản phẩm.
+                    <strong>Mẹo:</strong> Sản phẩm nổi bật sẽ hiển thị ưu tiên trên trang chủ. Bạn có thể đánh dấu thủ công từ đây.
                 </div>
                 
+                <!-- Thêm sản phẩm nổi bật -->
+                <div class="card mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0"><i class="fas fa-plus-circle"></i> Thêm Sản Phẩm Nổi Bật</h5>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST" class="row g-3">
+                            <input type="hidden" name="action" value="toggle_featured">
+                            <input type="hidden" name="current_status" value="0">
+                            <div class="col-md-8">
+                                <select name="idhanghoa" class="form-select" required>
+                                    <option value="">-- Chọn sản phẩm để đánh dấu nổi bật --</option>
+                                    <?php
+                                    $notFeaturedProducts = $db->query("
+                                        SELECT h.idhanghoa, h.tenhanghoa, h.giathamkhao, th.tenTH as ten_thuonghieu
+                                        FROM hanghoa h
+                                        LEFT JOIN thuonghieu th ON h.idThuongHieu = th.idThuongHieu
+                                        WHERE h.is_featured = 0 OR h.is_featured IS NULL
+                                        ORDER BY h.tenhanghoa ASC
+                                    ")->fetchAll(PDO::FETCH_OBJ);
+                                    
+                                    foreach ($notFeaturedProducts as $p):
+                                    ?>
+                                    <option value="<?= $p->idhanghoa ?>">
+                                        <?= htmlspecialchars($p->tenhanghoa) ?> 
+                                        (<?= htmlspecialchars($p->ten_thuonghieu ?? 'N/A') ?>) 
+                                        - <?= number_format($p->giathamkhao) ?>đ
+                                    </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <button type="submit" class="btn btn-success w-100">
+                                    <i class="fas fa-star"></i> Đánh Dấu Nổi Bật
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                
+                <h5 class="mb-3"><i class="fas fa-star"></i> Sản Phẩm Nổi Bật Hiện Tại</h5>
                 <div class="row">
                     <?php if (count($products) == 0): ?>
                         <div class="col-12">

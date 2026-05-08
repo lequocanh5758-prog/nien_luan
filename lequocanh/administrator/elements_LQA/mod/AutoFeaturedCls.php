@@ -5,8 +5,8 @@ require_once __DIR__ . '/database.php';
 class AutoFeatured {
     private $db;
     
-    public function __construct() {
-        $this->db = Database::getInstance()->getConnection();
+    public function __construct(?PDO $db = null) {
+        $this->db = $db ?: Database::getInstance()->getConnection();
     }
     
     public function autoMarkBestSellers($limit = 20) {

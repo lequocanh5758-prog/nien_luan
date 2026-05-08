@@ -6,10 +6,10 @@ class CustomerNotificationManager
 {
     private $db;
 
-    public function __construct()
+    public function __construct(?PDO $db = null)
     {
         try {
-            $this->db = Database::getInstance()->getConnection();
+            $this->db = $db ?: Database::getInstance()->getConnection();
             if (!$this->db) {
                 error_log("CustomerNotificationManager: Database connection is null");
                 throw new Exception("Database connection failed");
@@ -285,16 +285,16 @@ class CustomerNotificationManager
             $result = false;
             switch ($type) {
                 case 'approved':
-                    $result = $emailService->sendOrderApprovedEmail($orderId, $user['email']);
+                    $result = $emailService->send($user['email'], 'Đơn hàng #' . $orderId . ' đã được duyệt', '<p>Đơn hàng <strong>#' . $orderId . '</strong> của bạn đã được duyệt và đang được xử lý.</p>');
                     break;
                 case 'cancelled':
-                    $result = $emailService->sendOrderCancelledEmail($orderId, $user['email'], $reason);
+                    $result = $emailService->send($user['email'], 'Đơn hàng #' . $orderId . ' đã bị hủy', '<p>Đơn hàng <strong>#' . $orderId . '</strong> đã bị hủy.</p>' . ($reason ? '<p>Lý do: ' . htmlspecialchars($reason) . '</p>' : ''));
                     break;
                 case 'payment':
-                    $result = $emailService->sendPaymentConfirmedEmail($orderId, $user['email']);
+                    $result = $emailService->send($user['email'], 'Thanh toán đơn hàng #' . $orderId . ' thành công', '<p>Thanh toán cho đơn hàng <strong>#' . $orderId . '</strong> đã được xác nhận.</p>');
                     break;
                 case 'success':
-                    $result = $emailService->sendOrderSuccessEmail($orderId, $user['email']);
+                    $result = $emailService->send($user['email'], 'Đơn hàng #' . $orderId . ' hoàn thành', '<p>Đơn hàng <strong>#' . $orderId . '</strong> đã hoàn thành. Cảm ơn bạn!</p>');
                     break;
                 default:
                     error_log("CustomerNotificationManager: Unknown email type: $type");

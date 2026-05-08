@@ -166,7 +166,7 @@ $blogs = $pageManager->getAllBlogs(true);
             <div class="col-md-6 col-lg-4">
                 <div class="blog-card">
                     <?php if ($blog['thumbnail']): ?>
-                    <img src="<?php echo htmlspecialchars($blog['thumbnail']); ?>" alt="<?php echo htmlspecialchars($blog['title']); ?>" class="blog-card-img">
+                    <img src="/lequocanh/administrator/elements_LQA/madmin/displayImage.php?type=page&id=<?php echo $blog['id']; ?>" alt="<?php echo htmlspecialchars($blog['title']); ?>" class="blog-card-img">
                     <?php else: ?>
                     <div class="blog-card-img bg-secondary d-flex align-items-center justify-content-center">
                         <i class="fas fa-image fa-3x text-white-50"></i>

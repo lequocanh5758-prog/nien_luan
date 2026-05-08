@@ -9,7 +9,6 @@ class SecurityConfig {
             'userUpdateProfile', 
             'thongbao',
             'baocaoview',
-            'doanhThuView',
             'sanPhamBanChayView',
             'loiNhuanView'
         ],
@@ -73,7 +72,6 @@ class SecurityConfig {
         'userUpdateProfile' => self::SECURITY_LEVELS['LOW'],
         'thongbao' => self::SECURITY_LEVELS['LOW'],
         'baocaoview' => self::SECURITY_LEVELS['MEDIUM'],
-        'doanhThuView' => self::SECURITY_LEVELS['MEDIUM'],
         'sanPhamBanChayView' => self::SECURITY_LEVELS['MEDIUM'],
         'loiNhuanView' => self::SECURITY_LEVELS['MEDIUM'],
         'hanghoaview' => self::SECURITY_LEVELS['MEDIUM'],

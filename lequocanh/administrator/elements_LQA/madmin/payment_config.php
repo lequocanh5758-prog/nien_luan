@@ -17,27 +17,47 @@ require_once './elements_LQA/mod/database.php';
 $db = Database::getInstance();
 $conn = $db->getConnection();
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $bankName = $_POST['ten_ngan_hang'];
-    $accountNumber = $_POST['so_tai_khoan'];
-    $accountName = $_POST['ten_tai_khoan'];
-
+function ensurePaymentConfigTable($conn) {
     $checkTableSql = "SHOW TABLES LIKE 'cau_hinh_thanh_toan'";
     $checkTableStmt = $conn->prepare($checkTableSql);
     $checkTableStmt->execute();
 
     if ($checkTableStmt->rowCount() == 0) {
-
         $createTableSql = "CREATE TABLE cau_hinh_thanh_toan (
             id INT AUTO_INCREMENT PRIMARY KEY,
-            ten_ngan_hang VARCHAR(100) NOT NULL,
-            so_tai_khoan VARCHAR(50) NOT NULL,
-            ten_tai_khoan VARCHAR(100) NOT NULL,
+            ten_ngan_hang VARCHAR(100) NOT NULL DEFAULT '',
+            so_tai_khoan VARCHAR(50) NOT NULL DEFAULT '',
+            ten_tai_khoan VARCHAR(100) NOT NULL DEFAULT '',
+            momo_enabled TINYINT(1) NOT NULL DEFAULT 1,
+            bank_transfer_enabled TINYINT(1) NOT NULL DEFAULT 1,
+            cod_enabled TINYINT(1) NOT NULL DEFAULT 1,
             ngay_tao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             ngay_cap_nhat TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
         )";
         $conn->exec($createTableSql);
+    } else {
+        $columns = $conn->query("SHOW COLUMNS FROM cau_hinh_thanh_toan")->fetchAll(PDO::FETCH_COLUMN);
+        if (!in_array('momo_enabled', $columns)) {
+            $conn->exec("ALTER TABLE cau_hinh_thanh_toan ADD COLUMN momo_enabled TINYINT(1) NOT NULL DEFAULT 1");
+        }
+        if (!in_array('bank_transfer_enabled', $columns)) {
+            $conn->exec("ALTER TABLE cau_hinh_thanh_toan ADD COLUMN bank_transfer_enabled TINYINT(1) NOT NULL DEFAULT 1");
+        }
+        if (!in_array('cod_enabled', $columns)) {
+            $conn->exec("ALTER TABLE cau_hinh_thanh_toan ADD COLUMN cod_enabled TINYINT(1) NOT NULL DEFAULT 1");
+        }
     }
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $bankName = $_POST['ten_ngan_hang'];
+    $accountNumber = $_POST['so_tai_khoan'];
+    $accountName = $_POST['ten_tai_khoan'];
+    $momoEnabled = isset($_POST['momo_enabled']) ? 1 : 0;
+    $bankTransferEnabled = isset($_POST['bank_transfer_enabled']) ? 1 : 0;
+    $codEnabled = isset($_POST['cod_enabled']) ? 1 : 0;
+
+    ensurePaymentConfigTable($conn);
 
     $checkConfigSql = "SELECT COUNT(*) FROM cau_hinh_thanh_toan";
     $checkConfigStmt = $conn->prepare($checkConfigSql);
@@ -45,15 +65,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $configCount = $checkConfigStmt->fetchColumn();
 
     if ($configCount > 0) {
-
-        $updateSql = "UPDATE cau_hinh_thanh_toan SET ten_ngan_hang = ?, so_tai_khoan = ?, ten_tai_khoan = ?";
+        $updateSql = "UPDATE cau_hinh_thanh_toan SET ten_ngan_hang = ?, so_tai_khoan = ?, ten_tai_khoan = ?, momo_enabled = ?, bank_transfer_enabled = ?, cod_enabled = ?";
         $updateStmt = $conn->prepare($updateSql);
-        $updateStmt->execute([$bankName, $accountNumber, $accountName]);
+        $updateStmt->execute([$bankName, $accountNumber, $accountName, $momoEnabled, $bankTransferEnabled, $codEnabled]);
     } else {
-
-        $insertSql = "INSERT INTO cau_hinh_thanh_toan (ten_ngan_hang, so_tai_khoan, ten_tai_khoan) VALUES (?, ?, ?)";
+        $insertSql = "INSERT INTO cau_hinh_thanh_toan (ten_ngan_hang, so_tai_khoan, ten_tai_khoan, momo_enabled, bank_transfer_enabled, cod_enabled) VALUES (?, ?, ?, ?, ?, ?)";
         $insertStmt = $conn->prepare($insertSql);
-        $insertStmt->execute([$bankName, $accountNumber, $accountName]);
+        $insertStmt->execute([$bankName, $accountNumber, $accountName, $momoEnabled, $bankTransferEnabled, $codEnabled]);
     }
 
     $_SESSION['cau_hinh_thanh_toan_success'] = true;
@@ -65,22 +83,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     exit();
 }
 
-$checkTableSql = "SHOW TABLES LIKE 'cau_hinh_thanh_toan'";
-$checkTableStmt = $conn->prepare($checkTableSql);
-$checkTableStmt->execute();
-
-if ($checkTableStmt->rowCount() == 0) {
-
-    $createTableSql = "CREATE TABLE cau_hinh_thanh_toan (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        ten_ngan_hang VARCHAR(100) NOT NULL,
-        so_tai_khoan VARCHAR(50) NOT NULL,
-        ten_tai_khoan VARCHAR(100) NOT NULL,
-        ngay_tao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        ngay_cap_nhat TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-    )";
-    $conn->exec($createTableSql);
-}
+ensurePaymentConfigTable($conn);
 
 $configSql = "SELECT * FROM cau_hinh_thanh_toan LIMIT 1";
 $configStmt = $conn->prepare($configSql);
@@ -103,10 +106,50 @@ $config = $configStmt->fetch(PDO::FETCH_ASSOC);
 
 <div class="card">
     <div class="card-header bg-primary text-white">
-        <h5 class="mb-0">Cấu hình tài khoản ngân hàng</h5>
+        <h5 class="mb-0">Phương thức thanh toán</h5>
     </div>
     <div class="card-body">
         <form method="post" action="">
+            <div class="mb-4">
+                <h6 class="fw-bold mb-3">Bật/Tắt phương thức thanh toán</h6>
+                <p class="text-muted mb-3">Chọn các phương thức thanh toán hiển thị cho khách hàng tại trang thanh toán.</p>
+                <div class="row">
+                    <div class="col-md-4 mb-2">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="momo_enabled" name="momo_enabled"
+                                <?php echo ($config && isset($config['momo_enabled']) && $config['momo_enabled'] == 1) ? 'checked' : (!$config ? 'checked' : ''); ?>>
+                            <label class="form-check-label" for="momo_enabled">
+                                <strong>MoMo</strong><br>
+                                <small class="text-muted">Thanh toán qua ví MoMo</small>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-2">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="bank_transfer_enabled" name="bank_transfer_enabled"
+                                <?php echo ($config && isset($config['bank_transfer_enabled']) && $config['bank_transfer_enabled'] == 1) ? 'checked' : (!$config ? 'checked' : ''); ?>>
+                            <label class="form-check-label" for="bank_transfer_enabled">
+                                <strong>Chuyển khoản ngân hàng</strong><br>
+                                <small class="text-muted">Thanh toán qua chuyển khoản</small>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-2">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="cod_enabled" name="cod_enabled"
+                                <?php echo ($config && isset($config['cod_enabled']) && $config['cod_enabled'] == 1) ? 'checked' : (!$config ? 'checked' : ''); ?>>
+                            <label class="form-check-label" for="cod_enabled">
+                                <strong>COD</strong><br>
+                                <small class="text-muted">Thanh toán khi nhận hàng</small>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <hr>
+
+            <h6 class="fw-bold mb-3">Cấu hình tài khoản ngân hàng</h6>
             <div class="mb-3">
                 <label for="ten_ngan_hang" class="form-label">Tên ngân hàng</label>
                 <input type="text" class="form-control" id="ten_ngan_hang" name="ten_ngan_hang"

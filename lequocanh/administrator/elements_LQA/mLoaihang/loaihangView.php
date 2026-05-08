@@ -61,24 +61,23 @@
                                 if (isset($_SESSION['ADMIN'])) {
                                 ?>
                                     <a
-                                        href="./elements_LQA/mloaihang/loaihangAct.php?reqact=deleteloaihang&idloaihang=<?php echo $u->idloaihang; ?>">
-                                        <img src="./elements_LQA/img_LQA/Delete.png" class="iconimg">
+                                        href="./elements_LQA/mloaihang/loaihangAct.php?reqact=deleteloaihang&idloaihang=<?php echo $u->idloaihang; ?>"
+                                        onclick="return confirm('Bạn có chắc muốn xóa không?');">
+                                        <i class="fas fa-trash-alt" style="font-size:18px; color:#dc3545;"></i>
                                     </a>
                                 <?php
                                 } else {
                                 ?>
-                                    <img src="./elements_LQA/img_LQA/Delete.png" class="iconimg">
+                                    <i class="fas fa-trash-alt" style="font-size:18px; color:#ccc;"></i>
                                 <?php
                                 }
                                 ?>
-                                <img src="./elements_LQA/img_LQA/Update.png"
-                                    class="iconimg generic-update-btn"
+                                <i class="fas fa-edit generic-update-btn" style="font-size:18px; color:#007bff; cursor:pointer;"
                                     data-module="mloaihang"
                                     data-update-url="./elements_LQA/mLoaihang/loaihangUpdate.php"
                                     data-id-param="idloaihang"
                                     data-title="Cập nhật Loại hàng"
-                                    data-id="<?php echo htmlspecialchars($u->idloaihang); ?>"
-                                    alt="Update">
+                                    data-id="<?php echo htmlspecialchars($u->idloaihang); ?>"></i>
                             </td>
                         </tr>
                 <?php

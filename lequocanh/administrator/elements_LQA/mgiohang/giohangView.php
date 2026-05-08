@@ -90,6 +90,7 @@ if (!empty($cart)) {
 }
 
 $orderHistory = [];
+$orderStats = ['pending' => 0, 'approved' => 0, 'delivered' => 0, 'completed' => 0, 'cancelled' => 0, 'total' => 0, 'total_paid' => 0];
 if (isset($_SESSION['USER'])) {
     try {
         require_once '../../elements_LQA/mod/database.php';
@@ -101,7 +102,7 @@ if (isset($_SESSION['USER'])) {
             $columnsStmt = $conn->query("SHOW COLUMNS FROM don_hang");
             $columns = $columnsStmt->fetchAll(PDO::FETCH_COLUMN);
             
-            $selectCols = "id, ma_don_hang_text, ngay_tao, tong_tien, trang_thai";
+            $selectCols = "id, ma_don_hang_text, ngay_tao, tong_tien, trang_thai, trang_thai_thanh_toan, phuong_thuc_thanh_toan, dia_chi_giao_hang";
             if (in_array('trang_thai_doi_tra', $columns)) {
                 $selectCols .= ", trang_thai_doi_tra";
             }
@@ -110,6 +111,19 @@ if (isset($_SESSION['USER'])) {
             $stmt = $conn->prepare($sql);
             $stmt->execute([$_SESSION['USER']]);
             $orderHistory = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            $statsSql = "SELECT 
+                COUNT(*) as total,
+                SUM(CASE WHEN trang_thai = 'pending' THEN 1 ELSE 0 END) as pending,
+                SUM(CASE WHEN trang_thai = 'approved' THEN 1 ELSE 0 END) as approved,
+                SUM(CASE WHEN trang_thai = 'delivered' THEN 1 ELSE 0 END) as delivered,
+                SUM(CASE WHEN trang_thai = 'completed' THEN 1 ELSE 0 END) as completed,
+                SUM(CASE WHEN trang_thai = 'cancelled' THEN 1 ELSE 0 END) as cancelled,
+                SUM(CASE WHEN trang_thai = 'completed' AND trang_thai_thanh_toan IN ('paid', 'completed') THEN tong_tien ELSE 0 END) as total_paid
+                FROM don_hang WHERE ma_nguoi_dung = ?";
+            $statsStmt = $conn->prepare($statsSql);
+            $statsStmt->execute([$_SESSION['USER']]);
+            $orderStats = $statsStmt->fetch(PDO::FETCH_ASSOC);
         }
     } catch (PDOException $e) {
 
@@ -124,8 +138,8 @@ if (isset($_SESSION['USER'])) {
     <title>Giỏ hàng</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link rel="stylesheet" href="../../public_files/mycss.css">
-    <link rel="stylesheet" href="../../public_files/toast-notification.css">
+    <link rel="stylesheet" href="../../../public_files/mycss.css">
+    <link rel="stylesheet" href="../../../public_files/toast-notification.css">
     <style>
         .cart-container { max-width: 1200px; margin: 20px auto; background: #fff; padding: 30px; border-radius: 15px; box-shadow: 0 2px 15px rgba(0, 0, 0, 0.08); }
         .cart-table { width: 100%; border-collapse: separate; border-spacing: 0; margin-bottom: 20px; }
@@ -186,7 +200,7 @@ if (isset($_SESSION['USER'])) {
                                 <img src="<?php echo $imageSrc; ?>"
                                     alt="<?php echo htmlspecialchars($item['name']); ?>"
                                     class="product-image"
-                                    onerror="this.onerror=null; this.src='../../elements_LQA/img_LQA/no-image.png';">
+                                    onerror="this.onerror=null; this.src='../../elements_LQA/img_LQA/no-image.png.php';">
                                 <div>
                                     <span class="product-name"><?php echo htmlspecialchars($item['name']); ?></span>
                                     <br><small class="text-muted">
@@ -199,7 +213,7 @@ if (isset($_SESSION['USER'])) {
                                         <?php endif; ?>
                                     </small>
                                     <?php if ($item['has_discount']): ?>
-                                        <br><span class="badge bg-danger">Giảm giá</span>
+                                        <br><span class="badge bg-info">Giảm giá</span>
                                     <?php endif; ?>
                                     <?php if ($item['is_unavailable']): ?>
                                         <br><span class="badge bg-<?php echo $item['status_class']; ?>">
@@ -295,8 +309,19 @@ if (isset($_SESSION['USER'])) {
 
     <?php if (!empty($orderHistory)): ?>
     <div class="cart-container mt-4">
-        <div class="d-flex justify-content-between align-items-center mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
             <h3 class="mb-0"><i class="fas fa-history me-2"></i>Lịch sử đơn hàng</h3>
+            <a href="../customer/order_history.php" class="btn btn-sm btn-outline-primary">
+                <i class="fas fa-external-link-alt me-1"></i>Xem đầy đủ
+            </a>
+        </div>
+
+        <div class="d-flex flex-wrap gap-2 mb-3">
+            <span class="badge bg-warning text-dark px-3 py-2"><i class="fas fa-clock me-1"></i>Chờ xác nhận: <?php echo $orderStats['pending']; ?></span>
+            <span class="badge bg-info px-3 py-2"><i class="fas fa-check-circle me-1"></i>Đã duyệt: <?php echo $orderStats['approved']; ?></span>
+            <span class="badge bg-primary px-3 py-2"><i class="fas fa-truck me-1"></i>Đang giao: <?php echo $orderStats['delivered']; ?></span>
+            <span class="badge bg-success px-3 py-2"><i class="fas fa-check-double me-1"></i>Hoàn tất: <?php echo $orderStats['completed']; ?></span>
+            <span class="badge bg-danger px-3 py-2"><i class="fas fa-times-circle me-1"></i>Đã hủy: <?php echo $orderStats['cancelled']; ?></span>
         </div>
         
         <div class="table-responsive">
@@ -306,7 +331,8 @@ if (isset($_SESSION['USER'])) {
                         <th>Mã đơn hàng</th>
                         <th>Ngày đặt</th>
                         <th>Tổng tiền</th>
-                        <th>Trạng thái</th>
+                        <th>Trạng thái đơn</th>
+                        <th>Thanh toán</th>
                         <th>Thao tác</th>
                     </tr>
                 </thead>
@@ -319,20 +345,39 @@ if (isset($_SESSION['USER'])) {
                             <td>
                                 <?php
                                 switch ($order['trang_thai']) {
-                                    case 'pending': echo '<span class="badge bg-warning text-dark">Chờ xác nhận</span>'; break;
-                                    case 'approved': echo '<span class="badge bg-info">Đang giao hàng</span>'; break;
-                                    case 'delivered': echo '<span class="badge bg-primary">Đã giao hàng</span>'; break;
-                                    case 'completed': echo '<span class="badge bg-success">Hoàn tất</span>'; break;
-                                    case 'cancelled': echo '<span class="badge bg-danger">Đã hủy</span>'; break;
-                                    case 'returned': echo '<span class="badge bg-secondary">Đã trả hàng</span>'; break;
+                                    case 'pending': echo '<span class="badge bg-warning text-dark"><i class="fas fa-clock me-1"></i>Chờ xác nhận</span>'; break;
+                                    case 'approved': echo '<span class="badge bg-info"><i class="fas fa-check-circle me-1"></i>Đã duyệt</span>'; break;
+                                    case 'delivered': echo '<span class="badge bg-primary"><i class="fas fa-truck me-1"></i>Đang giao</span>'; break;
+                                    case 'completed': echo '<span class="badge bg-success"><i class="fas fa-check-double me-1"></i>Hoàn tất</span>'; break;
+                                    case 'cancelled': echo '<span class="badge bg-danger"><i class="fas fa-times-circle me-1"></i>Đã hủy</span>'; break;
                                     default: echo '<span class="badge bg-secondary">Không xác định</span>'; break;
+                                }
+                                ?>
+                            </td>
+                            <td>
+                                <?php
+                                if (!empty($order['trang_thai_thanh_toan'])) {
+                                    switch ($order['trang_thai_thanh_toan']) {
+                                        case 'paid':
+                                        case 'completed':
+                                            echo '<span class="badge bg-success"><i class="fas fa-check me-1"></i>Đã TT</span>';
+                                            break;
+                                        case 'failed':
+                                            echo '<span class="badge bg-danger"><i class="fas fa-times me-1"></i>Thất bại</span>';
+                                            break;
+                                        default:
+                                            echo '<span class="badge bg-warning text-dark"><i class="fas fa-clock me-1"></i>Chờ TT</span>';
+                                            break;
+                                    }
+                                } else {
+                                    echo '<span class="text-muted small">—</span>';
                                 }
                                 ?>
                             </td>
                             <td>
                                 <a href="orderDetailView.php?id=<?php echo $order['id']; ?>" 
                                    class="btn btn-sm btn-outline-primary">
-                                    <i class="fas fa-eye"></i> Xem chi tiết
+                                    <i class="fas fa-eye"></i> Xem
                                 </a>
                             </td>
                         </tr>
@@ -344,7 +389,7 @@ if (isset($_SESSION['USER'])) {
     <?php endif; ?>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="../../public_files/toast-notification.js"></script>
+    <script src="../../../public_files/toast-notification.js"></script>
     <script>
         function proceedToCheckout() {
             const selectedProducts = [];

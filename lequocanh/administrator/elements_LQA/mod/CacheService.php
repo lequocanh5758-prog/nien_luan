@@ -58,6 +58,14 @@ class CacheService {
     }
     
     public function clear() {
+        $files = glob($this->cacheDir . '/*.cache');
+        foreach ($files as $file) {
+            if (is_file($file)) {
+                unlink($file);
+            }
+        }
+        return true;
+    }
 
     public function remember($key, $callback, $ttl = null) {
         $cached = $this->get($key);
@@ -78,6 +86,29 @@ class CacheService {
     }
     
     public function getStats() {
+        $files = glob($this->cacheDir . '/*.cache');
+        $totalSize = 0;
+        $totalFiles = 0;
+        $expired = 0;
+
+        foreach ($files as $file) {
+            if (is_file($file)) {
+                $totalFiles++;
+                $totalSize += filesize($file);
+                $data = json_decode(file_get_contents($file), true);
+                if ($data && isset($data['expires_at']) && time() > $data['expires_at']) {
+                    $expired++;
+                }
+            }
+        }
+
+        return [
+            'total_files' => $totalFiles,
+            'total_size' => $this->formatBytes($totalSize),
+            'total_size_bytes' => $totalSize,
+            'expired_files' => $expired
+        ];
+    }
 
     private function formatBytes($bytes) {
         $units = ['B', 'KB', 'MB', 'GB'];
@@ -92,3 +123,19 @@ class CacheService {
     }
     
     public function cleanExpired() {
+        $files = glob($this->cacheDir . '/*.cache');
+        $cleaned = 0;
+
+        foreach ($files as $file) {
+            if (is_file($file)) {
+                $data = json_decode(file_get_contents($file), true);
+                if ($data && isset($data['expires_at']) && time() > $data['expires_at']) {
+                    unlink($file);
+                    $cleaned++;
+                }
+            }
+        }
+
+        return $cleaned;
+    }
+}

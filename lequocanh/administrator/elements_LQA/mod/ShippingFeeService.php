@@ -6,9 +6,9 @@ class ShippingFeeService
 {
     private $db;
 
-    public function __construct()
+    public function __construct(?PDO $db = null)
     {
-        $this->db = Database::getInstance()->getConnection();
+        $this->db = $db ?: Database::getInstance()->getConnection();
     }
 
     public function calculateFee($provinceId, $districtId, $weight = 0, $orderTotal = 0)

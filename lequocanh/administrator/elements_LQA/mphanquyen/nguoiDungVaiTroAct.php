@@ -16,7 +16,7 @@ require_once '../mod/phanquyenCls.php';
 $phanQuyen = new PhanQuyen();
 $username = isset($_SESSION['USER']) ? $_SESSION['USER'] : (isset($_SESSION['ADMIN']) ? $_SESSION['ADMIN'] : '');
 
-if (!isset($_SESSION['ADMIN'])) {
+if (!isset($_SESSION['ADMIN']) && !$phanQuyen->checkAccess('nguoiDungVaiTroView', $username)) {
     header('Location: ../../index.php');
     exit;
 }

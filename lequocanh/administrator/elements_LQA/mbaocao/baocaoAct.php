@@ -9,7 +9,7 @@ require_once '../mod/phanquyenCls.php';
 $phanQuyen = new PhanQuyen();
 $username = isset($_SESSION['USER']) ? $_SESSION['USER'] : (isset($_SESSION['ADMIN']) ? $_SESSION['ADMIN'] : '');
 
-if (!isset($_SESSION['ADMIN']) && !$phanQuyen->checkAccess($username, 'baocaoview')) {
+if (!isset($_SESSION['ADMIN']) && !$phanQuyen->checkAccess('baocaoview', $username)) {
     echo json_encode(['success' => false, 'message' => 'Bạn không có quyền truy cập!']);
     exit;
 }

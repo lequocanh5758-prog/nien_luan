@@ -51,87 +51,17 @@ $carousel_items = array_slice($list_hanghoa, 0, 5);
 <!-- Carousel -->
 <?php include __DIR__ . '/productBannerCarousel.php'; ?>
 
-<script src="administrator/elements_LQA/js_LQA/jscript.js" defer></script>
+<script src="administrator/js_LQA/jscript.js" defer></script>
 
 <?php
 
 require_once __DIR__ . '/../administrator/elements_LQA/mod/NewsManager.php';
 require_once __DIR__ . '/../administrator/elements_LQA/mod/PromotionManager.php';
 
-$newsManager = new NewsManager();
-$promotionManager = new PromotionManager();
-
-$latestNews = $cache->remember('latest_news_3', 600, function() use ($newsManager) {
-    return $newsManager->getPublishedNews(3);
-});
-
-$activePromotions = $cache->remember('active_promotions', 300, function() use ($promotionManager) {
-    return $promotionManager->getActivePromotions();
-});
+// News and Promotions are now displayed in news_section.php
+$latestNews = [];
+$activePromotions = [];
 ?>
-
-<!-- News Section -->
-<?php if (!empty($latestNews)): ?>
-<div class="news-section my-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h3 class="section-title mb-0">
-            <i class="fas fa-newspaper text-primary"></i> Tin tức mới nhất
-        </h3>
-        <a href="all_news.php" class="btn btn-sm btn-outline-primary">
-            Xem tất cả <i class="fas fa-arrow-right"></i>
-        </a>
-    </div>
-    <div class="row row-cols-1 row-cols-md-3 g-3">
-        <?php foreach ($latestNews as $news): ?>
-        <div class="col">
-            <div class="card news-card h-100">
-                <?php if ($news['featured_image']): ?>
-                <img src="<?php echo htmlspecialchars($news['featured_image']); ?>" 
-                     class="card-img-top" loading="lazy"
-                     alt="<?php echo htmlspecialchars($news['title']); ?>" 
-                     style="height: 200px; object-fit: cover;">
-                <?php endif; ?>
-                <div class="card-body">
-                    <h5 class="card-title"><?php echo htmlspecialchars($news['title']); ?></h5>
-                    <p class="card-text text-muted small">
-                        <?php echo htmlspecialchars(mb_substr(strip_tags($news['content']), 0, 100)) . '...'; ?>
-                    </p>
-                    <a href="news_detail.php?id=<?php echo $news['id']; ?>" class="btn btn-sm btn-outline-primary">
-                        Đọc thêm <i class="fas fa-arrow-right"></i>
-                    </a>
-                </div>
-            </div>
-        </div>
-        <?php endforeach; ?>
-    </div>
-</div>
-<?php endif; ?>
-
-<!-- Promotions Section -->
-<?php if (!empty($activePromotions)): ?>
-<div class="promotions-section my-4">
-    <h3 class="section-title mb-3">
-        <i class="fas fa-tags text-danger"></i> Chương trình Ưu đãi
-    </h3>
-    <div class="row row-cols-1 row-cols-md-3 g-3">
-        <?php foreach ($activePromotions as $promo): ?>
-        <div class="col">
-            <div class="card promotion-card h-100 border-danger">
-                <div class="card-body">
-                    <div class="d-flex align-items-center mb-2">
-                        <span class="badge bg-danger me-2" style="font-size: 18px;">
-                            -<?php echo number_format($promo['discount_percent'], 0); ?>%
-                        </span>
-                        <h5 class="card-title mb-0"><?php echo htmlspecialchars($promo['title']); ?></h5>
-                    </div>
-                    <p class="card-text text-muted small"><?php echo htmlspecialchars($promo['description']); ?></p>
-                </div>
-            </div>
-        </div>
-        <?php endforeach; ?>
-    </div>
-</div>
-<?php endif; ?>
 
 <style>
 .section-title { font-weight: 700; color: #333; padding-bottom: 10px; border-bottom: 3px solid #007bff; display: inline-block; }
@@ -141,7 +71,7 @@ $activePromotions = $cache->remember('active_promotions', 300, function() use ($
 .news-card:hover { transform: translateY(-5px); box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1); }
 .discount-badge { position: absolute; top: 10px; left: 10px; background: #e74c3c; color: #fff; padding: 8px 12px; border-radius: 8px; font-size: 14px; font-weight: 700; z-index: 10; }
 .card-img-top { height: 250px; object-fit: contain; padding: 10px; background-color: #f8f9fa; }
-.products-container { display: flex !important; gap: 30px; height: 75vh !important; min-height: 500px; max-height: 800px; margin-bottom: 30px; }
+.products-container { display: flex !important; gap: 30px; height: auto !important; min-height: 500px; max-height: none; margin-bottom: 30px; }
 .filter-column { flex: 0 0 280px !important; min-width: 280px; height: 100% !important; }
 .products-column { flex: 1 !important; height: 100% !important; overflow-y: auto !important; padding: 15px; background: #fff; border-radius: 8px; }
 </style>
@@ -190,7 +120,7 @@ $activePromotions = $cache->remember('active_promotions', 300, function() use ($
                                 <i class="<?php echo $s <= $r ? 'fas' : 'far'; ?> fa-star"></i>
                             <?php endfor; ?>
                         </span>
-                        <span class="rating-text"><?php echo $r; ?> sao<?php echo $r < 5 ? ' trở lên' : ''; ?></span>
+                        <span class="rating-text"><?php echo $r; ?> sao</span>
                     </label>
                     <?php endfor; ?>
                 </div>
@@ -200,6 +130,256 @@ $activePromotions = $cache->remember('active_promotions', 300, function() use ($
                 <button class="btn-clear-filters"><i class="fas fa-redo"></i> Xóa bộ lọc</button>
             </div>
         </div>
+
+        <!-- News Section in Filter Column -->
+        <?php
+        require_once __DIR__ . '/../administrator/elements_LQA/mod/NewsManager.php';
+        $newsManagerSidebar = new NewsManager();
+        $sidebarNews = $newsManagerSidebar->getPublishedNews(5);
+        if (!empty($sidebarNews)):
+        ?>
+        <div class="sidebar-news-section" style="margin-top: 20px;">
+            <h5 class="sidebar-news-title">
+                <i class="fas fa-newspaper text-primary me-2"></i>Tin tức mới nhất
+            </h5>
+            <div class="sidebar-news-list">
+                <?php foreach ($sidebarNews as $news): ?>
+                <a href="news_detail.php?id=<?php echo $news['id']; ?>" class="sidebar-news-item">
+                    <?php if ($news['featured_image']): ?>
+                    <img src="/lequocanh/administrator/elements_LQA/madmin/displayImage.php?type=news&id=<?php echo $news['id']; ?>" 
+                         class="sidebar-news-thumb" alt="">
+                    <?php else: ?>
+                    <div class="sidebar-news-thumb-placeholder">
+                        <i class="fas fa-newspaper"></i>
+                    </div>
+                    <?php endif; ?>
+                    <div class="sidebar-news-info">
+                        <div class="sidebar-news-name"><?php echo htmlspecialchars($news['title']); ?></div>
+                        <div class="sidebar-news-date">
+                            <i class="far fa-clock me-1"></i><?php echo date('d/m/Y', strtotime($news['published_date'])); ?>
+                        </div>
+                    </div>
+                </a>
+                <?php endforeach; ?>
+            </div>
+            <a href="all_news.php" class="sidebar-news-more">Xem tất cả tin tức →</a>
+        </div>
+
+        <style>
+        .sidebar-news-section {
+            background: #fff;
+            border-radius: 8px;
+            padding: 15px;
+        }
+        
+        .sidebar-news-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #007bff;
+        }
+        
+        .sidebar-news-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .sidebar-news-item {
+            display: flex;
+            gap: 10px;
+            padding: 8px;
+            border-radius: 6px;
+            text-decoration: none;
+            color: inherit;
+            transition: background 0.2s;
+        }
+        
+        .sidebar-news-item:hover {
+            background: #f0f0f0;
+        }
+        
+        .sidebar-news-thumb {
+            width: 60px;
+            height: 45px;
+            border-radius: 4px;
+            object-fit: cover;
+            flex-shrink: 0;
+        }
+        
+        .sidebar-news-thumb-placeholder {
+            width: 60px;
+            height: 45px;
+            border-radius: 4px;
+            background: #e9ecef;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            color: #999;
+            font-size: 14px;
+        }
+        
+        .sidebar-news-info {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .sidebar-news-name {
+            font-size: 13px;
+            font-weight: 600;
+            color: #333;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            line-height: 1.4;
+            margin-bottom: 4px;
+        }
+        
+        .sidebar-news-name:hover {
+            color: #007bff;
+        }
+        
+        .sidebar-news-date {
+            font-size: 11px;
+            color: #888;
+        }
+        
+        .sidebar-news-more {
+            display: block;
+            text-align: center;
+            margin-top: 12px;
+            padding: 8px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            font-size: 13px;
+            color: #007bff;
+            text-decoration: none;
+        }
+        
+        .sidebar-news-more:hover {
+            background: #e9ecef;
+        }
+
+        /* Sidebar Promotions */
+        .sidebar-promo-section {
+            background: #fff;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+        
+        .sidebar-promo-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #dc3545;
+        }
+        
+        .sidebar-promo-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .sidebar-promo-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #fff5f5 0%, #ffe8e8 100%);
+            border-left: 4px solid #dc3545;
+        }
+        
+        .sidebar-promo-badge {
+            background: #dc3545;
+            color: #fff;
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-weight: 700;
+            font-size: 13px;
+            white-space: nowrap;
+        }
+        
+        .sidebar-promo-info {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .sidebar-promo-name {
+            font-size: 13px;
+            font-weight: 600;
+            color: #333;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            line-height: 1.4;
+            margin-bottom: 4px;
+        }
+        
+        .sidebar-promo-date {
+            font-size: 11px;
+            color: #888;
+        }
+        
+        .sidebar-promo-btn {
+            display: block;
+            text-align: center;
+            margin-top: 12px;
+            padding: 10px;
+            background: #dc3545;
+            color: #fff;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            text-decoration: none;
+        }
+        
+        .sidebar-promo-btn:hover {
+            background: #c82333;
+            color: #fff;
+        }
+        </style>
+        <?php endif; ?>
+        
+        <!-- Promotions Section in Sidebar -->
+        <?php
+        require_once __DIR__ . '/../administrator/elements_LQA/mod/PromotionManager.php';
+        $promoManagerSidebar = new PromotionManager();
+        $sidebarPromos = $cache->remember('sidebar_promotions', 300, function() use ($promoManagerSidebar) {
+            return $promoManagerSidebar->getActivePromotions();
+        });
+        if (!empty($sidebarPromos)):
+        ?>
+        <div class="sidebar-promo-section">
+            <h5 class="sidebar-promo-title">
+                <i class="fas fa-gift text-danger me-2"></i>Ưu đãi hot
+            </h5>
+            <div class="sidebar-promo-list">
+                <?php foreach (array_slice($sidebarPromos, 0, 3) as $promo): ?>
+                <div class="sidebar-promo-item">
+                    <div class="sidebar-promo-badge">-<?php echo $promo['discount_percent']; ?>%</div>
+                    <div class="sidebar-promo-info">
+                        <div class="sidebar-promo-name"><?php echo htmlspecialchars($promo['title']); ?></div>
+                        <div class="sidebar-promo-date">
+                            <i class="far fa-calendar me-1"></i>Đến: <?php echo date('d/m/Y', strtotime($promo['end_date'])); ?>
+                        </div>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+            </div>
+            <a href="index.php?sale=1" class="sidebar-promo-btn">
+                <i class="fas fa-shopping-cart me-2"></i>Xem sản phẩm giảm giá
+            </a>
+        </div>
+        <?php endif; ?>
     </div>
 
     <!-- Products Column -->

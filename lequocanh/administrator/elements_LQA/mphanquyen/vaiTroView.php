@@ -4,7 +4,7 @@ require_once './elements_LQA/mod/phanquyenCls.php';
 $phanQuyen = new PhanQuyen();
 $username = isset($_SESSION['USER']) ? $_SESSION['USER'] : (isset($_SESSION['ADMIN']) ? $_SESSION['ADMIN'] : '');
 
-if (!isset($_SESSION['ADMIN']) && !$phanQuyen->isNhanVien($username)) {
+if (!isset($_SESSION['ADMIN']) && !$phanQuyen->checkAccess('vaiTroView', $username)) {
     echo "<h3 class='text-danger'>Bạn không có quyền truy cập!</h3>";
     exit;
 }

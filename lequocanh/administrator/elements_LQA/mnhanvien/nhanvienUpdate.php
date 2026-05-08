@@ -112,29 +112,29 @@ $listUsers = $userObj->UserGetAll();
                 </div>
                 <div class="phan-he-list" style="max-height: 200px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; margin-top: 10px;">
                     <?php
+                    require_once __DIR__ . '/../mod/menuConfig.php';
 
                     $phanHeObj = new PhanHeQuanLy();
-                    $listPhanHe = $phanHeObj->getAllPhanHe();
-
                     $assignedPhanHe = $phanHeObj->getPhanHeByNhanVienId($idNhanVien);
-                    $assignedPhanHeIds = [];
-
+                    $assignedPhanHeMa = [];
                     foreach ($assignedPhanHe as $ph) {
-                        $assignedPhanHeIds[] = $ph->idPhanHe;
+                        $assignedPhanHeMa[] = $ph->maPhanHe;
                     }
 
-                    if (count($listPhanHe) > 0) {
-                        foreach ($listPhanHe as $phanHe) {
-                            $isChecked = in_array($phanHe->idPhanHe, $assignedPhanHeIds);
+                    $phanHeIndex = 0;
+                    if (!empty($menu_items)) {
+                        foreach ($menu_items as $reqKey => $item) {
+                            $phanHeIndex++;
+                            $isChecked = in_array($reqKey, $assignedPhanHeMa);
                     ?>
                             <div class="form-check">
                                 <input class="form-check-input phan-he-checkbox" type="checkbox"
-                                    name="phanHe[]" id="phanHe<?php echo $phanHe->idPhanHe; ?>"
-                                    value="<?php echo $phanHe->idPhanHe; ?>"
+                                    name="phanHe[]" id="phanHe<?php echo $phanHeIndex; ?>"
+                                    value="<?php echo htmlspecialchars($reqKey); ?>"
                                     <?php echo $isChecked ? 'checked' : ''; ?>>
-                                <label class="form-check-label" for="phanHe<?php echo $phanHe->idPhanHe; ?>">
-                                    <?php echo htmlspecialchars($phanHe->tenPhanHe); ?>
-                                    <small class="text-muted">(<?php echo htmlspecialchars($phanHe->maPhanHe); ?>)</small>
+                                <label class="form-check-label" for="phanHe<?php echo $phanHeIndex; ?>">
+                                    <?php echo htmlspecialchars($item['text']); ?>
+                                    <small class="text-muted">(<?php echo htmlspecialchars($reqKey); ?>)</small>
                                 </label>
                             </div>
                     <?php

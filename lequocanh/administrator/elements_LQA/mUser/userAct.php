@@ -87,7 +87,7 @@ if ($requestAction) {
                 }
             }
 
-            $kq = $userObj->UserAdd($username, $password, $hoten, $gioitinh, $ngaysinh, $diachi, $dienthoai, $email);
+            $kq = $userObj->UserAdd($username, $password, $hoten, $gioitinh, $ngaysinh ?: '1990-01-01', $diachi, $dienthoai, $email);
 
             if ($kq && $foundNhatKyHelper) {
                 $currentUser = isset($_SESSION['USER']) ? $_SESSION['USER'] : (isset($_SESSION['ADMIN']) ? $_SESSION['ADMIN'] : '');
@@ -295,7 +295,7 @@ if ($requestAction) {
             if ($user) {
                 Logger::debug("User found in database", ['username' => $username, 'user_id' => $user['iduser'] ?? 'unknown']);
 
-                if ($user['password'] === $password) {
+                if (password_verify($password, $user['password'])) {
                     Logger::debug("Password verification successful", ['username' => $username]);
 
                     if ($user['setlock'] == 1) {
@@ -331,6 +331,61 @@ if ($requestAction) {
             if ($kq) {
 
                 $isAdminUser = ($username == 'admin' || strpos($username, 'manager') !== false);
+
+                // Kiểm tra nếu là nhân viên
+                $isStaffUser = false;
+                $staffFirstModule = '';
+                if (!$isAdminUser) {
+                    $pqPaths = [
+                        __DIR__ . '/../mod/phanquyenCls.php',
+                        __DIR__ . '/../../elements_LQA/mod/phanquyenCls.php',
+                        './elements_LQA/mod/phanquyenCls.php'
+                    ];
+                    foreach ($pqPaths as $pqp) {
+                        if (file_exists($pqp)) {
+                            require_once $pqp;
+                            break;
+                        }
+                    }
+                    if (class_exists('PhanQuyen')) {
+                        $phanQuyen = new PhanQuyen();
+                        $isStaffUser = $phanQuyen->isNhanVien($username);
+                        if ($isStaffUser) {
+                            $phPaths = [
+                                __DIR__ . '/../mod/phanHeQuanLyCls.php',
+                                __DIR__ . '/../../elements_LQA/mod/phanHeQuanLyCls.php',
+                                './elements_LQA/mod/phanHeQuanLyCls.php'
+                            ];
+                            foreach ($phPaths as $php) {
+                                if (file_exists($php)) {
+                                    require_once $php;
+                                    break;
+                                }
+                            }
+                            if (class_exists('PhanHeQuanLy') && class_exists('user') && class_exists('NhanVien')) {
+                                $userData = (new user())->UserGetbyUsername($username);
+                                if ($userData) {
+                                    $nvObj = new NhanVien();
+                                    $allNv = $nvObj->nhanvienGetAll();
+                                    $idNhanVien = null;
+                                    foreach ($allNv as $nv) {
+                                        if ($nv->iduser == $userData->iduser) {
+                                            $idNhanVien = $nv->idNhanVien;
+                                            break;
+                                        }
+                                    }
+                                    if ($idNhanVien) {
+                                        $phanHeObj = new PhanHeQuanLy();
+                                        $assignedModules = $phanHeObj->getPhanHeByNhanVienId($idNhanVien);
+                                        if (!empty($assignedModules)) {
+                                            $staffFirstModule = $assignedModules[0]->maPhanHe;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
 
                 if ($isAdminUser) {
                     $_SESSION['ADMIN'] = $username;
@@ -394,6 +449,12 @@ if ($requestAction) {
                         $redirect_url = $_SESSION['redirect_after_login'];
                         unset($_SESSION['redirect_after_login']);
                         Logger::info("User redirect to saved URL", ['username' => $username, 'url' => $redirect_url]);
+                        header('Location: ' . $redirect_url);
+                    } else if ($isStaffUser) {
+                        // Nhân viên: chuyển đến admin panel module đầu tiên được phân quyền
+                        $firstReq = !empty($staffFirstModule) ? $staffFirstModule : 'userprofile';
+                        $redirect_url = 'http://' . $_SERVER['HTTP_HOST'] . '/lequocanh/administrator/index.php?req=' . urlencode($firstReq);
+                        Logger::info("Staff redirect to admin panel", ['username' => $username, 'module' => $firstReq]);
                         header('Location: ' . $redirect_url);
                     } else {
 

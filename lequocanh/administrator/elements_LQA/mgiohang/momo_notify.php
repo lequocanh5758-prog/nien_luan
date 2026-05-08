@@ -83,7 +83,7 @@ if ($signature == $partnerSignature) {
                 $insertSql = "INSERT INTO don_hang (ma_don_hang_text, ma_nguoi_dung, dia_chi_giao_hang,
                              tong_tien, trang_thai, phuong_thuc_thanh_toan, trang_thai_thanh_toan,
                              ngay_tao, ngay_cap_nhat)
-                             VALUES (?, ?, ?, ?, 'pending', 'momo', 'paid', NOW(), NOW())";
+                             VALUES (?, ?, ?, ?, 'approved', 'momo', 'paid', NOW(), NOW())";
 
                 $stmt = $db->prepare($insertSql);
                 $result = $stmt->execute([$orderId, $userId, $shippingAddress, $amount]);

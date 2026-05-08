@@ -12,7 +12,7 @@ $districtId = $_SESSION['district_id'] ?? 1;
 $stmt = $db->query("
     SELECT * FROM v_shipping_methods_with_fees 
     WHERE is_active = 1 
-    ORDER BY sort_order DESC
+    ORDER BY sort_order ASC, id ASC
 ");
 
 $shippingMethods = $stmt->fetchAll(PDO::FETCH_ASSOC);

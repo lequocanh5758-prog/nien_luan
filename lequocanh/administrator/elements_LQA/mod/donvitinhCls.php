@@ -14,9 +14,9 @@ class DonViTinh
 {
     private $db;
 
-    public function __construct()
+    public function __construct(?PDO $db = null)
     {
-        $this->db = Database::getInstance()->getConnection();
+        $this->db = $db ?: Database::getInstance()->getConnection();
     }
 
     public function donvitinhGetAll()

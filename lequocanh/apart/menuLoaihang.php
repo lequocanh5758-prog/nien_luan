@@ -5,8 +5,7 @@ $current_id = isset($_GET['reqView']) ? $_GET['reqView'] : null;
 <nav class="navbar navbar-expand-lg">
     <div class="container-fluid">
         <a class="navbar-brand d-flex align-items-center" href="./index.php">
-            <img src="./administrator/elements_LQA/img_LQA/Home.png" alt="Home" width="24" height="24"
-                class="d-inline-block align-text-top me-2">
+            <i class="fas fa-home" style="font-size: 22px; margin-right: 6px;"></i>
             Home
         </a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">

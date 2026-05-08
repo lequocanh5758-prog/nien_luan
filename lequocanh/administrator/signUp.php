@@ -139,8 +139,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $password,
                 $formData['fullname'],
                 $genderValue,
-                $formData['birthdate'] ?: null,
-                $formData['address'] ?: null,
+                $formData['birthdate'] ?: '1990-01-01',
+                $formData['address'] ?: '',
                 $formData['phone'],
                 $formData['email'] ?: null,
                 $formData['province'] ?: null,
@@ -554,7 +554,7 @@ $(document).ready(function() {
                 if (response.success && response.wards) {
                     let options = '<option value="">-- Chọn Phường/Xã --</option>';
                     response.wards.forEach(function(ward) {
-                        options += `<option value="${ward.id}">${ward.name}</option>`;
+                        options += `<option value="${ward.code}">${ward.name}</option>`;
                     });
                     $('#ward').html(options).prop('disabled', false);
                 }

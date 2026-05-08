@@ -49,17 +49,6 @@ require_once './elements_LQA/mnhatkyhoatdong/menuAccessLogger.php';
             cursor: pointer;
         }
 
-        img[src*="Delete.png"],
-        img[src*="Update.png"],
-        img[src*="Lock.png"],
-        img[src*="Unlock.png"],
-        img[src*="Success.png"],
-        img[src*="Fail.png"],
-        img[src*="Wait.png"] {
-            width: 24px !important;
-            height: 24px !important;
-        }
-
         .btn-sm {
             padding: 0;
             background: transparent;
@@ -104,8 +93,8 @@ require_once './elements_LQA/mnhatkyhoatdong/menuAccessLogger.php';
     <div id="right_div"></div>
     <div id="bottom_div"></div>
     <div id="signoutbutton">
-        <a href="./elements_LQA/mUser/userAct.php?reqact=userlogout">
-            <img src="./elements_LQA/img_LQA/Logout.png" class="iconimg">
+        <a href="./elements_LQA/mUser/userAct.php?reqact=userlogout" title="Đăng xuất">
+            <i class="fas fa-sign-out-alt" style="font-size: 24px; color: #dc3545;"></i>
         </a>
     </div>
 

@@ -1,5 +1,7 @@
 <?php
-class Database
+require_once __DIR__ . '/DatabaseInterface.php';
+
+class Database implements DatabaseInterface
 {
   private static $instance = null;
   private $conn = null;
@@ -123,7 +125,7 @@ class Database
     return self::$instance;
   }
 
-  public function getConnection()
+  public function getConnection(): PDO
   {
     return $this->conn;
   }
@@ -132,7 +134,7 @@ class Database
   {
     try {
 
-      $this->conn->beginTransaction();
+      $this->beginTransaction();
 
       $sql = "DELETE FROM users WHERE id = :idToDelete";
       $stmt = $this->conn->prepare($sql);
@@ -150,12 +152,12 @@ class Database
       $stmt = $this->conn->prepare($sql);
       $stmt->execute();
 
-      $this->conn->commit();
+      $this->commit();
 
       return true;
     } catch (PDOException $e) {
 
-      $this->conn->rollBack();
+      $this->rollBack();
       echo "Lỗi: " . $e->getMessage();
       return false;
     }
@@ -165,7 +167,7 @@ class Database
   {
     try {
 
-      $this->conn->beginTransaction();
+      $this->beginTransaction();
 
       $sql = "INSERT INTO hang_hoa (ten_hang_hoa, gia_tham_khao, mo_ta, hinh_anh)
               VALUES (:ten_hang_hoa, :gia_tham_khao, :mo_ta, :hinh_anh)";
@@ -181,12 +183,12 @@ class Database
 
       $hangHoaId = $this->conn->lastInsertId();
 
-      $this->conn->commit();
+      $this->commit();
 
       return $hangHoaId;
     } catch (PDOException $e) {
 
-      $this->conn->rollBack();
+      $this->rollBack();
       return false;
     }
   }
@@ -263,5 +265,20 @@ class Database
     if (isset($_ENV['DB_HOST'])) {
       error_log("✓ Xác nhận: DB_HOST = " . $_ENV['DB_HOST']);
     }
+  }
+
+  public function beginTransaction(): bool
+  {
+    return $this->conn->beginTransaction();
+  }
+
+  public function commit(): bool
+  {
+    return $this->conn->commit();
+  }
+
+  public function rollBack(): bool
+  {
+    return $this->conn->rollBack();
   }
 }

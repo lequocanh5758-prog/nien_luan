@@ -4,9 +4,9 @@ require_once __DIR__ . '/../administrator/elements_LQA/mod/FeaturedProductsCls.p
 
 $featuredMgr = new FeaturedProducts();
 
-$featuredProducts = $featuredMgr->getFeaturedProducts(8);
-$newProducts = $featuredMgr->getNewProducts(8);
-$saleProducts = $featuredMgr->getSaleProducts(8);
+$featuredProducts = $featuredMgr->getFeaturedProducts(16);
+$newProducts = $featuredMgr->getNewProducts(16);
+$saleProducts = $featuredMgr->getSaleProducts(16);
 
 function formatPrice($price) {
     return number_format($price, 0, ',', '.') . ' đ';
@@ -64,22 +64,22 @@ function getProductImage($product) {
 
 .products-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-    gap: 20px;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 25px;
     margin-top: 20px;
 }
 
 .product-card {
     background: #fff;
     border: 1px solid #e0e0e0;
-    border-radius: 8px;
+    border-radius: 12px;
     overflow: hidden;
     transition: all 0.3s ease;
     position: relative;
 }
 
 .product-card:hover {
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
     transform: translateY(-5px);
 }
 
@@ -87,9 +87,9 @@ function getProductImage($product) {
     position: absolute;
     top: 10px;
     right: 10px;
-    padding: 5px 10px;
-    border-radius: 4px;
-    font-size: 12px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 13px;
     font-weight: bold;
     color: #fff;
     z-index: 1;
@@ -109,49 +109,49 @@ function getProductImage($product) {
 
 .product-image {
     width: 100%;
-    height: 250px;
+    height: 300px;
     object-fit: contain;
     background: #f5f5f5;
-    padding: 10px;
-}
-
-.product-info {
     padding: 15px;
 }
 
+.product-info {
+    padding: 18px;
+}
+
 .product-name {
-    font-size: 16px;
+    font-size: 17px;
     font-weight: 600;
     color: #333;
-    margin-bottom: 8px;
+    margin-bottom: 10px;
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
-    min-height: 48px;
+    min-height: 50px;
 }
 
 .product-brand {
-    font-size: 13px;
+    font-size: 14px;
     color: #666;
-    margin-bottom: 10px;
+    margin-bottom: 12px;
 }
 
 .product-price {
     display: flex;
     align-items: center;
     gap: 10px;
-    margin-bottom: 10px;
+    margin-bottom: 12px;
 }
 
 .current-price {
-    font-size: 20px;
+    font-size: 22px;
     font-weight: bold;
     color: #e74c3c;
 }
 
 .original-price {
-    font-size: 14px;
+    font-size: 15px;
     color: #999;
     text-decoration: line-through;
 }
@@ -159,9 +159,9 @@ function getProductImage($product) {
 .discount-badge {
     background: #e74c3c;
     color: #fff;
-    padding: 2px 6px;
-    border-radius: 3px;
-    font-size: 12px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 13px;
     font-weight: bold;
 }
 
@@ -172,9 +172,9 @@ function getProductImage($product) {
 
 .btn-view, .btn-cart {
     flex: 1;
-    padding: 8px;
+    padding: 10px;
     border: none;
-    border-radius: 4px;
+    border-radius: 6px;
     cursor: pointer;
     font-size: 14px;
     transition: all 0.3s;
@@ -206,14 +206,66 @@ function getProductImage($product) {
     margin-top: 5px;
 }
 
+.wishlist-btn {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: #fff;
+    border: 1px solid #ddd;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 2;
+    transition: all 0.3s;
+}
+
+.wishlist-btn:hover {
+    background: #ff4757;
+    border-color: #ff4757;
+    color: #fff;
+}
+
+.wishlist-btn.active {
+    background: #ff4757;
+    border-color: #ff4757;
+    color: #fff;
+}
+
+.wishlist-btn i {
+    font-size: 16px;
+    color: inherit;
+}
+
+.wishlist-btn:hover i,
+.wishlist-btn.active i {
+    color: #fff;
+}
+
 @media (max-width: 768px) {
     .products-grid {
         grid-template-columns: repeat(2, 1fr);
-        gap: 10px;
+        gap: 12px;
     }
     
     .product-image {
-        height: 180px;
+        height: 200px;
+    }
+    
+    .product-info {
+        padding: 12px;
+    }
+    
+    .product-name {
+        font-size: 14px;
+        min-height: 40px;
+    }
+    
+    .current-price {
+        font-size: 18px;
     }
 }
 </style>
@@ -229,6 +281,9 @@ function getProductImage($product) {
     <div class="products-grid">
         <?php foreach ($featuredProducts as $product): ?>
         <div class="product-card">
+            <button class="wishlist-btn" onclick="toggleWishlist(<?= $product->idhanghoa ?>, this)" title="Thêm vào yêu thích">
+                <i class="far fa-heart"></i>
+            </button>
             <span class="product-badge badge-featured">Nổi bật</span>
             <a href="?idhanghoa=<?= $product->idhanghoa ?>">
                 <img src="<?= getProductImage($product) ?>" 
@@ -276,6 +331,9 @@ function getProductImage($product) {
     <div class="products-grid">
         <?php foreach ($newProducts as $product): ?>
         <div class="product-card">
+            <button class="wishlist-btn" onclick="toggleWishlist(<?= $product->idhanghoa ?>, this)" title="Thêm vào yêu thích">
+                <i class="far fa-heart"></i>
+            </button>
             <span class="product-badge badge-new">Mới</span>
             <a href="?idhanghoa=<?= $product->idhanghoa ?>">
                 <img src="<?= getProductImage($product) ?>" 
@@ -323,6 +381,9 @@ function getProductImage($product) {
     <div class="products-grid">
         <?php foreach ($saleProducts as $product): ?>
         <div class="product-card">
+            <button class="wishlist-btn" onclick="toggleWishlist(<?= $product->idhanghoa ?>, this)" title="Thêm vào yêu thích">
+                <i class="far fa-heart"></i>
+            </button>
             <span class="product-badge badge-sale">-<?= $product->discount_percent ?>%</span>
             <a href="?idhanghoa=<?= $product->idhanghoa ?>">
                 <img src="<?= getProductImage($product) ?>" 
@@ -365,7 +426,77 @@ function getProductImage($product) {
 
 <script>
 function addToCart(productId) {
-
     window.location.href = '?addcart=' + productId;
 }
+
+async function toggleWishlist(productId, btn) {
+    try {
+        const formData = new FormData();
+        formData.append('product_id', productId);
+        
+        const response = await fetch('/lequocanh/api/wishlist.php?action=toggle', {
+            method: 'POST',
+            body: formData,
+            credentials: 'include'
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            if (result.action === 'added') {
+                btn.classList.add('active');
+                btn.querySelector('i').classList.remove('far');
+                btn.querySelector('i').classList.add('fas');
+                alert('Đã thêm vào yêu thích!');
+            } else {
+                btn.classList.remove('active');
+                btn.querySelector('i').classList.remove('fas');
+                btn.querySelector('i').classList.add('far');
+                alert('Đã xóa khỏi yêu thích!');
+            }
+        } else {
+            if (result.error === 'login_required') {
+                alert('Vui lòng đăng nhập để sử dụng chức năng yêu thích!');
+                window.location.href = '/lequocanh/index.php?req=login';
+            } else {
+                alert(result.error || 'Có lỗi xảy ra');
+            }
+        }
+    } catch (error) {
+        console.error('Wishlist error:', error);
+        alert('Có lỗi xảy ra');
+    }
+}
+
+// Check wishlist status on page load
+async function checkWishlistStatus() {
+    try {
+        const response = await fetch('/lequocanh/api/wishlist.php?action=list', {
+            credentials: 'include'
+        });
+        const result = await response.json();
+        
+        if (result.success && result.data.wishlist) {
+            const wishlistIds = result.data.wishlist.map(item => item.product_id);
+            
+            document.querySelectorAll('.wishlist-btn').forEach(btn => {
+                const onclick = btn.getAttribute('onclick');
+                const match = onclick.match(/toggleWishlist\((\d+)/);
+                if (match) {
+                    const productId = parseInt(match[1]);
+                    if (wishlistIds.includes(productId)) {
+                        btn.classList.add('active');
+                        btn.querySelector('i').classList.remove('far');
+                        btn.querySelector('i').classList.add('fas');
+                    }
+                }
+            });
+        }
+    } catch (error) {
+        console.error('Check wishlist error:', error);
+    }
+}
+
+// Run on page load
+checkWishlistStatus();
 </script>

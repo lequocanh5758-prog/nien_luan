@@ -63,19 +63,17 @@ $l = count($list_lh);
                             <?php if (isset($_SESSION['ADMIN'])) { ?>
                                 <a href="./elements_LQA/mdonvitinh/donvitinhAct.php?reqact=deletedonvitinh&iddonvitinh=<?php echo htmlspecialchars($u->idDonViTinh); ?>"
                                     onclick="return confirm('Bạn có chắc muốn xóa không?');">
-                                    <img src="./elements_LQA/img_LQA/Delete.png" class="iconimg">
+                                    <i class="fas fa-trash-alt" style="font-size:18px; color:#dc3545;"></i>
                                 </a>
                             <?php } else { ?>
-                                <img src="./elements_LQA/img_LQA/Delete.png" class="iconimg">
+                                <i class="fas fa-trash-alt" style="font-size:18px; color:#ccc;"></i>
                             <?php } ?>
-                            <img src="./elements_LQA/img_LQA/Update.png"
-                                class="iconimg generic-update-btn"
+                            <i class="fas fa-edit generic-update-btn" style="font-size:18px; color:#007bff; cursor:pointer;"
                                 data-module="mdonvitinh"
                                 data-update-url="./elements_LQA/mdonvitinh/donvitinhUpdate.php"
                                 data-id-param="idDonViTinh"
                                 data-title="Cập nhật Đơn vị tính"
-                                data-id="<?php echo htmlspecialchars($u->idDonViTinh); ?>"
-                                alt="Update">
+                                data-id="<?php echo htmlspecialchars($u->idDonViTinh); ?>"></i>
                         </td>
                     </tr>
             <?php

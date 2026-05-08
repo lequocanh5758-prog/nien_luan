@@ -154,9 +154,9 @@ class HanghoaFilterExtension
 {
     private $db;
     
-    public function __construct()
+    public function __construct(?PDO $db = null)
     {
-        $this->db = Database::getInstance()->getConnection();
+        $this->db = $db ?: Database::getInstance()->getConnection();
     }
     
     public function filterProducts($filters = [])
@@ -236,11 +236,13 @@ class HanghoaFilterExtension
             $sql .= " GROUP BY h.idhanghoa";
             
             if (isset($filters['min_rating']) && $filters['min_rating'] > 0) {
-                $ratingThreshold = $filters['min_rating'] - 0.5;
-                if ($ratingThreshold < 0.5) $ratingThreshold = 0.5;
+                $exactRating = (int)$filters['min_rating'];
+                $ratingMin = $exactRating - 0.5;
+                $ratingMax = $exactRating + 0.5;
                 
-                $sql .= " HAVING avg_rating >= ? AND review_count > 0";
-                $params[] = $ratingThreshold;
+                $sql .= " HAVING avg_rating >= ? AND avg_rating < ? AND review_count > 0";
+                $params[] = $ratingMin;
+                $params[] = $ratingMax;
             }
             
             $sql .= " ORDER BY image_priority ASC, h.created_at DESC";

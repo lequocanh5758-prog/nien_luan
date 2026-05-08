@@ -1,8 +1,4 @@
-docs: consolidate 28 orphaned .md files into docs/
+chore: remove 18 .backup files from repo
 
-Organize scattered documentation into structured docs/ folder:
-- docs/ (root-level guides)
-- docs/admin/ (admin guides: TOAST, bcrypt, chart fix)
-- docs/features/ (price logic, promotions, marketing, dongia)
-- docs/database/ (shipping, import, PHP fix guides)
-- docs/components/ (featured products docs)
+These backup files should be in git history, not in the working tree.
+Removed files dating from 2025-05-24 to 2026-01-04.

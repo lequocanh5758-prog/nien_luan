@@ -8,9 +8,9 @@ class PasswordResetManager
     private $db;
     private $tokenExpiry = 3600;
     
-    public function __construct()
+    public function __construct(?PDO $db = null)
     {
-        $this->db = Database::getInstance()->getConnection();
+        $this->db = $db ?: Database::getInstance()->getConnection();
         $this->ensureTableExists();
     }
     
@@ -145,7 +145,7 @@ class PasswordResetManager
             'MAIL_PASSWORD' => '',
             'MAIL_FROM_ADDRESS' => '',
             'MAIL_FROM_NAME' => 'LQA Shop',
-            'BASE_URL' => 'http://localhost:8081'
+            'BASE_URL' => 'http://localhost'
         ];
         
         if (file_exists($envPath)) {
@@ -178,7 +178,7 @@ class PasswordResetManager
             return rtrim($config['BASE_URL'], '/');
         }
         
-        return 'http://localhost:8081';
+        return 'http://localhost';
     }
     
     private function getEmailTemplate($username, $resetUrl)

@@ -65,3 +65,52 @@ if (!$getLhUpdate) {
                 <img width="150" src="data:image/png;base64,<?php echo $getLhUpdate->hinhanh ?>" alt="Current image">
             </div>
             <label>Chọn hình ảnh mới (nếu muốn thay đổi):</label>
+            <input type="file" name="fileimage" id="fileimage" accept="image/*" class="form-control">
+        </div>
+
+        <div class="form-group" style="text-align: center; margin-top: 20px;">
+            <button type="submit" class="btn btn-primary" id="btn-submit-lh">
+                <i class="fas fa-save"></i> Lưu cập nhật
+            </button>
+        </div>
+    </form>
+</div>
+
+<style>
+    .update-form .form-group {
+        margin-bottom: 15px;
+    }
+    .update-form .form-group label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+    }
+    .update-form .form-group input[type="text"] {
+        width: 100%;
+        padding: 8px 12px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        box-sizing: border-box;
+    }
+    .update-form .form-group input[type="file"] {
+        padding: 6px 0;
+    }
+    .update-form .current-image img {
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        padding: 4px;
+        background: #fff;
+    }
+    .update-form .btn-primary {
+        background-color: #007bff;
+        color: #fff;
+        border: none;
+        padding: 10px 30px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 15px;
+    }
+    .update-form .btn-primary:hover {
+        background-color: #0056b3;
+    }
+</style>

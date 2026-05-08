@@ -5,9 +5,9 @@ class MTonKho
 {
     private $db;
 
-    public function __construct()
+    public function __construct(?PDO $db = null)
     {
-        $this->db = Database::getInstance()->getConnection();
+        $this->db = $db ?: Database::getInstance()->getConnection();
     }
 
     public function getTonKhoByIdHangHoa($idhanghoa)
@@ -36,20 +36,24 @@ class MTonKho
     {
         try {
 
-            try {
-                $this->db->exec("CREATE TABLE IF NOT EXISTS system_logs (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    message TEXT,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )");
-            } catch (PDOException $e) {
-                error_log("Error creating system_logs table: " . $e->getMessage());
+            // Only create system_logs table and log when NOT in external transaction
+            // MySQL DDL statements (CREATE TABLE) cause implicit commit, which breaks
+            // the outer transaction in approvePhieuNhap
+            if (!$useExternalTransaction) {
+                try {
+                    $this->db->exec("CREATE TABLE IF NOT EXISTS system_logs (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        message TEXT,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )");
+                } catch (PDOException $e) {
+                    error_log("Error creating system_logs table: " . $e->getMessage());
+                }
+
+                $logMessage = "Updating tonkho for idhanghoa: " . $idhanghoa . ", soLuongThayDoi: " . $soLuongThayDoi . ", isIncrement: " . ($isIncrement ? "true" : "false");
+                $this->logToDatabase($logMessage);
+                error_log($logMessage);
             }
-
-            $logMessage = "Updating tonkho for idhanghoa: " . $idhanghoa . ", soLuongThayDoi: " . $soLuongThayDoi . ", isIncrement: " . ($isIncrement ? "true" : "false");
-            $this->logToDatabase($logMessage);
-
-            error_log($logMessage);
 
             $tonkho = $this->getTonKhoByIdHangHoa($idhanghoa);
 

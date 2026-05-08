@@ -1,4 +1,5 @@
 <?php
+ob_start();
 
 require_once __DIR__ . '/../mod/sessionManager.php';
 require_once __DIR__ . '/../config/logger_config.php';
@@ -96,6 +97,7 @@ if (isset($_GET['reqact'])) {
                             isset($_POST['ajax']) || isset($_GET['ajax']) ||
                             (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')
                         ) {
+                            ob_clean();
                             header('Content-Type: application/json');
                             echo json_encode([
                                 'success' => true,
@@ -154,6 +156,7 @@ if (isset($_GET['reqact'])) {
                             isset($_POST['ajax']) || isset($_GET['ajax']) ||
                             (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')
                         ) {
+                            ob_clean();
                             header('Content-Type: application/json');
                             echo json_encode([
                                 'success' => false,
@@ -219,6 +222,7 @@ if (isset($_GET['reqact'])) {
                         isset($_POST['ajax']) || isset($_GET['ajax']) ||
                         (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')
                     ) {
+                        ob_clean();
                         header('Content-Type: application/json');
                         echo json_encode([
                             'success' => false,
@@ -250,6 +254,7 @@ if (isset($_GET['reqact'])) {
                     isset($_POST['ajax']) || isset($_GET['ajax']) ||
                     (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')
                 ) {
+                    ob_clean();
                     header('Content-Type: application/json');
                     echo json_encode([
                         'success' => false,

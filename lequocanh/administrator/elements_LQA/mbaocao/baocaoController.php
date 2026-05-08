@@ -13,7 +13,7 @@ $view = isset($_GET['view']) ? $_GET['view'] : 'default';
 
 switch ($view) {
     case 'doanhthu':
-        require_once './elements_LQA/mbaocao/doanhThuView.php';
+        require_once './elements_LQA/mbaocao/loiNhuanView.php';
         break;
 
     case 'sanphambanchay':

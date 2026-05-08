@@ -14,9 +14,9 @@ class MPhieuNhap
 {
     private $db;
 
-    public function __construct()
+    public function __construct(?PDO $db = null)
     {
-        $this->db = Database::getInstance()->getConnection();
+        $this->db = $db ?: Database::getInstance()->getConnection();
         $this->createTableIfNotExists();
     }
 
@@ -210,8 +210,12 @@ class MPhieuNhap
                     }
                 }
 
-                $this->db->commit();
-                error_log("Transaction committed successfully");
+                if ($this->db->inTransaction()) {
+                    $this->db->commit();
+                    error_log("Transaction committed successfully");
+                } else {
+                    error_log("WARNING: No active transaction to commit - possible implicit commit by DDL");
+                }
                 return true;
             } else {
                 if ($this->db->inTransaction()) {
@@ -370,8 +374,12 @@ class MPhieuNhap
                     }
                 }
 
-                $this->db->commit();
-                error_log("Transaction committed successfully");
+                if ($this->db->inTransaction()) {
+                    $this->db->commit();
+                    error_log("Transaction committed successfully");
+                } else {
+                    error_log("WARNING (forceUpdateTonKho): No active transaction to commit");
+                }
                 return true;
             } else {
                 error_log("Phieu nhap is not approved, cannot update tonkho");

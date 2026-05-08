@@ -6,9 +6,9 @@ class ProductReview
 {
     private $db;
 
-    public function __construct()
+    public function __construct(?PDO $db = null)
     {
-        $this->db = Database::getInstance()->getConnection();
+        $this->db = $db ?: Database::getInstance()->getConnection();
     }
 
     public function addReview($idhanghoa, $iduser, $idhoadon, $rating, $title, $text)
@@ -25,17 +25,15 @@ class ProductReview
 
             $isVerified = $idhoadon ? $this->verifyPurchase($iduser, $idhanghoa, $idhoadon) : false;
 
-            $sql = "INSERT INTO product_reviews 
-                    (idhanghoa, iduser, idhoadon, rating, review_title, review_text, is_verified_purchase) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?)";
-            
+            $sql = "INSERT INTO product_reviews
+                    (product_id, user_id, rating, comment, is_verified_purchase, status, is_approved)
+                    VALUES (?, ?, ?, ?, ?, 'approved', 1)";
+
             $stmt = $this->db->prepare($sql);
             $result = $stmt->execute([
                 $idhanghoa,
                 $iduser,
-                $idhoadon,
                 $rating,
-                $title,
                 $text,
                 $isVerified ? 1 : 0
             ]);
@@ -60,11 +58,10 @@ class ProductReview
     {
         try {
 
-            $sql = "SELECT r.*, u.hoten, u.username 
+            $sql = "SELECT r.*, u.hoten, u.username
                     FROM product_reviews r
-                    INNER JOIN user u ON r.iduser = u.iduser
-                    WHERE r.idhanghoa = ? AND r.is_approved = 1
-                    AND (r.status = 'visible' OR r.status IS NULL)";
+                    INNER JOIN user u ON r.user_id = u.iduser
+                    WHERE r.product_id = ? AND r.is_approved = 1";
             
             $params = [$idhanghoa];
 
@@ -100,9 +97,8 @@ class ProductReview
                     SUM(CASE WHEN rating = 3 THEN 1 ELSE 0 END) as three_star,
                     SUM(CASE WHEN rating = 2 THEN 1 ELSE 0 END) as two_star,
                     SUM(CASE WHEN rating = 1 THEN 1 ELSE 0 END) as one_star
-                    FROM product_reviews 
-                    WHERE idhanghoa = ? AND is_approved = 1
-                    AND (status = 'visible' OR status IS NULL)";
+                    FROM product_reviews
+                    WHERE product_id = ? AND is_approved = 1";
             
             $stmt = $this->db->prepare($sql);
             $stmt->execute([$idhanghoa]);
@@ -156,8 +152,8 @@ class ProductReview
     public function hasUserReviewed($iduser, $idhanghoa)
     {
         try {
-            $sql = "SELECT COUNT(*) FROM product_reviews 
-                    WHERE iduser = ? AND idhanghoa = ?";
+            $sql = "SELECT COUNT(*) FROM product_reviews
+                    WHERE user_id = ? AND product_id = ?";
             
             $stmt = $this->db->prepare($sql);
             $stmt->execute([$iduser, $idhanghoa]);
@@ -173,16 +169,16 @@ class ProductReview
     private function getUserPurchase($iduser, $idhanghoa)
     {
         try {
-            $sql = "SELECT h.idhoadon, h.trangthai 
-                    FROM hoadon h
-                    INNER JOIN chitiethoadon ct ON h.idhoadon = ct.idhoadon
-                    WHERE h.iduser = ? AND ct.idhanghoa = ?
-                    ORDER BY h.ngaylap DESC
+            $sql = "SELECT dh.id as idhoadon, dh.trang_thai as trangthai
+                    FROM don_hang dh
+                    INNER JOIN chi_tiet_don_hang ct ON dh.id = ct.ma_don_hang
+                    WHERE dh.ma_nguoi_dung = ? AND ct.ma_san_pham = ?
+                    ORDER BY dh.ngay_tao DESC
                     LIMIT 1";
-            
+
             $stmt = $this->db->prepare($sql);
             $stmt->execute([$iduser, $idhanghoa]);
-            
+
             return $stmt->fetch(PDO::FETCH_OBJ);
 
         } catch (PDOException $e) {
@@ -194,10 +190,10 @@ class ProductReview
     private function verifyPurchase($iduser, $idhanghoa, $idhoadon)
     {
         try {
-            $sql = "SELECT COUNT(*) FROM hoadon h
-                    INNER JOIN chitiethoadon ct ON h.idhoadon = ct.idhoadon
-                    WHERE h.idhoadon = ? AND h.iduser = ? AND ct.idhanghoa = ?";
-            
+            $sql = "SELECT COUNT(*) FROM don_hang dh
+                    INNER JOIN chi_tiet_don_hang ct ON dh.id = ct.ma_don_hang
+                    WHERE dh.id = ? AND dh.ma_nguoi_dung = ? AND ct.ma_san_pham = ?";
+
             $stmt = $this->db->prepare($sql);
             $stmt->execute([$idhoadon, $iduser, $idhanghoa]);
             
@@ -243,10 +239,10 @@ class ProductReview
     public function getUserReviews($iduser)
     {
         try {
-            $sql = "SELECT r.*, h.tenhanghoa 
+            $sql = "SELECT r.*, h.tenhanghoa
                     FROM product_reviews r
-                    INNER JOIN hanghoa h ON r.idhanghoa = h.idhanghoa
-                    WHERE r.iduser = ?
+                    INNER JOIN hanghoa h ON r.product_id = h.idhanghoa
+                    WHERE r.user_id = ?
                     ORDER BY r.created_at DESC";
             
             $stmt = $this->db->prepare($sql);
@@ -286,9 +282,8 @@ class ProductReview
     {
         try {
 
-            $sql = "SELECT COUNT(*) FROM product_reviews 
-                    WHERE idhanghoa = ? AND is_approved = 1
-                    AND (status = 'visible' OR status IS NULL)";
+            $sql = "SELECT COUNT(*) FROM product_reviews
+                    WHERE product_id = ? AND is_approved = 1";
             
             $stmt = $this->db->prepare($sql);
             $stmt->execute([$idhanghoa]);

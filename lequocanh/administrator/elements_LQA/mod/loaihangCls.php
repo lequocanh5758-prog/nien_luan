@@ -5,10 +5,10 @@ class loaihang
 {
     private $db;
 
-    public function __construct()
+    public function __construct(?PDO $db = null)
     {
         try {
-            $this->db = Database::getInstance()->getConnection();
+            $this->db = $db ?: Database::getInstance()->getConnection();
             if (!$this->db) {
                 throw new Exception("Không thể lấy kết nối cơ sở dữ liệu");
             }

@@ -1,14 +1,14 @@
 <?php
 
-require_once 'database.php';
+require_once __DIR__ . '/database.php';
 
 class PromotionManager
 {
     private $db;
 
-    public function __construct()
+    public function __construct(?PDO $db = null)
     {
-        $this->db = Database::getInstance()->getConnection();
+        $this->db = $db ?: Database::getInstance()->getConnection();
     }
 
     public function getActivePromotions()
@@ -96,12 +96,12 @@ class PromotionManager
     public function getDiscountedProducts()
     {
         try {
-            $sql = "SELECT h.*, ha.ten AS hinhanh_url
+            $sql = "SELECT h.*, ha.duong_dan AS hinhanh_url
                     FROM hanghoa h
                     LEFT JOIN hinhanh ha ON h.hinhanh = ha.id
                     WHERE h.giakhuyenmai > 0 
                     AND h.giakhuyenmai < h.giathamkhao
-                    AND h.trangthai = 1
+                    AND h.trang_thai = 1
                     ORDER BY (CASE WHEN h.hinhanh IS NOT NULL AND h.hinhanh != 0 AND h.hinhanh != '' THEN 0 ELSE 1 END) ASC,
                              (h.giathamkhao - h.giakhuyenmai) / h.giathamkhao DESC
                     LIMIT 10";

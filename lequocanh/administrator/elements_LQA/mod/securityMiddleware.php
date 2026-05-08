@@ -23,10 +23,10 @@ class SecurityMiddleware
         'default' => 30
     ];
 
-    public function __construct()
+    public function __construct(?PDO $db = null)
     {
         try {
-            $this->db = Database::getInstance()->getConnection();
+            $this->db = $db ?: Database::getInstance()->getConnection();
             $this->logger = SecurityLogger::getInstance();
         } catch (Exception $e) {
 

@@ -67,10 +67,32 @@
     <hr>
 
     <?php
-    require './elements_LQA/mod/userCls.php';
+    require_once __DIR__ . '/../mod/userCls.php';
     $userObj = new user();
     $list_user = $userObj->UserGetAll();
     $l = count($list_user);
+
+    // Đếm số địa chỉ cho mỗi user
+    try {
+        require_once __DIR__ . '/../mod/database.php';
+        $db = Database::getInstance()->getConnection();
+        $checkTable = $db->query("SHOW TABLES LIKE 'user_addresses'")->rowCount();
+        if ($checkTable > 0) {
+            foreach ($list_user as $u) {
+                $stmt = $db->prepare("SELECT COUNT(*) FROM user_addresses WHERE user_id = ?");
+                $stmt->execute([$u->iduser]);
+                $u->address_count = intval($stmt->fetchColumn());
+            }
+        } else {
+            foreach ($list_user as $u) {
+                $u->address_count = 0;
+            }
+        }
+    } catch (Exception $e) {
+        foreach ($list_user as $u) {
+            $u->address_count = 0;
+        }
+    }
 
     $totalUsers = count($list_user);
     $activeUsers = 0;
@@ -303,6 +325,7 @@
                         <th>Giới tính</th>
                         <th>Ngày sinh</th>
                         <th>Địa chỉ</th>
+                        <th>Địa chỉ giao hàng</th>
                         <th>Điện thoại</th>
                         <th>Email</th>
                         <th>Trạng thái</th>
@@ -331,18 +354,28 @@
                                 <td><?php echo $u->gioitinh; ?></td>
                                 <td><?php echo $u->ngaysinh; ?></td>
                                 <td><?php echo $u->diachi; ?></td>
+                                <td>
+                                    <?php
+                                    $addrCount = $u->address_count ?? 0;
+                                    if ($addrCount > 0) {
+                                        echo '<button class="btn btn-sm btn-outline-primary" onclick="viewUserAddresses(' . $u->iduser . ', \'' . htmlspecialchars($u->username, ENT_QUOTES) . '\')">';
+                                        echo '<i class="fas fa-map-marker-alt me-1"></i>' . $addrCount . ' địa chỉ';
+                                        echo '</button>';
+                                    } else {
+                                        echo '<span class="text-muted"><i class="fas fa-minus"></i> Chưa có</span>';
+                                    }
+                                    ?>
+                                </td>
                                 <td><?php echo $u->dienthoai; ?></td>
                                 <td><?php echo !empty($u->email) ? htmlspecialchars($u->email) : '<span style="color: #999;">Chưa có</span>'; ?></td>
                                 <td align="center">
                                     <?php if (isset($_SESSION['ADMIN'])) { ?>
                                         <a href='./elements_LQA/mUser/userAct.php?reqact=setlock&iduser=<?php echo $u->iduser; ?>&setlock=<?php echo $u->setlock; ?>'
                                             class="status-icon">
-                                            <img src="<?php echo $u->setlock == 1 ? './elements_LQA/img_LQA/Unlock.png' : './elements_LQA/img_LQA/Lock.png'; ?>"
-                                                class="iconimg" alt="Trạng thái">
+                                            <i class="fas <?php echo $u->setlock == 1 ? 'fa-unlock' : 'fa-lock'; ?>" style="font-size:18px; color:<?php echo $u->setlock == 1 ? '#28a745' : '#6c757d'; ?>;"></i>
                                         </a>
                                     <?php } else { ?>
-                                        <img src="<?php echo $u->setlock == 1 ? './elements_LQA/img_LQA/Unlock.png' : './elements_LQA/img_LQA/Lock.png'; ?>"
-                                            class="iconimg" alt="Trạng thái">
+                                        <i class="fas <?php echo $u->setlock == 1 ? 'fa-unlock' : 'fa-lock'; ?>" style="font-size:18px; color:<?php echo $u->setlock == 1 ? '#28a745' : '#6c757d'; ?>;"></i>
                                     <?php } ?>
                                 </td>
                                 <td class="action-buttons">
@@ -350,20 +383,20 @@
                                         <a href='./elements_LQA/mUser/userAct.php?reqact=deleteuser&iduser=<?php echo $u->iduser; ?>'
                                             class="admin-action" data-username="<?php echo $u->username; ?>"
                                             onclick="return confirmDelete('<?php echo $u->username; ?>');">
-                                            <img src="./elements_LQA/img_LQA/Delete.png" class="iconimg">
+                                            <i class="fas fa-trash-alt" style="font-size:18px; color:#dc3545;"></i>
                                         </a>
                                     <?php } else { ?>
-                                        <img src="./elements_LQA/img_LQA/Delete.png" class="iconimg">
+                                        <i class="fas fa-trash-alt" style="font-size:18px; color:#ccc;"></i>
                                     <?php } ?>
 
                                     <?php if (isset($_SESSION['ADMIN']) || (isset($_SESSION['USER']) && $_SESSION['USER'] == $u->username)) { ?>
                                         <a href='javascript:void(0);' class="update-user"
                                             data-username="<?php echo htmlspecialchars($u->username); ?>"
                                             data-userid="<?php echo $u->iduser; ?>">
-                                            <img src="./elements_LQA/img_LQA/Update.png" class="iconimg" alt="Update">
+                                            <i class="fas fa-edit" style="font-size:18px; color:#007bff;"></i>
                                         </a>
                                     <?php } else { ?>
-                                        <img src="./elements_LQA/img_LQA/Update.png" class="iconimg disabled" alt="Update">
+                                        <i class="fas fa-edit" style="font-size:18px; color:#ccc;"></i>
                                     <?php } ?>
                                 </td>
                             </tr>
@@ -484,5 +517,55 @@
             }
         });
     });
+
+    function viewUserAddresses(userId, username) {
+        $('#addressModalLabel').text('Địa chỉ giao hàng của ' + username);
+        $('#addressModalBody').html('<div class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x"></i><p class="mt-2">Đang tải...</p></div>');
+        $('#addressModal').modal('show');
+        
+        $.ajax({
+            url: '../api/user_addresses.php',
+            type: 'GET',
+            data: { action: 'get_addresses_admin', user_id: userId },
+            dataType: 'json',
+            success: function(response) {
+                if (response.success && response.addresses && response.addresses.length > 0) {
+                    let html = '<div class="table-responsive"><table class="table table-hover">';
+                    html += '<thead><tr><th>Người nhận</th><th>SĐT</th><th>Địa chỉ</th><th>Mặc định</th></tr></thead><tbody>';
+                    response.addresses.forEach(function(addr) {
+                        const defaultBadge = addr.is_default == 1 ? '<span class="badge bg-success">Mặc định</span>' : '';
+                        html += '<tr>';
+                        html += '<td>' + (addr.recipient_name || '-') + '</td>';
+                        html += '<td>' + (addr.phone || '-') + '</td>';
+                        html += '<td>' + (addr.full_address || '-') + '</td>';
+                        html += '<td>' + defaultBadge + '</td>';
+                        html += '</tr>';
+                    });
+                    html += '</tbody></table></div>';
+                    $('#addressModalBody').html(html);
+                } else {
+                    var msg = response.message || 'Chưa có địa chỉ giao hàng';
+                    $('#addressModalBody').html('<div class="text-center py-4 text-muted"><i class="fas fa-map-marker-alt fa-2x mb-2"></i><p>' + msg + '</p></div>');
+                }
+            },
+            error: function(xhr, status, error) {
+                $('#addressModalBody').html('<div class="alert alert-danger">Lỗi tải dữ liệu: ' + error + '<br><small>' + xhr.responseText + '</small></div>');
+            }
+        });
+    }
 </script>
+
+<!-- Modal xem địa chỉ -->
+<div class="modal fade" id="addressModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addressModalLabel">Địa chỉ giao hàng</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="addressModalBody">
+            </div>
+        </div>
+    </div>
+</div>
 <script src="../../js_LQA/jscript.js"></script>

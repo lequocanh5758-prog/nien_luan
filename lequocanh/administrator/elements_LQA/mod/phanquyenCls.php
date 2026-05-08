@@ -37,9 +37,9 @@ class PhanQuyen
     private $db;
     private $roleManager;
 
-    public function __construct()
+    public function __construct(?PDO $db = null)
     {
-        $this->db = Database::getInstance()->getConnection();
+        $this->db = $db ?: Database::getInstance()->getConnection();
         if (class_exists('Role')) {
             $this->roleManager = new Role();
         }

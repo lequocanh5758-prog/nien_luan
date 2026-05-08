@@ -32,6 +32,8 @@ switch ($action) {
             }
 
             $image_url = '';
+            $image_data = null;
+            $image_type = null;
             if (!isset($_FILES['image']) || $_FILES['image']['error'] === UPLOAD_ERR_NO_FILE) {
                 $message = 'Lỗi: Vui lòng chọn ảnh banner';
                 break;
@@ -50,13 +52,17 @@ switch ($action) {
                 break;
             }
 
-            $image_url = $bannerManager->uploadBannerImage($_FILES['image']);
-            if (!$image_url) {
-                $message = 'Lỗi: Không thể upload ảnh. Kiểm tra định dạng file (JPG, PNG, GIF) và quyền thư mục uploads/';
+            $uploadResult = $bannerManager->uploadBannerImage($_FILES['image']);
+            if (!$uploadResult) {
+                $message = 'Lỗi: Không thể upload ảnh. Kiểm tra định dạng file (JPG, PNG, GIF, WebP).';
                 break;
             }
 
-            if ($bannerManager->addBanner($title, $description, $image_url, $link_url, $position, $is_active)) {
+            $image_url = 'db_storage/' . $uploadResult['name'];
+            $image_data = $uploadResult['data'];
+            $image_type = $uploadResult['type'];
+
+            if ($bannerManager->addBanner($title, $description, $image_url, $link_url, $position, $is_active, $image_data, $image_type)) {
                 $message = 'Thêm banner thành công';
                 header('Location: ?msg=success');
                 exit();
@@ -83,23 +89,20 @@ switch ($action) {
             $is_active = isset($_POST['is_active']) ? 1 : 0;
 
             $image_url = $banner['image_url'];
+            $image_data = null;
+            $image_type = null;
             if (isset($_FILES['image']) && $_FILES['image']['error'] === UPLOAD_ERR_OK) {
-                $new_image_url = $bannerManager->uploadBannerImage($_FILES['image']);
-                if ($new_image_url) {
-
-                    if ($banner['image_url'] !== $new_image_url) {
-                        $oldImagePath = __DIR__ . '/../../..' . $banner['image_url'];
-                        if (file_exists($oldImagePath)) {
-                            unlink($oldImagePath);
-                        }
-                    }
-                    $image_url = $new_image_url;
+                $uploadResult = $bannerManager->uploadBannerImage($_FILES['image']);
+                if ($uploadResult) {
+                    $image_url = 'db_storage/' . $uploadResult['name'];
+                    $image_data = $uploadResult['data'];
+                    $image_type = $uploadResult['type'];
                 } else {
                     $message = 'Lỗi upload ảnh mới';
                 }
             }
 
-            if ($bannerManager->updateBanner($id, $title, $description, $image_url, $link_url, $position, $is_active)) {
+            if ($bannerManager->updateBanner($id, $title, $description, $image_url, $link_url, $position, $is_active, $image_data, $image_type)) {
                 $message = 'Cập nhật banner thành công';
                 header('Location: ?msg=success');
             } else {
@@ -113,13 +116,6 @@ switch ($action) {
         $banner = $bannerManager->getBannerById($id);
         
         if ($banner && $bannerManager->deleteBanner($id)) {
-
-            if ($banner['image_url']) {
-                $imagePath = __DIR__ . '/../../..' . $banner['image_url'];
-                if (file_exists($imagePath)) {
-                    unlink($imagePath);
-                }
-            }
             $message = 'Xóa banner thành công';
             header('Location: ?msg=deleted');
         } else {
@@ -172,7 +168,7 @@ if ($msg === 'notfound') $message = 'Banner không tồn tại';
                         <?php foreach ($banners as $banner): ?>
                         <tr>
                             <td><?php echo $banner['id']; ?></td>
-                            <td><img src="<?php echo htmlspecialchars($banner['image_url']); ?>" alt="Banner" width="100"></td>
+                            <td><img src="displayImage.php?type=banner&id=<?php echo $banner['id']; ?>" alt="Banner" width="100"></td>
                             <td><?php echo htmlspecialchars($banner['title']); ?></td>
                             <td><?php echo htmlspecialchars(substr($banner['description'], 0, 50)) . (strlen($banner['description']) > 50 ? '...' : ''); ?></td>
                             <td><?php echo $banner['position']; ?></td>
@@ -209,8 +205,8 @@ if ($msg === 'notfound') $message = 'Banner không tồn tại';
                     <div class="col-md-6">
                         <div class="mb-3">
                             <label for="image" class="form-label">Ảnh Banner</label>
-                            <?php if ($action === 'edit' && $banner['image_url']): ?>
+                            <?php if ($action === 'edit' && $banner['id']): ?>
                                 <div class="mb-2">
-                                    <img src="<?php echo htmlspecialchars($banner['image_url']); ?>" alt="Current Banner" width="200">
+                                    <img src="displayImage.php?type=banner&id=<?php echo $banner['id']; ?>" alt="Current Banner" width="200">
                                 </div>
                             <?php endif; ?>

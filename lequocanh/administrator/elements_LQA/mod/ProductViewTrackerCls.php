@@ -5,8 +5,8 @@ require_once __DIR__ . '/database.php';
 class ProductViewTracker {
     private $db;
     
-    public function __construct() {
-        $this->db = Database::getInstance()->getConnection();
+    public function __construct(?PDO $db = null) {
+        $this->db = $db ?: Database::getInstance()->getConnection();
     }
     
     public function trackView($idhanghoa) {
@@ -115,14 +115,16 @@ class ProductViewTracker {
                         LIMIT ?";
                 
                 $stmt = $this->db->prepare($sql);
-                $stmt->execute([$days, $limit]);
+                $stmt->bindValue(1, (int)$days, PDO::PARAM_INT);
+                $stmt->bindValue(2, (int)$limit, PDO::PARAM_INT);
+                $stmt->execute();
                 return $stmt->fetchAll(PDO::FETCH_OBJ);
             } catch (Exception $e) {
 
             }
         }
-        
-        $sql = "SELECT 
+
+        $sql = "SELECT
                 idhanghoa,
                 tenhanghoa,
                 giathamkhao,
@@ -130,10 +132,11 @@ class ProductViewTracker {
                 FROM hanghoa
                 WHERE view_count > 0
                 ORDER BY view_count DESC
-                LIMIT ?";
-        
+                LIMIT :limit_val";
+
         $stmt = $this->db->prepare($sql);
-        $stmt->execute([$limit]);
+        $stmt->bindValue(':limit_val', (int)$limit, PDO::PARAM_INT);
+        $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_OBJ);
     }
     

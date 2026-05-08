@@ -253,3 +253,20 @@ Data: Array
 )
 
 2025-06-19 01:42:21 - Success, rows affected: 0
+2026-03-30 14:38:56 - Update parameters:
+idhanghoa: 45 (type: integer)
+idThuocTinh: 26 (type: integer)
+tenThuocTinhHH: Đen, Tím, Trắng, Vànggggg (type: string)
+idThuocTinhHH: 30 (type: integer)
+2026-03-30 14:38:56 - SQL Query: UPDATE thuoctinhhh 
+                SET idhanghoa = ?, idThuocTinh = ?, tenThuocTinhHH = ?
+                WHERE idThuocTinhHH = ?
+Data: Array
+(
+    [0] => 45
+    [1] => 26
+    [2] => Đen, Tím, Trắng, Vànggggg
+    [3] => 30
+)
+
+2026-03-30 14:38:56 - Success, rows affected: 1

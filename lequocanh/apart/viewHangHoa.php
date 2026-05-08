@@ -137,7 +137,7 @@ if (isset($_GET['reqHanghoa'])) {
 ?>
 <link rel="stylesheet" href="public_files/mycss.css">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-<script src="administrator/elements_LQA/js_LQA/jscript.js"></script>
+<script src="administrator/js_LQA/jscript.js"></script>
 
 <div class="card mb-3">
     <div class="row g-0">

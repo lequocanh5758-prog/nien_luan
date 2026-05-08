@@ -105,21 +105,19 @@ foreach ($listUsers as $user) {
                         </div>
                         <div class="phan-he-list" style="max-height: 200px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; margin-top: 10px;">
                             <?php
-
-                            require_once './elements_LQA/mod/phanHeQuanLyCls.php';
-                            $phanHeObj = new PhanHeQuanLy();
-                            $listPhanHe = $phanHeObj->getAllPhanHe();
-
-                            if (count($listPhanHe) > 0) {
-                                foreach ($listPhanHe as $phanHe) {
+                            require_once './elements_LQA/mod/menuConfig.php';
+                            $phanHeIndex = 0;
+                            if (!empty($menu_items)) {
+                                foreach ($menu_items as $reqKey => $item) {
+                                    $phanHeIndex++;
                             ?>
                                     <div class="form-check">
                                         <input class="form-check-input phan-he-checkbox" type="checkbox"
-                                            name="phanHe[]" id="phanHe<?php echo $phanHe->idPhanHe; ?>"
-                                            value="<?php echo $phanHe->idPhanHe; ?>">
-                                        <label class="form-check-label" for="phanHe<?php echo $phanHe->idPhanHe; ?>">
-                                            <?php echo htmlspecialchars($phanHe->tenPhanHe); ?>
-                                            <small class="text-muted">(<?php echo htmlspecialchars($phanHe->maPhanHe); ?>)</small>
+                                            name="phanHe[]" id="phanHe<?php echo $phanHeIndex; ?>"
+                                            value="<?php echo htmlspecialchars($reqKey); ?>">
+                                        <label class="form-check-label" for="phanHe<?php echo $phanHeIndex; ?>">
+                                            <?php echo htmlspecialchars($item['text']); ?>
+                                            <small class="text-muted">(<?php echo htmlspecialchars($reqKey); ?>)</small>
                                         </label>
                                     </div>
                             <?php
@@ -198,15 +196,15 @@ foreach ($listUsers as $user) {
                             <?php if (isset($_SESSION['ADMIN'])) { ?>
                                 <a href="./elements_LQA/mnhanvien/nhanvienAct.php?reqact=deletenhanvien&idNhanVien=<?php echo htmlspecialchars($u->idNhanVien); ?>"
                                     onclick="return confirm('Bạn có chắc muốn xóa không?');">
-                                    <img src="./elements_LQA/img_LQA/Delete.png" class="iconimg">
+                                    <i class="fas fa-trash-alt" style="font-size:18px; color:#dc3545;"></i>
                                 </a>
                             <?php } else { ?>
-                                <img src="./elements_LQA/img_LQA/Delete.png" class="iconimg" />
+                                <i class="fas fa-trash-alt" style="font-size:18px; color:#ccc;"></i>
                             <?php } ?>
-                            <img src="./elements_LQA/img_LQA/Update.png" class="iconimg generic-update-btn"
+                            <i class="fas fa-edit generic-update-btn" style="font-size:18px; color:#007bff; cursor:pointer;"
                                 data-module="mnhanvien" data-update-url="./elements_LQA/mnhanvien/nhanvienUpdate.php"
                                 data-id-param="idNhanVien" data-title="Cập nhật Nhân viên"
-                                data-id="<?php echo htmlspecialchars($u->idNhanVien); ?>" alt="Update">
+                                data-id="<?php echo htmlspecialchars($u->idNhanVien); ?>"></i>
                         </td>
                     </tr>
             <?php

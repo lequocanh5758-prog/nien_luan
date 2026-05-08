@@ -121,8 +121,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
             case 'add_shipping_method':
                 $stmt = $db->prepare("
-                    INSERT INTO shipping_methods (code, name, description, delivery_time, price_multiplier, sort_order)
-                    VALUES (?, ?, ?, ?, ?, ?)
+                    INSERT INTO shipping_methods (code, name, description, delivery_time, price_multiplier, is_active, supports_cod)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
                 ");
                 $stmt->execute([
                     $_POST['code'],
@@ -130,8 +130,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $_POST['description'],
                     $_POST['delivery_time'],
                     $_POST['price_multiplier'],
-                    $_POST['sort_order']
+                    isset($_POST['is_active']) ? 1 : 0,
+                    isset($_POST['supports_cod']) ? 1 : 0
                 ]);
+                
+                $newMethodId = $db->lastInsertId();
+                $baseFee = floatval($_POST['base_fee'] ?? 0);
+                $feePerKg = floatval($_POST['fee_per_kg'] ?? 0);
+                $freeShip = !empty($_POST['min_order_free_ship']) ? floatval($_POST['min_order_free_ship']) : null;
+                
+                $insertFee = $db->prepare("INSERT INTO shipping_fees (name, shipping_method_id, base_fee, fee_per_kg, min_order_free_ship, priority, is_active) VALUES (?, ?, ?, ?, ?, 10, 1)");
+                $insertFee->execute([$_POST['name'] . ' - Mặc định', $newMethodId, $baseFee, $feePerKg, $freeShip]);
+                
                 $message = 'Thêm phương thức vận chuyển thành công!';
                 $messageType = 'success';
                 break;
@@ -139,7 +149,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             case 'update_shipping_method':
                 $stmt = $db->prepare("
                     UPDATE shipping_methods 
-                    SET name = ?, description = ?, delivery_time = ?, price_multiplier = ?, sort_order = ?, is_active = ?
+                    SET name = ?, description = ?, delivery_time = ?, price_multiplier = ?, is_active = ?, supports_cod = ?
                     WHERE id = ?
                 ");
                 $stmt->execute([
@@ -147,11 +157,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $_POST['description'],
                     $_POST['delivery_time'],
                     $_POST['price_multiplier'],
-                    $_POST['sort_order'],
                     isset($_POST['is_active']) ? 1 : 0,
+                    isset($_POST['supports_cod']) ? 1 : 0,
                     $_POST['method_id']
                 ]);
+                
+                $baseFee = floatval($_POST['base_fee'] ?? 0);
+                $feePerKg = floatval($_POST['fee_per_kg'] ?? 0);
+                $freeShip = !empty($_POST['min_order_free_ship']) ? floatval($_POST['min_order_free_ship']) : null;
+                $methodId = $_POST['method_id'];
+                
+                $existingFee = $db->prepare("SELECT id FROM shipping_fees WHERE shipping_method_id = ? AND is_active = 1 ORDER BY priority DESC LIMIT 1");
+                $existingFee->execute([$methodId]);
+                $feeRow = $existingFee->fetch(PDO::FETCH_ASSOC);
+                
+                if ($feeRow) {
+                    $updateFee = $db->prepare("UPDATE shipping_fees SET base_fee = ?, fee_per_kg = ?, min_order_free_ship = ? WHERE id = ?");
+                    $updateFee->execute([$baseFee, $feePerKg, $freeShip, $feeRow['id']]);
+                } else {
+                    $methodName = $_POST['name'];
+                    $insertFee = $db->prepare("INSERT INTO shipping_fees (name, shipping_method_id, base_fee, fee_per_kg, min_order_free_ship, priority, is_active) VALUES (?, ?, ?, ?, ?, 10, 1)");
+                    $insertFee->execute([$methodName . ' - Mặc định', $methodId, $baseFee, $feePerKg, $freeShip]);
+                }
+                
                 $message = 'Cập nhật phương thức vận chuyển thành công!';
+                $messageType = 'success';
+                break;
+                
+            case 'delete_shipping_method':
+                $stmt = $db->prepare("DELETE FROM shipping_fees WHERE shipping_method_id = ?");
+                $stmt->execute([$_POST['method_id']]);
+                $stmt = $db->prepare("DELETE FROM shipping_methods WHERE id = ?");
+                $stmt->execute([$_POST['method_id']]);
+                $message = 'Xóa phương thức vận chuyển thành công!';
                 $messageType = 'success';
                 break;
                 
@@ -225,8 +263,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // Set HTML header for page rendering
 header('Content-Type: text/html; charset=UTF-8');
 
-$shippingMethods = $db->query("SELECT * FROM v_shipping_methods_with_fees ORDER BY sort_order DESC")->fetchAll(PDO::FETCH_ASSOC);
-$shippingFees = $db->query("SELECT * FROM v_shipping_fees_detail ORDER BY priority DESC")->fetchAll(PDO::FETCH_ASSOC);
+$shippingMethods = $db->query("SELECT * FROM v_shipping_methods_with_fees WHERE is_active = 1 ORDER BY sort_order ASC, id ASC")->fetchAll(PDO::FETCH_ASSOC);
+$shippingFees = $db->query("
+    SELECT sf.*, sm.name as shipping_method_name, sm.code as method_code,
+           p.name as province_name, '' as district_name
+    FROM shipping_fees sf
+    LEFT JOIN shipping_methods sm ON sf.shipping_method_id = sm.id
+    LEFT JOIN provinces p ON sf.province_id = p.id
+    ORDER BY sf.priority DESC
+")->fetchAll(PDO::FETCH_ASSOC);
+$allMethods = $db->query("SELECT * FROM v_shipping_methods_with_fees ORDER BY sort_order ASC, id ASC")->fetchAll(PDO::FETCH_ASSOC);
 $provinces = $db->query("SELECT id, name FROM provinces WHERE is_active = 1 ORDER BY name ASC")->fetchAll(PDO::FETCH_ASSOC);
 
 ?>
@@ -538,22 +584,12 @@ $provinces = $db->query("SELECT id, name FROM provinces WHERE is_active = 1 ORDE
                                     Phí hiện tại <i class="fas fa-info-circle text-muted" style="font-size: 12px;"></i>
                                 </span>
                             </th>
-                            <th>
-                                <span data-bs-toggle="tooltip" title="Số cấu hình phí đang áp dụng cho phương thức này">
-                                    Cấu hình <i class="fas fa-info-circle text-muted" style="font-size: 12px;"></i>
-                                </span>
-                            </th>
-                            <th>
-                                <span data-bs-toggle="tooltip" title="Số càng cao, phương thức được ưu tiên hiển thị trước">
-                                    Thứ tự <i class="fas fa-info-circle text-muted" style="font-size: 12px;"></i>
-                                </span>
-                            </th>
                             <th>Trạng thái</th>
                             <th>Thao tác</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <?php foreach ($shippingMethods as $method): ?>
+                        <?php foreach ($allMethods as $method): ?>
                         <tr draggable="true" data-id="<?= $method['id'] ?? 0 ?>" class="draggable-row">
                             <td><code><?= htmlspecialchars($method['code'] ?? '') ?></code></td>
                             <td><strong><?= htmlspecialchars($method['name'] ?? '') ?></strong></td>
@@ -590,20 +626,6 @@ $provinces = $db->query("SELECT id, name FROM provinces WHERE is_active = 1 ORDE
                                 ?>
                             </td>
                             <td>
-                                <span class="badge bg-info" data-bs-toggle="tooltip" title="<?= $configCount ?> cấu hình phí đang áp dụng">
-                                    <?= $configCount ?>
-                                </span>
-                                <?php if ($configCount > 0): ?>
-                                <button class="btn btn-sm btn-link p-0 ms-1" onclick="showFeeDetails('<?= $method['code'] ?>')" title="Xem chi tiết">
-                                    <i class="fas fa-list"></i>
-                                </button>
-                                <?php endif; ?>
-                            </td>
-                            <td>
-                                <span class="badge bg-secondary"><?= $method['sort_order'] ?? 0 ?></span>
-                                <i class="fas fa-grip-vertical text-muted ms-2" style="cursor: move;" title="Kéo để sắp xếp"></i>
-                            </td>
-                            <td>
                                 <span class="badge <?= ($method['is_active'] ?? 0) ? 'badge-active' : 'badge-inactive' ?>">
                                     <?= ($method['is_active'] ?? 0) ? 'Hoạt động' : 'Tắt' ?>
                                 </span>
@@ -614,6 +636,9 @@ $provinces = $db->query("SELECT id, name FROM provinces WHERE is_active = 1 ORDE
                                 </button>
                                 <button class="btn btn-sm btn-success" onclick="previewOnCheckout('<?= $method['code'] ?>')" title="Xem trước trên checkout">
                                     <i class="fas fa-eye"></i>
+                                </button>
+                                <button class="btn btn-sm btn-danger" onclick="deleteMethod(<?= $method['id'] ?>, '<?= htmlspecialchars($method['name'] ?? '') ?>')" title="Xóa">
+                                    <i class="fas fa-trash"></i>
                                 </button>
                             </td>
                         </tr>
@@ -699,7 +724,7 @@ $provinces = $db->query("SELECT id, name FROM provinces WHERE is_active = 1 ORDE
                                 </span>
                             </td>
                             <td>
-                                <button class="btn btn-sm btn-primary" onclick="editFee(<?= $fee['id'] ?? 0 ?>)" title="Chỉnh sửa">
+                                <button class="btn btn-sm btn-primary" onclick='editFee(<?= json_encode($fee) ?>)' title="Chỉnh sửa">
                                     <i class="fas fa-edit"></i>
                                 </button>
                                 <button class="btn btn-sm btn-danger" onclick="deleteFee(<?= $fee['id'] ?? 0 ?>)">
@@ -728,32 +753,139 @@ $provinces = $db->query("SELECT id, name FROM provinces WHERE is_active = 1 ORDE
                     <div class="modal-body">
                         <div class="mb-3">
                             <label class="form-label">Mã <span class="text-danger">*</span></label>
-                            <input type="text" name="code" class="form-control" required>
+                            <input type="text" name="code" class="form-control" required placeholder="VD: GHN, GHTK, VNPOST">
+                            <small class="text-muted">Mã duy nhất, không dấu, viết hoa</small>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Tên <span class="text-danger">*</span></label>
-                            <input type="text" name="name" class="form-control" required>
+                            <input type="text" name="name" class="form-control" required placeholder="VD: Giao Hàng Nhanh">
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Mô tả</label>
-                            <textarea name="description" class="form-control" rows="2"></textarea>
+                            <textarea name="description" class="form-control" rows="2" placeholder="Mô tả ngắn về phương thức"></textarea>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Thời gian giao hàng</label>
                             <input type="text" name="delivery_time" class="form-control" placeholder="VD: 2-3 ngày">
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label">Hệ số giá</label>
-                            <input type="number" name="price_multiplier" class="form-control" step="0.1" value="1.0">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Hệ số giá</label>
+                                <input type="number" name="price_multiplier" class="form-control" step="0.1" value="1.0">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Kích hoạt</label>
+                                <div class="form-check mt-2">
+                                    <input class="form-check-input" type="checkbox" name="is_active" id="add_is_active" checked>
+                                    <label class="form-check-label" for="add_is_active">Phương thức đang hoạt động</label>
+                                </div>
+                            </div>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">Thứ tự hiển thị</label>
-                            <input type="number" name="sort_order" class="form-control" value="0">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="supports_cod" id="add_supports_cod" checked>
+                                <label class="form-check-label" for="add_supports_cod">Hỗ trợ COD (thanh toán khi nhận hàng)</label>
+                            </div>
+                        </div>
+                        <hr>
+                        <h6 class="fw-bold mb-3"><i class="fas fa-dollar-sign me-1"></i>Cấu hình phí vận chuyển</h6>
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Phí cơ bản (VNĐ) <span class="text-danger">*</span></label>
+                                <input type="number" name="base_fee" class="form-control" value="0" min="0" required>
+                                <small class="text-muted">Phí vận chuyển cơ bản</small>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Phí mỗi kg (VNĐ)</label>
+                                <input type="number" name="fee_per_kg" class="form-control" value="0" min="0">
+                                <small class="text-muted">Phí thêm mỗi kg vượt quá</small>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Miễn phí từ đơn hàng (VNĐ)</label>
+                                <input type="number" name="min_order_free_ship" class="form-control" min="0" placeholder="VD: 500000">
+                                <small class="text-muted">Đơn hàng ≥ số này sẽ miễn phí vận chuyển</small>
+                            </div>
                         </div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
                         <button type="submit" class="btn btn-primary">Thêm mới</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Method Modal -->
+    <div class="modal fade" id="editMethodModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form method="POST">
+                    <input type="hidden" name="action" value="update_shipping_method">
+                    <input type="hidden" name="method_id" id="edit_method_id">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Chỉnh sửa phương thức vận chuyển</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label">Mã</label>
+                            <input type="text" id="edit_method_code" class="form-control" readonly style="background: #e9ecef;">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Tên <span class="text-danger">*</span></label>
+                            <input type="text" name="name" id="edit_method_name" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Mô tả</label>
+                            <textarea name="description" id="edit_method_description" class="form-control" rows="2"></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Thời gian giao hàng</label>
+                            <input type="text" name="delivery_time" id="edit_method_delivery_time" class="form-control">
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Hệ số giá</label>
+                                <input type="number" name="price_multiplier" id="edit_method_price_multiplier" class="form-control" step="0.1" value="1.0">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Kích hoạt</label>
+                                <div class="form-check mt-2">
+                                    <input class="form-check-input" type="checkbox" name="is_active" id="edit_is_active">
+                                    <label class="form-check-label" for="edit_is_active">Phương thức đang hoạt động</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="supports_cod" id="edit_supports_cod">
+                                <label class="form-check-label" for="edit_supports_cod">Hỗ trợ COD (thanh toán khi nhận hàng)</label>
+                            </div>
+                        </div>
+                        <hr>
+                        <h6 class="fw-bold mb-3"><i class="fas fa-dollar-sign me-1"></i>Cấu hình phí vận chuyển</h6>
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Phí cơ bản (VNĐ) <span class="text-danger">*</span></label>
+                                <input type="number" name="base_fee" id="edit_method_base_fee" class="form-control" value="0" min="0">
+                                <small class="text-muted">Phí vận chuyển cơ bản</small>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Phí mỗi kg (VNĐ)</label>
+                                <input type="number" name="fee_per_kg" id="edit_method_fee_per_kg" class="form-control" value="0" min="0">
+                                <small class="text-muted">Phí thêm mỗi kg vượt quá</small>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Miễn phí từ đơn hàng (VNĐ)</label>
+                                <input type="number" name="min_order_free_ship" id="edit_method_free_ship" class="form-control" value="" min="0" placeholder="VD: 500000">
+                                <small class="text-muted">Đơn hàng ≥ số này sẽ miễn phí vận chuyển</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                        <button type="submit" class="btn btn-primary">Lưu thay đổi</button>
                     </div>
                 </form>
             </div>
@@ -802,7 +934,7 @@ $provinces = $db->query("SELECT id, name FROM provinces WHERE is_active = 1 ORDE
                                 <label class="form-label">Phương thức</label>
                                 <select name="shipping_method_id" class="form-select">
                                     <option value="">Tất cả</option>
-                                    <?php foreach ($shippingMethods as $method): ?>
+                                    <?php foreach ($allMethods as $method): ?>
                                     <option value="<?= $method['id'] ?? 0 ?>"><?= htmlspecialchars($method['name'] ?? '') ?></option>
                                     <?php endforeach; ?>
                                 </select>
@@ -846,6 +978,105 @@ $provinces = $db->query("SELECT id, name FROM provinces WHERE is_active = 1 ORDE
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
                         <button type="submit" class="btn btn-primary">Thêm mới</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Fee Modal -->
+    <div class="modal fade" id="editFeeModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <form method="POST">
+                    <input type="hidden" name="action" value="update_shipping_fee">
+                    <input type="hidden" name="fee_id" id="edit_fee_id">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Chỉnh sửa cấu hình phí vận chuyển</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Tên cấu hình <span class="text-danger">*</span></label>
+                                <input type="text" name="name" id="edit_fee_name" class="form-control" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Độ ưu tiên</label>
+                                <input type="number" name="priority" id="edit_fee_priority" class="form-control" value="0">
+                                <small class="text-muted">Số cao hơn = ưu tiên hơn</small>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Tỉnh/TP</label>
+                                <select name="province_id" id="edit_fee_province_id" class="form-select">
+                                    <option value="">Tất cả</option>
+                                    <?php foreach ($provinces as $province): ?>
+                                    <option value="<?= $province['id'] ?? 0 ?>"><?= htmlspecialchars($province['name'] ?? '') ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Quận/Huyện</label>
+                                <select name="district_id" id="edit_fee_district_id" class="form-select">
+                                    <option value="">Tất cả</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Phương thức</label>
+                                <select name="shipping_method_id" id="edit_fee_method_id" class="form-select">
+                                    <option value="">Tất cả</option>
+                                    <?php foreach ($allMethods as $method): ?>
+                                    <option value="<?= $method['id'] ?? 0 ?>"><?= htmlspecialchars($method['name'] ?? '') ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Phí cơ bản (VNĐ)</label>
+                                <input type="number" name="base_fee" id="edit_fee_base_fee" class="form-control" value="0">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Phí mỗi kg (VNĐ)</label>
+                                <input type="number" name="fee_per_kg" id="edit_fee_per_kg" class="form-control" value="0">
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Từ trọng lượng (kg)</label>
+                                <input type="number" name="weight_from" id="edit_fee_weight_from" class="form-control" step="0.1" value="0">
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Đến trọng lượng (kg)</label>
+                                <input type="number" name="weight_to" id="edit_fee_weight_to" class="form-control" step="0.1">
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Miễn phí từ (VNĐ)</label>
+                                <input type="number" name="min_order_free_ship" id="edit_fee_free_ship" class="form-control">
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Từ giá trị đơn (VNĐ)</label>
+                                <input type="number" name="order_value_from" id="edit_fee_order_from" class="form-control" value="0">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Đến giá trị đơn (VNĐ)</label>
+                                <input type="number" name="order_value_to" id="edit_fee_order_to" class="form-control">
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="is_active" id="edit_fee_is_active" checked>
+                                <label class="form-check-label" for="edit_fee_is_active">Kích hoạt</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                        <button type="submit" class="btn btn-primary">Lưu thay đổi</button>
                     </div>
                 </form>
             </div>
@@ -996,124 +1227,11 @@ $provinces = $db->query("SELECT id, name FROM provinces WHERE is_active = 1 ORDE
         }
         
         function previewOnCheckout(methodCode) {
-            const modal = document.createElement('div');
-            modal.className = 'modal fade';
-            modal.innerHTML = `
-                <div class="modal-dialog modal-xl">
-                    <div class="modal-content">
-                        <div class="modal-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
-                            <h5 class="modal-title"><i class="fas fa-calculator"></i> Xem trước trên Checkout: ${methodCode}</h5>
-                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                        </div>
-                        <div class="modal-body">
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <h6><i class="fas fa-cog"></i> Thông tin đơn hàng</h6>
-                                    <div class="mb-3">
-                                        <label class="form-label">Tỉnh/Thành phố</label>
-                                        <select id="preview-province" class="form-select">
-                                            <?php foreach ($provinces as $province): ?>
-                                            <option value="<?= $province['id'] ?>"><?= htmlspecialchars($province['name'], ENT_QUOTES, 'UTF-8') ?></option>
-                                            <?php endforeach; ?>
-                                        </select>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label class="form-label">Trọng lượng (kg)</label>
-                                        <input type="number" id="preview-weight" class="form-control" value="1" step="0.1" min="0.1">
-                                    </div>
-                                    <div class="mb-3">
-                                        <label class="form-label">Giá trị đơn hàng (VNĐ)</label>
-                                        <input type="number" id="preview-value" class="form-control" value="300000" step="1000">
-                                    </div>
-                                    <button class="btn btn-primary w-100" onclick="calculatePreviewFee('${methodCode}')">
-                                        <i class="fas fa-calculator"></i> Tính phí
-                                    </button>
-                                </div>
-                                <div class="col-md-6">
-                                    <h6><i class="fas fa-shopping-cart"></i> Khách hàng sẽ thấy</h6>
-                                    <div id="preview-checkout-result" style="border: 2px dashed #ccc; padding: 20px; border-radius: 10px; min-height: 300px;">
-                                        <p class="text-muted text-center">Nhập thông tin và bấm "Tính phí" để xem kết quả</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-            document.body.appendChild(modal);
-            const bsModal = new bootstrap.Modal(modal);
-            bsModal.show();
-            
-            modal.addEventListener('hidden.bs.modal', function() {
-                modal.remove();
-            });
+            alert('Tính năng xem trước trên Checkout đang được phát triển');
         }
         
         function calculatePreviewFee(methodCode) {
-            const weight = document.getElementById('preview-weight').value;
-            const orderValue = document.getElementById('preview-value').value;
-            const provinceId = document.getElementById('preview-province').value;
-            
-            const resultDiv = document.getElementById('preview-checkout-result');
-            resultDiv.innerHTML = '<div class="text-center"><i class="fas fa-spinner fa-spin fa-2x"></i><p>Đang tính...</p></div>';
-            
-            fetch(`?action=calculate_preview&method_code=${methodCode}&weight=${weight}&order_value=${orderValue}&province_id=${provinceId}`)
-                .then(response => response.json())
-                .then(data => {
-                    let html = '<div style="background: #f8f9fa; padding: 15px; border-radius: 8px; border: 2px solid #667eea;">';
-                    
-                    html += '<div style="display: flex; align-items: center; margin-bottom: 15px;">';
-                    html += '<div style="width: 50px; height: 50px; background: #667eea; border-radius: 10px; display: flex; align-items: center; justify-content: center; margin-right: 15px;">';
-                    html += '<i class="fas fa-truck" style="color: white; font-size: 24px;"></i>';
-                    html += '</div>';
-                    html += '<div>';
-                    html += '<strong style="font-size: 16px;">' + data.method_name + '</strong><br>';
-                    html += '<small class="text-muted">' + data.delivery_time + '</small>';
-                    html += '</div>';
-                    html += '</div>';
-                    
-                    html += '<div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 15px;">';
-                    html += '<h6 style="margin-bottom: 10px;"><i class="fas fa-receipt"></i> Chi tiết tính phí:</h6>';
-                    html += '<div style="display: flex; justify-content: space-between; margin-bottom: 8px;">';
-                    html += '<span>Phí cơ bản:</span>';
-                    html += '<strong>' + formatMoney(data.base_fee) + '₫</strong>';
-                    html += '</div>';
-                    html += '<div style="display: flex; justify-content: space-between; margin-bottom: 8px;">';
-                    html += '<span>Phí theo trọng lượng:</span>';
-                    html += '<strong>' + formatMoney(data.weight_fee) + '₫</strong>';
-                    html += '</div>';
-                    html += '<div style="border-top: 2px solid #eee; padding-top: 8px; margin-top: 8px;"></div>';
-                    html += '<div style="display: flex; justify-content: space-between;">';
-                    html += '<span>Tổng phí:</span>';
-                    html += '<strong style="font-size: 18px;">' + formatMoney(data.total_before_discount) + '₫</strong>';
-                    html += '</div>';
-                    html += '</div>';
-                    
-                    if (data.is_free_shipping) {
-                        html += '<div style="background: #d4edda; padding: 15px; border-radius: 8px; border: 2px solid #28a745; margin-bottom: 15px;">';
-                        html += '<h6 style="color: #155724; margin-bottom: 10px;"><i class="fas fa-gift"></i> MIỄN PHÍ VẬN CHUYỂN!</h6>';
-                        html += '<p style="margin: 0; color: #155724;">Đơn hàng ' + formatMoney(orderValue) + '₫ ≥ ' + formatMoney(data.free_threshold) + '₫</p>';
-                        html += '</div>';
-                    }
-                    
-                    html += '<div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 8px; text-align: center; color: white;">';
-                    html += '<div style="font-size: 14px; margin-bottom: 5px;">Phí vận chuyển</div>';
-                    html += '<div style="font-size: 32px; font-weight: bold;">';
-                    if (data.final_fee == 0) {
-                        html += 'Miễn phí';
-                    } else {
-                        html += formatMoney(data.final_fee) + '₫';
-                    }
-                    html += '</div>';
-                    html += '</div>';
-                    
-                    html += '</div>';
-                    
-                    resultDiv.innerHTML = html;
-                })
-                .catch(error => {
-                    resultDiv.innerHTML = '<div class="alert alert-danger">Lỗi tính phí: ' + error.message + '</div>';
-                });
+            alert('Tính năng đang được phát triển');
         }
         
         function formatMoney(amount) {
@@ -1121,76 +1239,61 @@ $provinces = $db->query("SELECT id, name FROM provinces WHERE is_active = 1 ORDE
         }
         
         function previewShipping(methodId) {
-            const modal = document.createElement('div');
-            modal.className = 'modal fade';
-            modal.innerHTML = `
-                <div class="modal-dialog modal-lg">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title"><i class="fas fa-calculator"></i> Xem trước phí vận chuyển</h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                        </div>
-                        <div class="modal-body">
-                            <div class="row mb-3">
-                                <div class="col-md-6">
-                                    <label class="form-label">Tỉnh/Thành phố</label>
-                                    <select id="preview-province" class="form-select">
-                                        <option value="">Chọn tỉnh/thành</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label">Quận/Huyện</label>
-                                    <select id="preview-district" class="form-select">
-                                        <option value="">Chọn quận/huyện</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="row mb-3">
-                                <div class="col-md-6">
-                                    <label class="form-label">Trọng lượng (kg)</label>
-                                    <input type="number" id="preview-weight" class="form-control" value="1" step="0.1">
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label">Giá trị đơn hàng (VNĐ)</label>
-                                    <input type="number" id="preview-value" class="form-control" value="100000">
-                                </div>
-                            </div>
-                            <button class="btn btn-primary" onclick="calculatePreview(${methodId})">
-                                <i class="fas fa-calculator"></i> Tính phí
-                            </button>
-                            <div id="preview-result" class="mt-3"></div>
-                        </div>
-                    </div>
-                </div>
-            `;
-            document.body.appendChild(modal);
-            const bsModal = new bootstrap.Modal(modal);
-            bsModal.show();
-            
-            modal.addEventListener('hidden.bs.modal', function() {
-                modal.remove();
-            });
+            alert('Tính năng xem trước phí vận chuyển đang được phát triển');
         }
         
         function calculatePreview(methodId) {
-            const result = document.getElementById('preview-result');
-            result.innerHTML = `
-                <div class="alert alert-info">
-                    <h5><i class="fas fa-shipping-fast"></i> Kết quả tính phí</h5>
-                    <p><strong>Phí cơ bản:</strong> 30,000₫</p>
-                    <p><strong>Phí theo trọng lượng:</strong> 10,000₫</p>
-                    <p><strong>Tổng phí:</strong> <span class="text-success"><strong>40,000₫</strong></span></p>
-                    <p class="mb-0"><small class="text-muted">* Đây là phí ước tính, phí thực tế có thể thay đổi</small></p>
-                </div>
-            `;
+            alert('Tính năng đang được phát triển');
         }
         
         function editMethod(method) {
-            alert('Chức năng chỉnh sửa đang được phát triển');
+            document.getElementById('edit_method_id').value = method.id;
+            document.getElementById('edit_method_code').value = method.code || '';
+            document.getElementById('edit_method_name').value = method.name || '';
+            document.getElementById('edit_method_description').value = method.description || '';
+            document.getElementById('edit_method_delivery_time').value = method.delivery_time || '';
+            document.getElementById('edit_method_price_multiplier').value = method.price_multiplier || 1.0;
+            document.getElementById('edit_is_active').checked = (method.is_active == 1);
+            document.getElementById('edit_supports_cod').checked = (method.supports_cod == 1);
+            
+            document.getElementById('edit_method_base_fee').value = method.min_base_fee || 0;
+            document.getElementById('edit_method_fee_per_kg').value = 0;
+            document.getElementById('edit_method_free_ship').value = method.min_free_ship_threshold || '';
+            
+            var modal = new bootstrap.Modal(document.getElementById('editMethodModal'));
+            modal.show();
         }
         
-        function editFee(feeId) {
-            alert('Chức năng chỉnh sửa đang được phát triển');
+        function deleteMethod(methodId, methodName) {
+            if (confirm('Bạn có chắc muốn xóa phương thức "' + methodName + '"?\nTất cả cấu hình phí liên quan cũng sẽ bị xóa.')) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.innerHTML = `
+                    <input type="hidden" name="action" value="delete_shipping_method">
+                    <input type="hidden" name="method_id" value="${methodId}">
+                `;
+                document.body.appendChild(form);
+                form.submit();
+            }
+        }
+        
+        function editFee(fee) {
+            document.getElementById('edit_fee_id').value = fee.id;
+            document.getElementById('edit_fee_name').value = fee.name || '';
+            document.getElementById('edit_fee_priority').value = fee.priority || 0;
+            document.getElementById('edit_fee_province_id').value = fee.province_id || '';
+            document.getElementById('edit_fee_method_id').value = fee.shipping_method_id || '';
+            document.getElementById('edit_fee_base_fee').value = fee.base_fee || 0;
+            document.getElementById('edit_fee_per_kg').value = fee.fee_per_kg || 0;
+            document.getElementById('edit_fee_weight_from').value = fee.weight_from || 0;
+            document.getElementById('edit_fee_weight_to').value = fee.weight_to || '';
+            document.getElementById('edit_fee_free_ship').value = fee.min_order_free_ship || '';
+            document.getElementById('edit_fee_order_from').value = fee.order_value_from || 0;
+            document.getElementById('edit_fee_order_to').value = fee.order_value_to || '';
+            document.getElementById('edit_fee_is_active').checked = (fee.is_active == 1);
+            
+            var modal = new bootstrap.Modal(document.getElementById('editFeeModal'));
+            modal.show();
         }
         
         function deleteFee(feeId) {

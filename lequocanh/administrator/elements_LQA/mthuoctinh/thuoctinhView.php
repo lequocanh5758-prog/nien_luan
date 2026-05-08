@@ -129,16 +129,15 @@ if (isset($_GET['result'])) {
                         <td align="center">
                             <?php if (isset($_SESSION['ADMIN'])) { ?>
                                 <a
-                                    href="./elements_LQA/mthuoctinh/thuoctinhAct.php?reqact=deletethuoctinh&idThuocTinh=<?php echo $u->idThuocTinh; ?>">
-                                    <img src="./elements_LQA/img_LQA/Delete.png" class="iconimg">
+                                    href="./elements_LQA/mthuoctinh/thuoctinhAct.php?reqact=deletethuoctinh&idThuocTinh=<?php echo $u->idThuocTinh; ?>"
+                                    onclick="return confirm('Bạn có chắc muốn xóa không?');">
+                                    <i class="fas fa-trash-alt" style="font-size:18px; color:#dc3545;"></i>
                                 </a>
                             <?php } else { ?>
-                                <img src="./elements_LQA/img_LQA/Delete.png" class="iconimg">
+                                <i class="fas fa-trash-alt" style="font-size:18px; color:#ccc;"></i>
                             <?php } ?>
-                            <img src="./elements_LQA/img_LQA/Update.png"
-                                class="iconimg w_update_btn_open_tt"
-                                data-id="<?php echo htmlspecialchars($u->idThuocTinh); ?>"
-                                alt="Update">
+                            <i class="fas fa-edit w_update_btn_open_tt" style="font-size:18px; color:#007bff; cursor:pointer;"
+                                data-id="<?php echo htmlspecialchars($u->idThuocTinh); ?>"></i>
                         </td>
                     </tr>
             <?php

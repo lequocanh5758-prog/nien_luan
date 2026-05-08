@@ -5,7 +5,11 @@ require_once __DIR__ . '/../mod/dongiaCls.php';
 
 SessionManager::start();
 
-if (!isset($_SESSION['ADMIN'])) {
+require_once __DIR__ . '/../mod/phanquyenCls.php';
+$phanQuyen = new PhanQuyen();
+$username = isset($_SESSION['USER']) ? $_SESSION['USER'] : (isset($_SESSION['ADMIN']) ? $_SESSION['ADMIN'] : '');
+
+if (!isset($_SESSION['ADMIN']) && !$phanQuyen->checkAccess('dongiaview', $username)) {
     http_response_code(401);
     echo json_encode(['success' => false, 'message' => 'Unauthorized']);
     exit();

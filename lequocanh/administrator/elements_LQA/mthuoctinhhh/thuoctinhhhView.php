@@ -108,19 +108,17 @@ $list_lh_thuoctinhhh = $thuocTinhHHObj->thuoctinhhhGetAll();
                                 <?php if (isset($_SESSION['ADMIN'])) { ?>
                                     <a href="./elements_LQA/mthuoctinhhh/thuoctinhhhAct.php?reqact=deletethuoctinhhh&idThuocTinhHH=<?php echo htmlspecialchars($u->idThuocTinhHH); ?>"
                                         onclick="return confirm('Bạn có chắc muốn xóa không?');">
-                                        <img src="./elements_LQA/img_LQA/Delete.png" class="iconimg">
+                                        <i class="fas fa-trash-alt" style="font-size:18px; color:#dc3545;"></i>
                                     </a>
                                 <?php } else { ?>
-                                    <img src="./elements_LQA/img_LQA/Delete.png" class="iconimg">
+                                    <i class="fas fa-trash-alt" style="font-size:18px; color:#ccc;"></i>
                                 <?php } ?>
-                                <img src="./elements_LQA/img_LQA/Update.png"
-                                    class="iconimg generic-update-btn"
+                                <i class="fas fa-edit generic-update-btn" style="font-size:18px; color:#007bff; cursor:pointer;"
                                     data-module="mthuoctinhhh"
                                     data-update-url="./elements_LQA/mthuoctinhhh/thuoctinhhhUpdate.php"
                                     data-id-param="idThuocTinhHH"
                                     data-title="Cập nhật Thuộc tính hàng hóa"
-                                    data-id="<?php echo htmlspecialchars($u->idThuocTinhHH); ?>"
-                                    alt="Update">
+                                    data-id="<?php echo htmlspecialchars($u->idThuocTinhHH); ?>"></i>
                             </td>
                         </tr>
                 <?php }

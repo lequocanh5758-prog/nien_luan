@@ -40,7 +40,7 @@ if (!isset($_POST['selected_products']) || empty($_POST['selected_products'])) {
     // Validate CSRF token for POST requests
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $token = $_POST['csrf_token'] ?? '';
-        if (!csrf_validate($token)) {
+        if (!verify_csrf_token($token)) {
             Logger::warning("CSRF validation failed in checkout", ['ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown']);
             die('CSRF token validation failed. Please try again.');
         }
@@ -53,15 +53,34 @@ $giohang = new GioHang();
 $hanghoa = new hanghoa();
 $tonkho = new MTonKho();
 
-$userAddress = '';
+// Lấy thông tin người dùng từ database
+$userInfo = [
+    'hoten' => '',
+    'dienthoai' => '',
+    'diachi' => '',
+    'province_id' => '',
+    'district_id' => '',
+    'ward_id' => ''
+];
+
 if (isset($_SESSION['USER'])) {
     require_once '../../elements_LQA/mod/userCls.php';
     $userObj = new user();
     $currentUser = $userObj->UserGetbyUsername($_SESSION['USER']);
-    if ($currentUser && !empty($currentUser->diachi)) {
-        $userAddress = $currentUser->diachi;
+    if ($currentUser) {
+        $userInfo = [
+            'hoten' => $currentUser->hoten ?? '',
+            'dienthoai' => $currentUser->dienthoai ?? '',
+            'diachi' => $currentUser->diachi ?? '',
+            'province_id' => $currentUser->province_id ?? '',
+            'district_id' => $currentUser->district_id ?? '',
+            'ward_id' => $currentUser->ward_id ?? ''
+        ];
     }
 }
+
+// Kiểm tra xem người dùng đã có đầy đủ thông tin địa chỉ chưa
+$isAddressComplete = !empty($userInfo['hoten']) && !empty($userInfo['dienthoai']) && !empty($userInfo['diachi']) && !empty($userInfo['province_id']) && !empty($userInfo['district_id']);
 
 $orderDetails = [];
 $totalAmount = 0;
@@ -100,13 +119,20 @@ foreach ($selectedProducts as $product) {
 
     $imageSrc = "https://via.placeholder.com/80x80/cccccc/666666?text=No+Image";
 
-    $subtotal = $productInfo->giathamkhao * $quantity;
+    // Kiểm tra sản phẩm có giảm giá không
+    $hasDiscount = !empty($productInfo->giakhuyenmai) && $productInfo->giakhuyenmai > 0 && $productInfo->giakhuyenmai < $productInfo->giathamkhao;
+    $currentPrice = $hasDiscount ? $productInfo->giakhuyenmai : $productInfo->giathamkhao;
+    
+    $subtotal = $currentPrice * $quantity;
     $totalAmount += $subtotal;
 
     $orderDetails[] = [
         'id' => $productId,
         'name' => $productInfo->tenhanghoa,
-        'price' => $productInfo->giathamkhao,
+        'price' => $currentPrice,
+        'original_price' => $productInfo->giathamkhao,
+        'discount_price' => $hasDiscount ? $productInfo->giakhuyenmai : null,
+        'has_discount' => $hasDiscount,
         'quantity' => $quantity,
         'subtotal' => $subtotal,
         'image' => $imageSrc
@@ -135,9 +161,12 @@ $checkTableStmt = $conn->prepare($checkTableSql);
 $checkTableStmt->execute();
 
 $paymentConfig = [
-    'ten_ngan_hang' => '',
-    'so_tai_khoan' => '',
-    'ten_tai_khoan' => ''
+    'bank_name' => '',
+    'account_number' => '',
+    'account_name' => '',
+    'momo_enabled' => true,
+    'bank_transfer_enabled' => true,
+    'cod_enabled' => true
 ];
 
 if ($checkTableStmt->rowCount() > 0) {
@@ -152,7 +181,10 @@ if ($checkTableStmt->rowCount() > 0) {
         $paymentConfig = [
             'bank_name' => $config['ten_ngan_hang'],
             'account_number' => $config['so_tai_khoan'],
-            'account_name' => $config['ten_tai_khoan']
+            'account_name' => $config['ten_tai_khoan'],
+            'momo_enabled' => !isset($config['momo_enabled']) || $config['momo_enabled'] == 1,
+            'bank_transfer_enabled' => !isset($config['bank_transfer_enabled']) || $config['bank_transfer_enabled'] == 1,
+            'cod_enabled' => !isset($config['cod_enabled']) || $config['cod_enabled'] == 1
         ];
     }
 }
@@ -194,6 +226,7 @@ $transferContent = $orderCode;
             display: flex;
             gap: 20px;
             margin-top: 20px;
+            flex-wrap: wrap;
         }
 
         .payment-method {
@@ -202,11 +235,41 @@ $transferContent = $orderCode;
             padding: 20px;
             cursor: pointer;
             transition: all 0.3s;
+            flex: 1;
+            min-width: 200px;
         }
 
         .payment-method.active {
             border-color: #0d6efd;
             background-color: rgba(13, 110, 253, 0.05);
+        }
+
+        .saved-address-card {
+            border: 2px solid #dee2e6;
+            border-radius: 10px;
+            padding: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: white;
+        }
+
+        .saved-address-card:hover {
+            border-color: #0d6efd;
+            background: #f8f9fa;
+        }
+
+        .saved-address-card.selected {
+            border-color: #0d6efd;
+            background: rgba(13, 110, 253, 0.05);
+            box-shadow: 0 0 0 1px #0d6efd;
+        }
+
+        .saved-address-card .badge-default {
+            background: #28a745;
+            color: white;
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 4px;
         }
 
         .payment-method img {
@@ -217,14 +280,45 @@ $transferContent = $orderCode;
         .qr-container {
             text-align: center;
             margin-top: 20px;
-            padding: 20px;
+            padding: 30px;
             border: 1px solid #dee2e6;
             border-radius: 10px;
             background-color: #f8f9fa;
         }
 
         .qr-code {
-            max-width: 300px;
+            max-width: 450px;
+            margin: 0 auto;
+            padding: 15px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            cursor: pointer;
+        }
+
+        .qr-code:hover {
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        }
+
+        .qr-fullscreen-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            z-index: 999999;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #qrFullscreenImg {
+            width: 600px !important;
+            height: auto !important;
+            max-width: 90vw !important;
+            max-height: none !important;
+            display: block;
             margin: 0 auto;
         }
 
@@ -250,15 +344,110 @@ $transferContent = $orderCode;
         <!-- Thông tin địa chỉ giao hàng -->
         <div class="card mb-4">
             <div class="card-header bg-primary text-white">
-                <h5 class="mb-0">Địa chỉ giao hàng</h5>
+                <h5 class="mb-0"><i class="fas fa-map-marker-alt me-2"></i>Địa chỉ giao hàng</h5>
             </div>
             <div class="card-body">
-                <div class="mb-3">
-                    <label for="shipping-address" class="form-label">Địa chỉ nhận hàng</label>
-                    <textarea class="form-control" id="shipping-address" rows="3"
-                        placeholder="Nhập địa chỉ giao hàng"><?php echo htmlspecialchars($userAddress); ?></textarea>
-                    <div class="form-text">Vui lòng nhập địa chỉ đầy đủ để chúng tôi giao hàng đến bạn.</div>
+                <?php if (isset($_SESSION['USER'])): ?>
+                <!-- Địa chỉ đã lưu -->
+                <div class="mb-4" id="saved-addresses-section">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="mb-0"><i class="fas fa-bookmark me-1 text-primary"></i> Địa chỉ đã lưu</h6>
+                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="loadSavedAddresses()">
+                            <i class="fas fa-sync-alt me-1"></i> Làm mới
+                        </button>
+                    </div>
+                    <div id="saved-addresses-list" class="row g-2">
+                        <div class="col-12 text-muted text-center py-3">
+                            <i class="fas fa-spinner fa-spin me-1"></i> Đang tải địa chỉ...
+                        </div>
+                    </div>
                 </div>
+                <hr>
+                <p class="text-muted mb-3"><i class="fas fa-edit me-1"></i> Hoặc nhập địa chỉ mới bên dưới:</p>
+                <?php endif; ?>
+
+                <?php if (!$isAddressComplete): ?>
+                <div class="alert alert-warning mb-3">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>Thông tin địa chỉ chưa đầy đủ!</strong> Vui lòng nhập đầy đủ thông tin để tiếp tục mua hàng.
+                    <br><small>Hoặc cập nhật thông tin tại <a href="../page.php?p=thongtintaikhoan" target="_blank">Thông tin tài khoản</a></small>
+                </div>
+                <?php endif; ?>
+
+                <div class="row">
+                    <!-- Họ tên người nhận -->
+                    <div class="col-md-6 mb-3">
+                        <label for="receiver-name" class="form-label">Họ tên người nhận <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="receiver-name" name="receiver_name"
+                            placeholder="Nhập họ tên người nhận" required
+                            value="<?php echo htmlspecialchars($userInfo['hoten']); ?>">
+                    </div>
+                    <!-- Số điện thoại -->
+                    <div class="col-md-6 mb-3">
+                        <label for="receiver-phone" class="form-label">Số điện thoại <span class="text-danger">*</span></label>
+                        <input type="tel" class="form-control" id="receiver-phone" name="receiver_phone"
+                            placeholder="Nhập số điện thoại" required
+                            value="<?php echo htmlspecialchars($userInfo['dienthoai']); ?>">
+                    </div>
+                </div>
+
+                <div class="row">
+                    <!-- Tỉnh/Thành phố -->
+                    <div class="col-md-4 mb-3">
+                        <label for="province" class="form-label">Tỉnh/Thành phố <span class="text-danger">*</span></label>
+                        <select class="form-select" id="province" name="province" required>
+                            <option value="">-- Chọn Tỉnh/Thành phố --</option>
+                        </select>
+                    </div>
+                    <!-- Quận/Huyện -->
+                    <div class="col-md-4 mb-3">
+                        <label for="district" class="form-label">Quận/Huyện <span class="text-danger">*</span></label>
+                        <select class="form-select" id="district" name="district" disabled required>
+                            <option value="">-- Chọn Quận/Huyện --</option>
+                        </select>
+                    </div>
+                    <!-- Phường/Xã -->
+                    <div class="col-md-4 mb-3">
+                        <label for="ward" class="form-label">Phường/Xã</label>
+                        <select class="form-select" id="ward" name="ward" disabled>
+                            <option value="">-- Chọn Phường/Xã --</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Địa chỉ chi tiết -->
+                <div class="mb-3">
+                    <label for="detail-address" class="form-label">Địa chỉ chi tiết <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="detail-address" name="detail_address"
+                        placeholder="Số nhà, tên đường, ngõ/hẻm..." required
+                        value="<?php echo htmlspecialchars($userInfo['diachi']); ?>">
+                    <div class="form-text"><i class="fas fa-info-circle me-1"></i>VD: Số 123, Đường Nguyễn Văn A, Ngõ 45</div>
+                </div>
+
+                <!-- Hidden fields để lưu thông tin đã chọn -->
+                <input type="hidden" id="full-address" name="full_address" value="">
+                <input type="hidden" id="province-name" name="province_name" value="">
+                <input type="hidden" id="district-name" name="district_name" value="">
+                <input type="hidden" id="ward-name" name="ward_name" value="">
+                <input type="hidden" id="saved-province-id" value="<?php echo $userInfo['province_id']; ?>">
+                <input type="hidden" id="saved-district-id" value="<?php echo $userInfo['district_id']; ?>">
+                <input type="hidden" id="saved-ward-id" value="<?php echo $userInfo['ward_id']; ?>">
+
+                <!-- Hiển thị địa chỉ đầy đủ -->
+                <div class="alert alert-info" id="full-address-display" style="display: none;">
+                    <i class="fas fa-map-marker-alt me-2"></i>
+                    <strong>Địa chỉ giao hàng:</strong> <span id="full-address-text"></span>
+                </div>
+
+                <!-- Nút lưu địa chỉ -->
+                <?php if (isset($_SESSION['USER'])): ?>
+                <div class="mt-2">
+                    <button type="button" class="btn btn-outline-success btn-sm" id="saveAddressBtn" onclick="saveUserAddress()">
+                        <i class="fas fa-save me-1"></i> Lưu địa chỉ này cho lần sau
+                    </button>
+                    <span id="saveAddressStatus" class="ms-2" style="display: none;"></span>
+                </div>
+                <?php endif; ?>
             </div>
         </div>
 
@@ -294,7 +483,15 @@ $transferContent = $orderCode;
                                         <span><?php echo htmlspecialchars($item['name']); ?></span>
                                     </div>
                                 </td>
-                                <td><?php echo number_format($item['price'], 0, ',', '.'); ?> ₫</td>
+                                <td>
+                                    <?php if (!empty($item['has_discount'])): ?>
+                                        <span class="text-danger fw-bold"><?= number_format($item['price'], 0, ',', '.'); ?> ₫</span>
+                                        <br>
+                                        <small class="text-muted text-decoration-line-through"><?= number_format($item['original_price'], 0, ',', '.'); ?> ₫</small>
+                                    <?php else: ?>
+                                        <?= number_format($item['price'], 0, ',', '.'); ?> ₫
+                                    <?php endif; ?>
+                                </td>
                                 <td><?php echo $item['quantity']; ?></td>
                                 <td><?php echo number_format($item['subtotal'], 0, ',', '.'); ?> ₫</td>
                             </tr>
@@ -342,21 +539,33 @@ $transferContent = $orderCode;
             </div>
             <div class="card-body">
                 <div class="payment-methods">
+                    <?php if ($paymentConfig['momo_enabled']): ?>
                     <div class="payment-method" id="momo-payment">
                         <img src="https://developers.momo.vn/v3/assets/images/square-logo.svg" alt="MoMo" style="height: 40px; margin-bottom: 10px;">
                         <h5>Thanh toán MoMo</h5>
                         <p class="text-muted">Thanh toán nhanh chóng và an toàn qua ví MoMo</p>
                     </div>
-                    <div class="payment-method active" id="bank-transfer">
+                    <?php endif; ?>
+                    <?php if ($paymentConfig['bank_transfer_enabled']): ?>
+                    <div class="payment-method <?php echo (!$paymentConfig['momo_enabled']) ? 'active' : ''; ?>" id="bank-transfer">
                         <i class="fas fa-university" style="font-size: 2rem; color: #0d6efd; margin-bottom: 10px;"></i>
                         <h5>Chuyển khoản ngân hàng</h5>
                         <p class="text-muted">Quét mã QR để thanh toán qua ứng dụng ngân hàng</p>
                     </div>
+                    <?php endif; ?>
+                    <?php if ($paymentConfig['cod_enabled']): ?>
                     <div class="payment-method" id="cod-payment">
                         <i class="fas fa-truck" style="font-size: 2rem; color: #28a745; margin-bottom: 10px;"></i>
                         <h5>Thanh toán khi nhận hàng (COD)</h5>
                         <p class="text-muted">Thanh toán bằng tiền mặt khi nhận hàng</p>
                     </div>
+                    <?php endif; ?>
+                    <?php if (!$paymentConfig['momo_enabled'] && !$paymentConfig['bank_transfer_enabled'] && !$paymentConfig['cod_enabled']): ?>
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Hiện tại chưa có phương thức thanh toán nào được kích hoạt. Vui lòng liên hệ quản trị viên.
+                    </div>
+                    <?php endif; ?>
                 </div>
 
                 <!-- Thông tin thanh toán MoMo -->
@@ -373,73 +582,42 @@ $transferContent = $orderCode;
                 </div>
 
                 <!-- Thông tin thanh toán qua VietQR -->
-                <div class="qr-container" id="bank-transfer-details">
+                <div class="qr-container" id="bank-transfer-details" style="<?php echo $paymentConfig['bank_transfer_enabled'] ? '' : 'display: none;'; ?>">
                     <?php if (!empty($paymentConfig['account_number']) && !empty($paymentConfig['bank_name'])): ?>
                         <h5>Quét mã QR để thanh toán</h5>
-                        <div class="qr-code">
+                        <div class="qr-code" onclick="openQrFullscreen()">
                             <?php
-
-                            $bankCode = '';
-                            $amount = $totalAmount;
+                            $bankCode = 'VCB';
+                            $amount = intval($finalTotal - ($_SESSION['coupon_discount'] ?? 0));
                             $description = $transferContent;
+                            $accountNumber = $paymentConfig['account_number'];
+                            $accountName = urlencode($paymentConfig['account_name']);
 
-                            switch (strtoupper($paymentConfig['bank_name'])) {
-                                case 'VIETCOMBANK':
-                                case 'VCB':
-                                    $bankCode = 'VCB';
-                                    break;
-                                case 'AGRIBANK':
-                                    $bankCode = 'AGR';
-                                    break;
-                                case 'VIETINBANK':
-                                case 'VIETTINBANK':
-                                    $bankCode = 'ICB';
-                                    break;
-                                case 'BIDV':
-                                    $bankCode = 'BIDV';
-                                    break;
-                                case 'TECHCOMBANK':
-                                case 'TCB':
-                                    $bankCode = 'TCB';
-                                    break;
-                                case 'MB':
-                                case 'MBB':
-                                    $bankCode = 'MB';
-                                    break;
-                                case 'ACB':
-                                    $bankCode = 'ACB';
-                                    break;
-                                case 'TPB':
-                                case 'TPBANK':
-                                    $bankCode = 'TPB';
-                                    break;
-                                default:
-                                    $bankCode = '';
-                            }
+                            $bankNameUpper = strtoupper(trim($paymentConfig['bank_name']));
+                            if (strpos($bankNameUpper, 'AGRI') !== false) $bankCode = 'AGR';
+                            elseif (strpos($bankNameUpper, 'VIETIN') !== false) $bankCode = 'ICB';
+                            elseif (strpos($bankNameUpper, 'BIDV') !== false) $bankCode = 'BIDV';
+                            elseif (strpos($bankNameUpper, 'TECH') !== false) $bankCode = 'TCB';
+                            elseif (strpos($bankNameUpper, 'MB') !== false) $bankCode = 'MB';
+                            elseif (strpos($bankNameUpper, 'ACB') !== false) $bankCode = 'ACB';
+                            elseif (strpos($bankNameUpper, 'TPB') !== false) $bankCode = 'TPB';
+                            elseif (strpos($bankNameUpper, 'VCB') !== false || strpos($bankNameUpper, 'VIETCOM') !== false) $bankCode = 'VCB';
 
-                            if (empty($bankCode)) {
-                                $bankCode = 'TCB';
-                            }
-
-                            $encodedAccountName = urlencode($paymentConfig['account_name']);
-                            $encodedDescription = urlencode($description);
-
-                            $vietQrUrl = "https://img.vietqr.io/image/{$bankCode}-{$paymentConfig['account_number']}-compact.png?amount={$amount}&addInfo={$encodedDescription}&accountName={$encodedAccountName}";
-
-                            error_log("VietQR URL: " . $vietQrUrl);
+                            $vietQrUrl = "https://img.vietqr.io/image/{$bankCode}-{$accountNumber}-print.png?amount={$amount}&addInfo={$description}&accountName={$accountName}";
                             ?>
-                            <img src="<?php echo $vietQrUrl; ?>" alt="QR Code" class="img-fluid">
+                            <img src="<?php echo $vietQrUrl; ?>" alt="QR Code" id="qrCodeImg" data-bank="<?php echo $bankCode; ?>" data-account="<?php echo $accountNumber; ?>" data-name="<?php echo $accountName; ?>" data-desc="<?php echo $description; ?>" style="width: 100%; border-radius: 10px;">
+                            <p class="text-center text-muted mt-1" style="font-size: 13px;"><i class="fas fa-search-plus"></i> Nhấn để phóng to</p>
                         </div>
                         <div class="bank-info mt-3">
                             <p><strong>Ngân hàng:</strong> <?php echo htmlspecialchars($paymentConfig['bank_name']); ?></p>
-                            <p><strong>Số tài khoản:</strong>
-                                <?php echo htmlspecialchars($paymentConfig['account_number']); ?></p>
-                            <p><strong>Chủ tài khoản:</strong>
-                                <?php echo htmlspecialchars($paymentConfig['account_name']); ?></p>
-                            <p><strong>Nội dung chuyển khoản:</strong> <?php echo $transferContent; ?></p>
+                            <p><strong>Số tài khoản:</strong> <?php echo htmlspecialchars($paymentConfig['account_number']); ?></p>
+                            <p><strong>Chủ tài khoản:</strong> <?php echo htmlspecialchars($paymentConfig['account_name']); ?></p>
+                            <p><strong>Số tiền:</strong> <span id="qr-amount" style="color: #dc3545; font-size: 20px; font-weight: bold;"><?php echo number_format($amount, 0, ',', '.'); ?>₫</span></p>
+                            <p><strong>Nội dung:</strong> <span style="color: #0d6efd; font-size: 16px; font-weight: bold;"><?php echo $description; ?></span></p>
                         </div>
-                        <div class="alert alert-info mt-3">
-                            <p>Sau khi thanh toán, vui lòng nhấn nút "Xác nhận đã thanh toán" bên dưới.</p>
+                        <div class="alert alert-success mt-3">
+                            <i class="fas fa-check-circle me-2"></i>
+                            Quét mã QR bằng ứng dụng ngân hàng. Số tiền và nội dung đã được điền sẵn. Chỉ cần nhấn <strong>Thanh toán</strong>.
                         </div>
                     <?php else: ?>
                         <div class="alert alert-warning">
@@ -465,7 +643,7 @@ $transferContent = $orderCode;
                         <div class="alert alert-info">
                             <i class="fas fa-info-circle me-2"></i>
                             <strong>Lưu ý:</strong> Vui lòng chuẩn bị đủ tiền mặt khi nhận hàng.
-                            Số tiền cần thanh toán: <strong><?php echo number_format($totalAmount, 0, ',', '.'); ?> đ</strong>
+                            Số tiền cần thanh toán: <strong id="cod-amount"><?php echo number_format($finalTotal - ($_SESSION['coupon_discount'] ?? 0), 0, ',', '.'); ?> đ</strong>
                         </div>
                     </div>
                 </div>
@@ -488,6 +666,378 @@ $transferContent = $orderCode;
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        // ===== ADDRESS SELECTOR =====
+        const AddressHandler = {
+            province: null,
+            district: null,
+            ward: null,
+
+            init: function() {
+                this.bindEvents();
+                this.loadProvincesAndRestore();
+                if (typeof loadSavedAddresses === 'function') {
+                    loadSavedAddresses();
+                }
+            },
+
+            loadProvincesAndRestore: function() {
+                const self = this;
+                const savedProvinceId = $('#saved-province-id').val();
+                const savedDistrictId = $('#saved-district-id').val();
+                const savedWardId = $('#saved-ward-id').val();
+
+                $.ajax({
+                    url: '../../../api/get_address_data.php',
+                    type: 'GET',
+                    data: { action: 'get_all_provinces' },
+                    dataType: 'json',
+                    success: function(response) {
+                        if (response.success && response.provinces) {
+                            let options = '<option value="">-- Chọn Tỉnh/Thành phố --</option>';
+                            response.provinces.forEach(function(p) {
+                                const selected = (savedProvinceId && p.id == savedProvinceId) ? ' selected' : '';
+                                options += `<option value="${p.id}"${selected}>${p.name}</option>`;
+                            });
+                            $('#province').html(options);
+
+                            // Nếu có tỉnh đã lưu, load quận
+                            if (savedProvinceId) {
+                                const selectedOption = $('#province option:selected');
+                                self.province = { id: savedProvinceId, name: selectedOption.text() };
+                                self.loadDistrictsAndRestore(savedProvinceId, savedDistrictId, savedWardId);
+                            }
+                            self.updateFullAddress();
+                        }
+                    }
+                });
+            },
+
+            loadDistrictsAndRestore: function(provinceId, savedDistrictId, savedWardId) {
+                const self = this;
+                $.ajax({
+                    url: '../../../api/get_address_data.php',
+                    type: 'GET',
+                    data: { action: 'get_districts', province_id: provinceId },
+                    dataType: 'json',
+                    success: function(response) {
+                        if (response.success && response.districts) {
+                            let options = '<option value="">-- Chọn Quận/Huyện --</option>';
+                            response.districts.forEach(function(d) {
+                                const selected = (savedDistrictId && d.id == savedDistrictId) ? ' selected' : '';
+                                options += `<option value="${d.id}"${selected}>${d.name}</option>`;
+                            });
+                            $('#district').html(options).prop('disabled', false);
+
+                            // Nếu có quận đã lưu, load phường
+                            if (savedDistrictId) {
+                                const selectedOption = $('#district option:selected');
+                                self.district = { id: savedDistrictId, name: selectedOption.text() };
+                                self.loadWardsAndRestore(savedDistrictId, savedWardId);
+                            }
+                            self.updateFullAddress();
+                        }
+                    }
+                });
+            },
+
+            loadWardsAndRestore: function(districtId, savedWardId) {
+                const self = this;
+                $.ajax({
+                    url: '../../../api/get_address_data.php',
+                    type: 'GET',
+                    data: { action: 'get_wards', district_id: districtId },
+                    dataType: 'json',
+                    success: function(response) {
+                        if (response.success && response.wards) {
+                            let options = '<option value="">-- Chọn Phường/Xã --</option>';
+                            response.wards.forEach(function(w) {
+                                const selected = (savedWardId && w.code == savedWardId) ? ' selected' : '';
+                                options += `<option value="${w.code}"${selected}>${w.name}</option>`;
+                            });
+                            $('#ward').html(options).prop('disabled', false);
+
+                            // Nếu có phường đã lưu
+                            if (savedWardId) {
+                                const selectedOption = $('#ward option:selected');
+                                self.ward = { code: savedWardId, name: selectedOption.text() };
+                            }
+                            self.updateFullAddress();
+                        }
+                    }
+                });
+            },
+
+            bindEvents: function() {
+                const self = this;
+                $('#province').on('change', function() { self.onProvinceChange($(this).val(), $(this).find('option:selected').text()); });
+                $('#district').on('change', function() { self.onDistrictChange($(this).val(), $(this).find('option:selected').text()); });
+                $('#ward').on('change', function() { self.onWardChange($(this).val(), $(this).find('option:selected').text()); });
+                $('#detail-address, #receiver-name, #receiver-phone').on('input', function() { self.updateFullAddress(); });
+            },
+
+            loadProvinces: function() {
+                // Đã xử lý trong loadProvincesAndRestore
+            },
+
+            onProvinceChange: function(id, name) {
+                this.province = id ? { id, name } : null;
+                $('#district').prop('disabled', true).html('<option value="">-- Chọn Quận/Huyện --</option>');
+                $('#ward').prop('disabled', true).html('<option value="">-- Chọn Phường/Xã --</option>');
+                if (id) this.loadDistricts(id);
+                this.updateFullAddress();
+            },
+
+            loadDistricts: function(provinceId, savedDistrictId, savedWardId) {
+                const self = this;
+                $.ajax({
+                    url: '../../../api/get_address_data.php',
+                    type: 'GET',
+                    data: { action: 'get_districts', province_id: provinceId },
+                    dataType: 'json',
+                    success: function(response) {
+                        if (response.success && response.districts) {
+                            let options = '<option value="">-- Chọn Quận/Huyện --</option>';
+                            response.districts.forEach(function(d) {
+                                const selected = (savedDistrictId && d.id == savedDistrictId) ? ' selected' : '';
+                                options += `<option value="${d.id}"${selected}>${d.name}</option>`;
+                            });
+                            $('#district').html(options).prop('disabled', false);
+                            
+                            if (savedDistrictId) {
+                                const selectedOption = $('#district option:selected');
+                                self.district = { id: savedDistrictId, name: selectedOption.text() };
+                                self.loadWards(savedDistrictId, savedWardId);
+                            }
+                        }
+                    }
+                });
+            },
+
+            onDistrictChange: function(id, name) {
+                this.district = id ? { id, name } : null;
+                $('#ward').prop('disabled', true).html('<option value="">-- Chọn Phường/Xã --</option>');
+                if (id) this.loadWards(id);
+                this.updateFullAddress();
+            },
+
+            loadWards: function(districtId, savedWardId) {
+                const self = this;
+                $.ajax({
+                    url: '../../../api/get_address_data.php',
+                    type: 'GET',
+                    data: { action: 'get_wards', district_id: districtId },
+                    dataType: 'json',
+                    success: function(response) {
+                        if (response.success && response.wards) {
+                            let options = '<option value="">-- Chọn Phường/Xã --</option>';
+                            response.wards.forEach(function(w) {
+                                const selected = (savedWardId && w.code == savedWardId) ? ' selected' : '';
+                                options += `<option value="${w.code}"${selected}>${w.name}</option>`;
+                            });
+                            $('#ward').html(options).prop('disabled', false);
+                            
+                            if (savedWardId) {
+                                const selectedOption = $('#ward option:selected');
+                                self.ward = { code: savedWardId, name: selectedOption.text() };
+                                self.updateFullAddress();
+                            }
+                        }
+                    }
+                });
+            },
+
+            onWardChange: function(code, name) {
+                this.ward = code ? { code, name } : null;
+                this.updateFullAddress();
+            },
+
+            updateFullAddress: function() {
+                const detail = $('#detail-address').val().trim();
+                const parts = [];
+                if (detail) parts.push(detail);
+                if (this.ward) parts.push(this.ward.name);
+                if (this.district) parts.push(this.district.name);
+                if (this.province) parts.push(this.province.name);
+
+                const fullAddress = parts.join(', ');
+                if (fullAddress) {
+                    $('#full-address-text').text(fullAddress);
+                    $('#full-address-display').show();
+                    $('#full-address').val(fullAddress);
+                    $('#province-name').val(this.province?.name || '');
+                    $('#district-name').val(this.district?.name || '');
+                    $('#ward-name').val(this.ward?.name || '');
+                } else {
+                    $('#full-address-display').hide();
+                }
+            },
+
+            validate: function() {
+                const errors = [];
+                if (!this.province) errors.push('Vui lòng chọn Tỉnh/Thành phố');
+                if (!this.district) errors.push('Vui lòng chọn Quận/Huyện');
+                if (!this.ward) errors.push('Vui lòng chọn Phường/Xã');
+                if (!$('#detail-address').val().trim()) errors.push('Vui lòng nhập địa chỉ chi tiết');
+                if (!$('#receiver-name').val().trim()) errors.push('Vui lòng nhập tên người nhận');
+                if (!$('#receiver-phone').val().trim()) errors.push('Vui lòng nhập số điện thoại');
+                return { valid: errors.length === 0, errors };
+            },
+
+            getAddress: function() {
+                return {
+                    province_id: this.province?.id,
+                    province_name: this.province?.name,
+                    district_id: this.district?.id,
+                    district_name: this.district?.name,
+                    ward_code: this.ward?.code,
+                    ward_name: this.ward?.name,
+                    detail_address: $('#detail-address').val().trim(),
+                    receiver_name: $('#receiver-name').val().trim(),
+                    receiver_phone: $('#receiver-phone').val().trim(),
+                    full_address: $('#full-address').val()
+                };
+            }
+        };
+
+        document.addEventListener('DOMContentLoaded', function() {
+            AddressHandler.init();
+            window.AddressHandler = AddressHandler;
+        });
+
+        function saveUserAddress() {
+            const addressData = window.AddressHandler.getAddress();
+            const validation = window.AddressHandler.validate();
+            
+            if (!validation.valid) {
+                alert('Vui lòng nhập đầy đủ thông tin trước khi lưu:\n\n' + validation.errors.join('\n'));
+                return;
+            }
+            
+            const btn = document.getElementById('saveAddressBtn');
+            const status = document.getElementById('saveAddressStatus');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Đang lưu...';
+            
+            const formData = new FormData();
+            formData.append('action', 'add_address');
+            formData.append('province_id', addressData.province_id || '');
+            formData.append('district_id', addressData.district_id || '');
+            formData.append('ward_code', addressData.ward_code || '');
+            formData.append('address_detail', addressData.detail_address || '');
+            formData.append('recipient_name', addressData.receiver_name || '');
+            formData.append('phone', addressData.receiver_phone || '');
+            
+            fetch('../../../api/user_addresses.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    status.innerHTML = '<i class="fas fa-check-circle text-success"></i> <span class="text-success">Đã lưu!</span>';
+                    status.style.display = 'inline';
+                    btn.innerHTML = '<i class="fas fa-check me-1"></i> Đã lưu';
+                    btn.classList.remove('btn-outline-success');
+                    btn.classList.add('btn-success');
+                    loadSavedAddresses();
+                } else {
+                    status.innerHTML = '<span class="text-danger">' + (data.message || 'Lỗi') + '</span>';
+                    status.style.display = 'inline';
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-save me-1"></i> Lưu địa chỉ này cho lần sau';
+                }
+            })
+            .catch(() => {
+                status.innerHTML = '<span class="text-danger">Lỗi kết nối</span>';
+                status.style.display = 'inline';
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-save me-1"></i> Lưu địa chỉ này cho lần sau';
+            });
+        }
+
+        function loadSavedAddresses() {
+            fetch('../../../api/user_addresses.php?action=get_addresses')
+                .then(r => r.json())
+                .then(data => {
+                    const container = document.getElementById('saved-addresses-list');
+                    if (!data.success || !data.addresses || data.addresses.length === 0) {
+                        container.innerHTML = '<div class="col-12 text-muted text-center py-2">Chưa có địa chỉ đã lưu</div>';
+                        return;
+                    }
+                    
+                    let html = '';
+                    data.addresses.forEach(addr => {
+                        const defaultBadge = addr.is_default == 1 ? '<span class="badge-default ms-1">Mặc định</span>' : '';
+                        html += `
+                        <div class="col-md-6">
+                            <div class="saved-address-card" onclick="selectAddress(${addr.id}, ${JSON.stringify(addr).replace(/"/g, '&quot;')})" id="addr-card-${addr.id}">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <strong>${addr.recipient_name}</strong> ${defaultBadge}
+                                        <br><small class="text-muted">${addr.phone}</small>
+                                        <br><small>${addr.full_address}</small>
+                                    </div>
+                                    <div class="text-end">
+                                        <button type="button" class="btn btn-sm btn-link text-danger p-0" onclick="event.stopPropagation(); deleteAddress(${addr.id})" title="Xóa">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                        ${addr.is_default != 1 ? `<br><button type="button" class="btn btn-sm btn-link text-success p-0 mt-1" onclick="event.stopPropagation(); setDefaultAddress(${addr.id})" title="Đặt mặc định"><i class="fas fa-star"></i></button>` : ''}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>`;
+                    });
+                    container.innerHTML = html;
+                })
+                .catch(() => {
+                    document.getElementById('saved-addresses-list').innerHTML = '<div class="col-12 text-danger text-center py-2">Lỗi tải địa chỉ</div>';
+                });
+        }
+
+        function selectAddress(id, addr) {
+            document.querySelectorAll('.saved-address-card').forEach(c => c.classList.remove('selected'));
+            document.getElementById('addr-card-' + id)?.classList.add('selected');
+            
+            document.getElementById('receiver-name').value = addr.recipient_name || '';
+            document.getElementById('receiver-phone').value = addr.phone || '';
+            document.getElementById('detail-address').value = addr.address_detail || '';
+            document.getElementById('province').value = addr.province_id || '';
+            
+            if (window.AddressHandler) {
+                window.AddressHandler.province = { id: addr.province_id, name: addr.province_name || '' };
+                window.AddressHandler.loadDistricts(addr.province_id, addr.district_id, addr.ward_code);
+            }
+            
+            window.AddressHandler.updateFullAddress();
+        }
+
+        function deleteAddress(id) {
+            if (!confirm('Bạn có chắc muốn xóa địa chỉ này?')) return;
+            const formData = new FormData();
+            formData.append('action', 'delete_address');
+            formData.append('id', id);
+            fetch('../../../api/user_addresses.php', { method: 'POST', body: formData })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) loadSavedAddresses();
+                    else alert(data.message || 'Lỗi xóa');
+                });
+        }
+
+        function setDefaultAddress(id) {
+            const formData = new FormData();
+            formData.append('action', 'set_default');
+            formData.append('id', id);
+            fetch('../../../api/user_addresses.php', { method: 'POST', body: formData })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) loadSavedAddresses();
+                    else alert(data.message || 'Lỗi');
+                });
+        }
+    </script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const confirmPaymentBtn = document.getElementById('confirmPaymentBtn');
@@ -499,7 +1049,21 @@ $transferContent = $orderCode;
             const bankDetails = document.getElementById('bank-transfer-details');
             const codDetails = document.getElementById('cod-payment-details');
 
+            // Xác định phương thức thanh toán mặc định dựa trên cấu hình
             let selectedPaymentMethod = 'bank-transfer';
+            if (momoPaymentMethod) {
+                selectedPaymentMethod = 'momo';
+                momoPaymentMethod.classList.add('active');
+                if (momoDetails) momoDetails.style.display = 'block';
+            } else if (bankTransferMethod) {
+                selectedPaymentMethod = 'bank-transfer';
+                bankTransferMethod.classList.add('active');
+                if (bankDetails) bankDetails.style.display = 'block';
+            } else if (codPaymentMethod) {
+                selectedPaymentMethod = 'cod';
+                codPaymentMethod.classList.add('active');
+                if (codDetails) codDetails.style.display = 'block';
+            }
 
             window.currentShippingFee = 0;
             window.currentVatAmount = <?php echo $vatAmount; ?>;
@@ -535,100 +1099,124 @@ $transferContent = $orderCode;
                         couponRow.style.display = 'none';
                     }
                 }
+                
+                // Cập nhật QR code với số tiền mới
+                const qrImg = document.getElementById('qrCodeImg');
+                const qrAmount = document.getElementById('qr-amount');
+                if (qrImg && finalTotal > 0) {
+                    const bank = qrImg.dataset.bank || 'VCB';
+                    const account = qrImg.dataset.account || '';
+                    const name = qrImg.dataset.name || '';
+                    const desc = qrImg.dataset.desc || '';
+                    const newUrl = `https://img.vietqr.io/image/${bank}-${account}-print.png?amount=${Math.round(finalTotal)}&addInfo=${desc}&accountName=${name}`;
+                    qrImg.src = newUrl;
+                }
+                if (qrAmount) {
+                    qrAmount.textContent = new Intl.NumberFormat('vi-VN').format(Math.round(finalTotal)) + ' ₫';
+                }
+                
+                // Cập nhật số tiền COD
+                const codAmount = document.getElementById('cod-amount');
+                if (codAmount) {
+                    codAmount.textContent = new Intl.NumberFormat('vi-VN').format(Math.round(finalTotal)) + ' đ';
+                }
             };
             
             const updateFinalTotal = window.updateFinalTotal;
 
-            momoPaymentMethod.addEventListener('click', function() {
-                console.log('🚀 MoMo payment method clicked!');
+            function clearAllActive() {
+                if (momoPaymentMethod) momoPaymentMethod.classList.remove('active');
+                if (bankTransferMethod) bankTransferMethod.classList.remove('active');
+                if (codPaymentMethod) codPaymentMethod.classList.remove('active');
+                if (momoDetails) momoDetails.style.display = 'none';
+                if (bankDetails) bankDetails.style.display = 'none';
+                if (codDetails) codDetails.style.display = 'none';
+            }
 
-                const shippingAddress = document.getElementById('shipping-address').value.trim();
-                if (!shippingAddress) {
-                    alert('Vui lòng nhập địa chỉ giao hàng trước khi thanh toán!');
-                    return;
-                }
+            if (momoPaymentMethod) {
+                momoPaymentMethod.addEventListener('click', function() {
+                    console.log('🚀 MoMo payment method clicked!');
 
-                momoPaymentMethod.classList.add('active');
-                bankTransferMethod.classList.remove('active');
-                momoDetails.style.display = 'block';
-                bankDetails.style.display = 'none';
-                selectedPaymentMethod = 'momo';
-                confirmPaymentBtn.textContent = 'Đang xử lý MoMo...';
-                confirmPaymentBtn.disabled = true;
+                    const addressValidation = window.AddressHandler.validate();
+                    if (!addressValidation.valid) {
+                        alert('Vui lòng nhập đầy đủ thông tin:\n\n' + addressValidation.errors.join('\n'));
+                        return;
+                    }
 
-                processMoMoPayment(shippingAddress);
-            });
+                    const addressData = window.AddressHandler.getAddress();
+                    const shippingAddress = addressData.full_address;
 
-            bankTransferMethod.addEventListener('click', function() {
+                    clearAllActive();
+                    momoPaymentMethod.classList.add('active');
+                    if (momoDetails) momoDetails.style.display = 'block';
+                    selectedPaymentMethod = 'momo';
+                    confirmPaymentBtn.textContent = 'Đang xử lý MoMo...';
+                    confirmPaymentBtn.disabled = true;
 
-                bankTransferMethod.classList.add('active');
-                momoPaymentMethod.classList.remove('active');
-                codPaymentMethod.classList.remove('active');
-                bankDetails.style.display = 'block';
-                momoDetails.style.display = 'none';
-                codDetails.style.display = 'none';
-                selectedPaymentMethod = 'bank-transfer';
-                confirmPaymentBtn.textContent = 'Xác nhận đã thanh toán';
-            });
+                    processMoMoPayment(shippingAddress, addressData);
+                });
+            }
 
-            codPaymentMethod.addEventListener('click', function() {
+            if (bankTransferMethod) {
+                bankTransferMethod.addEventListener('click', function() {
+                    clearAllActive();
+                    bankTransferMethod.classList.add('active');
+                    if (bankDetails) bankDetails.style.display = 'block';
+                    selectedPaymentMethod = 'bank-transfer';
+                    confirmPaymentBtn.textContent = 'Xác nhận đã thanh toán';
+                });
+            }
 
-                codPaymentMethod.classList.add('active');
-                momoPaymentMethod.classList.remove('active');
-                bankTransferMethod.classList.remove('active');
-                codDetails.style.display = 'block';
-                momoDetails.style.display = 'none';
-                bankDetails.style.display = 'none';
-                selectedPaymentMethod = 'cod';
-                confirmPaymentBtn.textContent = 'Xác nhận đặt hàng COD';
-            });
+            if (codPaymentMethod) {
+                codPaymentMethod.addEventListener('click', function() {
+                    clearAllActive();
+                    codPaymentMethod.classList.add('active');
+                    if (codDetails) codDetails.style.display = 'block';
+                    selectedPaymentMethod = 'cod';
+                    confirmPaymentBtn.textContent = 'Xác nhận đặt hàng COD';
+                });
+            }
 
             confirmPaymentBtn.addEventListener('click', function(e) {
                 e.preventDefault();
                 console.log('🔥 BUTTON CLICKED! Payment method:', selectedPaymentMethod);
 
+                // Validate địa chỉ
+                const addressValidation = window.AddressHandler.validate();
+                if (!addressValidation.valid) {
+                    alert('Vui lòng nhập đầy đủ thông tin:\n\n' + addressValidation.errors.join('\n'));
+                    return;
+                }
+
+                const addressData = window.AddressHandler.getAddress();
+                const shippingAddress = addressData.full_address;
+
+                if (!shippingAddress) {
+                    alert('Vui lòng nhập địa chỉ giao hàng!');
+                    return;
+                }
+
                 if (selectedPaymentMethod === 'momo') {
                     console.log('✅ MoMo payment selected!');
-
-                    const shippingAddress = document.getElementById('shipping-address').value.trim();
-                    if (!shippingAddress) {
-                        alert('Vui lòng nhập địa chỉ giao hàng!');
-                        return;
-                    }
-
-                    processMoMoPayment(shippingAddress);
+                    processMoMoPayment(shippingAddress, addressData);
                     return;
                 }
 
                 if (selectedPaymentMethod === 'cod') {
                     console.log('✅ COD payment selected!');
-
-                    const shippingAddress = document.getElementById('shipping-address').value.trim();
-                    if (!shippingAddress) {
-                        alert('Vui lòng nhập địa chỉ giao hàng!');
-                        return;
-                    }
-
-                    processCODPayment(shippingAddress);
-                    return;
-                }
-
-                const shippingAddress = document.getElementById('shipping-address').value.trim();
-
-                if (!shippingAddress) {
-                    alert('Vui lòng nhập địa chỉ giao hàng');
+                    processCODPayment(shippingAddress, addressData);
                     return;
                 }
 
                 confirmPaymentBtn.disabled = true;
                 processingPayment.style.display = 'block';
-
-                processBankTransferPayment(shippingAddress);
+                processBankTransferPayment(shippingAddress, addressData);
             });
 
-            function processMoMoPayment(shippingAddress) {
+            function processMoMoPayment(shippingAddress, addressData) {
                 console.log('🚀 processMoMoPayment called!');
                 console.log('Shipping address:', shippingAddress);
+                console.log('Address data:', addressData);
                 console.log('Order code:', '<?php echo $orderCode; ?>');
                 
                 const subtotal = <?php echo $totalAmount; ?>;
@@ -650,6 +1238,15 @@ $transferContent = $orderCode;
                 formData.append('payment_method', 'momo');
                 formData.append('order_code', '<?php echo $orderCode; ?>');
                 formData.append('shipping_address', shippingAddress);
+                formData.append('receiver_name', addressData.receiver_name || '');
+                formData.append('receiver_phone', addressData.receiver_phone || '');
+                formData.append('province_id', addressData.province_id || '');
+                formData.append('province_name', addressData.province_name || '');
+                formData.append('district_id', addressData.district_id || '');
+                formData.append('district_name', addressData.district_name || '');
+                formData.append('ward_code', addressData.ward_code || '');
+                formData.append('ward_name', addressData.ward_name || '');
+                formData.append('detail_address', addressData.detail_address || '');
                 formData.append('amount', finalAmount);
                 formData.append('subtotal', subtotal);
                 formData.append('vat_amount', vatAmount);
@@ -710,9 +1307,10 @@ $transferContent = $orderCode;
                     });
             }
 
-            function processBankTransferPayment(shippingAddress) {
+            function processBankTransferPayment(shippingAddress, addressData) {
                 console.log('🏦 processBankTransferPayment called!');
                 console.log('Shipping address:', shippingAddress);
+                console.log('Address data:', addressData);
                 
                 const subtotal = <?php echo $totalAmount; ?>;
                 const vatAmount = <?php echo $vatAmount; ?>;
@@ -732,6 +1330,15 @@ $transferContent = $orderCode;
                 formData.append('payment_method', 'bank_transfer');
                 formData.append('order_code', '<?php echo $orderCode; ?>');
                 formData.append('shipping_address', shippingAddress);
+                formData.append('receiver_name', addressData.receiver_name || '');
+                formData.append('receiver_phone', addressData.receiver_phone || '');
+                formData.append('province_id', addressData.province_id || '');
+                formData.append('province_name', addressData.province_name || '');
+                formData.append('district_id', addressData.district_id || '');
+                formData.append('district_name', addressData.district_name || '');
+                formData.append('ward_code', addressData.ward_code || '');
+                formData.append('ward_name', addressData.ward_name || '');
+                formData.append('detail_address', addressData.detail_address || '');
                 formData.append('shipping_fee', shippingFee);
                 formData.append('coupon_code', couponCode);
                 formData.append('coupon_discount', couponDiscount);
@@ -768,9 +1375,10 @@ $transferContent = $orderCode;
                     });
             }
 
-            function processCODPayment(shippingAddress) {
+            function processCODPayment(shippingAddress, addressData) {
                 console.log('🚚 processCODPayment called!');
                 console.log('Shipping address:', shippingAddress);
+                console.log('Address data:', addressData);
 
                 confirmPaymentBtn.disabled = true;
                 processingPayment.style.display = 'block';
@@ -783,6 +1391,15 @@ $transferContent = $orderCode;
                 formData.append('payment_method', 'cod');
                 formData.append('order_code', '<?php echo $orderCode; ?>');
                 formData.append('shipping_address', shippingAddress);
+                formData.append('receiver_name', addressData.receiver_name || '');
+                formData.append('receiver_phone', addressData.receiver_phone || '');
+                formData.append('province_id', addressData.province_id || '');
+                formData.append('province_name', addressData.province_name || '');
+                formData.append('district_id', addressData.district_id || '');
+                formData.append('district_name', addressData.district_name || '');
+                formData.append('ward_code', addressData.ward_code || '');
+                formData.append('ward_name', addressData.ward_name || '');
+                formData.append('detail_address', addressData.detail_address || '');
                 formData.append('coupon_code', couponCode);
                 formData.append('coupon_discount', couponDiscount);
                 formData.append('selected_shipping_method', document.getElementById('selected_shipping_method')?.value || 'standard');
@@ -817,6 +1434,45 @@ $transferContent = $orderCode;
                         processingPayment.style.display = 'none';
                     });
             }
+        });
+    </script>
+
+    <!-- QR Fullscreen Overlay -->
+    <div class="qr-fullscreen-overlay" id="qrFullscreen">
+        <button class="close-btn" onclick="closeQrFullscreen()">&times;</button>
+        <div style="background: white; padding: 30px; border-radius: 15px; text-align: center; max-width: 95vw;">
+            <img id="qrFullscreenImg" src="" alt="QR Code" style="width: 600px !important; max-width: 90vw !important; height: auto !important; display: block !important; margin: 0 auto !important;">
+            <div style="margin-top: 15px; font-size: 16px; color: #333;">
+                <p><i class="fas fa-mobile-alt me-1"></i> Quét mã QR bằng ứng dụng ngân hàng</p>
+                <p style="color: #28a745; font-weight: bold;">Số tiền và nội dung đã được điền sẵn</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function openQrFullscreen() {
+            var qrImg = document.getElementById('qrCodeImg');
+            if (qrImg) {
+                // Lấy URL gốc và đổi sang print.png (lớn nhất)
+                var src = qrImg.getAttribute('src');
+                var bigSrc = src.replace(/compact2\.png/g, 'print.png').replace(/compact\.png/g, 'print.png').replace(/qr_only\.png/g, 'print.png');
+                var img = document.getElementById('qrFullscreenImg');
+                img.removeAttribute('width');
+                img.removeAttribute('height');
+                img.src = bigSrc;
+                document.getElementById('qrFullscreen').style.display = 'flex';
+                document.body.style.overflow = 'hidden';
+            }
+        }
+        function closeQrFullscreen() {
+            document.getElementById('qrFullscreen').style.display = 'none';
+            document.body.style.overflow = '';
+        }
+        document.getElementById('qrFullscreen').addEventListener('click', function(e) {
+            if (e.target === this) closeQrFullscreen();
+        });
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') closeQrFullscreen();
         });
     </script>
 </body>

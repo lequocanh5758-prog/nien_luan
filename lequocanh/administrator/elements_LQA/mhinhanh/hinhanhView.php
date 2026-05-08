@@ -209,6 +209,28 @@ if (!file_exists($uploadDirAbsolute)) {
     #delete-selected {
         margin-left: 10px;
         transition: all 0.3s ease;
+        padding: 6px 14px !important;
+        background-color: #dc3545 !important;
+        color: #fff !important;
+        border: 1px solid #dc3545 !important;
+        border-radius: 4px !important;
+        font-size: 13px !important;
+        font-weight: 600 !important;
+        cursor: pointer !important;
+        display: inline-block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+    }
+
+    #delete-selected:hover {
+        background-color: #c82333 !important;
+    }
+
+    #delete-selected:disabled {
+        background-color: #6c757d !important;
+        border-color: #6c757d !important;
+        cursor: not-allowed !important;
+        opacity: 0.65 !important;
     }
 
     @keyframes spin {
@@ -357,25 +379,8 @@ if (!file_exists($uploadDirAbsolute)) {
                 <div class="new-image">
                     <h6><i class="fas fa-upload"></i> Ảnh mới tải lên</h6>
                     <div class="image-wrapper">
-                        <?php if (!empty($duplicate['relative_path'])): ?>
-                        <!-- Debug data -->
-                        <div class="debug-info" style="display: none;">
-                            <pre><?php print_r($duplicate); ?></pre>
-                        </div>
-                        <?php
-
-                                            $relativePath = $duplicate['relative_path'];
-                                            $ts = isset($duplicate['upload_timestamp']) ? $duplicate['upload_timestamp'] : time();
-                                            $imagePath1 = $duplicate['new_image_path'] . '?t=' . $ts;
-                                            $imagePath2 = '../../' . $relativePath . '?t=' . $ts;
-                                            $imagePath3 = '../../../' . $relativePath . '?t=' . $ts;
-                                            ?>
-                        <img src="<?php echo $imagePath1; ?>" data-alt-src1="<?php echo $imagePath2; ?>"
-                            data-alt-src2="<?php echo $imagePath3; ?>" alt="Ảnh mới" class="preview-image dynamic-image"
-                            onerror="this.onerror=null; handleImageError(this);">
-                        <button type="button" class="btn btn-sm btn-info show-debug">
-                            <i class="fas fa-bug"></i> Debug
-                        </button>
+                        <?php if (!empty($duplicate['new_image_data'])): ?>
+                        <img src="<?php echo $duplicate['new_image_data']; ?>" alt="Ảnh mới" class="preview-image dynamic-image">
                         <?php else: ?>
                         <div class="no-image">Không có ảnh</div>
                         <?php endif; ?>
@@ -465,6 +470,321 @@ if (!file_exists($uploadDirAbsolute)) {
     <div class="admin-form">
         <h3>Upload hình ảnh</h3>
 
-        <form method="post" action="elements_LQA/mhinhanh/hinhanhAct.php?reqact=addnew" enctype="multipart/form-data"
+        <form method="post" action="" enctype="multipart/form-data"
             id="uploadForm">
             <div class="input-group">
+                <label for="fileHinhanh">Chọn hình ảnh (có thể chọn nhiều file):</label>
+                <input type="file" name="fileHinhanh[]" id="fileHinhanh" multiple accept="image/*" required>
+                <small class="form-text">Định dạng cho phép: JPG, PNG, GIF. Kích thước tối đa: 5MB/file</small>
+            </div>
+
+            <div class="input-group">
+                <label>
+                    <input type="checkbox" name="auto_match" id="auto_match" value="1" checked>
+                    Tự động khớp hình ảnh với sản phẩm dựa trên tên file
+                </label>
+                <small class="form-text">Ví dụ: "iPhone 15 Pro.png" sẽ tự động khớp với sản phẩm "iPhone 15 Pro"</small>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" name="btnsubmit" class="btn btn-primary">
+                    <i class="fas fa-upload"></i> Tải lên
+                </button>
+                <button type="reset" class="btn btn-secondary">
+                    <i class="fas fa-redo"></i> Làm mới
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Danh sách hình ảnh -->
+    <div class="admin-table">
+        <h3>Danh sách hình ảnh (<?php echo $total; ?> ảnh)</h3>
+        
+        <div class="table-actions">
+            <button id="select-all" class="btn btn-sm btn-secondary">
+                <i class="fas fa-check-square"></i> Chọn tất cả
+            </button>
+            <button id="delete-selected" class="btn btn-sm btn-danger" disabled>
+                <i class="fas fa-trash"></i> Xóa đã chọn (<span id="selected-count">0</span>)
+            </button>
+        </div>
+
+        <table class="table">
+            <thead>
+                <tr>
+                    <th width="50"><input type="checkbox" id="select-all-checkbox"></th>
+                    <th width="80">ID</th>
+                    <th width="150">Hình ảnh</th>
+                    <th>Tên file</th>
+                    <th width="150">Kích thước</th>
+                    <th width="150">Ngày tải lên</th>
+                    <th width="100">Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php if ($total > 0): ?>
+                    <?php foreach ($list_hinhanh as $hinhanh): ?>
+                    <tr id="image-row-<?php echo $hinhanh->id; ?>" 
+                        class="<?php echo $hinhanh->usage_count > 0 ? 'image-in-use' : ''; ?>">
+                        <td>
+                            <input type="checkbox" 
+                                   class="image-checkbox" 
+                                   data-id="<?php echo $hinhanh->id; ?>"
+                                   <?php echo $hinhanh->usage_count > 0 ? 'disabled title="Ảnh đang được sử dụng"' : ''; ?>>
+                        </td>
+                        <td><?php echo $hinhanh->id; ?></td>
+                        <td>
+                            <img src="./elements_LQA/mhanghoa/displayImage.php?id=<?php echo $hinhanh->id; ?>" 
+                                 alt="<?php echo htmlspecialchars($hinhanh->ten_file); ?>"
+                                 style="max-width: 100px; max-height: 100px; object-fit: contain;"
+                                 onerror="this.src='./elements_LQA/img_LQA/no-image.png';">
+                        </td>
+                        <td><?php echo htmlspecialchars($hinhanh->ten_file); ?></td>
+                        <td><?php echo isset($hinhanh->file_size) ? number_format($hinhanh->file_size / 1024, 2) . ' KB' : 'N/A'; ?></td>
+                        <td><?php echo isset($hinhanh->ngay_tao) ? date('d/m/Y H:i', strtotime($hinhanh->ngay_tao)) : 'N/A'; ?></td>
+                        <td>
+                            <?php if ($hinhanh->usage_count == 0): ?>
+                            <button class="delete-btn" 
+                                    onclick="deleteImage(<?php echo $hinhanh->id; ?>)"
+                                    title="Xóa ảnh">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                            <?php else: ?>
+                            <span class="text-muted" title="Ảnh đang được sử dụng">
+                                <i class="fas fa-lock"></i>
+                            </span>
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                    <?php endforeach; ?>
+                <?php else: ?>
+                    <tr>
+                        <td colspan="7" class="text-center">Chưa có hình ảnh nào</td>
+                    </tr>
+                <?php endif; ?>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+// Set form action dynamically to avoid relative URL issues
+(function() {
+    var base = (typeof window.BASE_URL !== 'undefined' && window.BASE_URL) ? window.BASE_URL : '';
+    var form = document.getElementById('uploadForm');
+    if (form) {
+        form.action = base + '/lequocanh/administrator/elements_LQA/mhinhanh/hinhanhAct.php?reqact=addnew';
+    }
+})();
+
+// Handle image error fallback
+function handleImageError(img) {
+    const altSrc1 = img.getAttribute('data-alt-src1');
+    const altSrc2 = img.getAttribute('data-alt-src2');
+    
+    if (altSrc1 && img.src !== altSrc1) {
+        img.src = altSrc1;
+    } else if (altSrc2 && img.src !== altSrc2) {
+        img.src = altSrc2;
+    } else {
+        img.src = './elements_LQA/img_LQA/no-image.png';
+    }
+}
+
+// Show debug info
+document.querySelectorAll('.show-debug').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const debugInfo = this.closest('.image-wrapper').querySelector('.debug-info');
+        if (debugInfo) {
+            debugInfo.style.display = debugInfo.style.display === 'none' ? 'block' : 'none';
+        }
+    });
+});
+
+// Handle duplicate image resolution
+document.querySelectorAll('.use-new-image').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const index = this.getAttribute('data-index');
+        resolveDuplicate(index, 'use_new');
+    });
+});
+
+document.querySelectorAll('.use-existing-image').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const index = this.getAttribute('data-index');
+        resolveDuplicate(index, 'use_existing');
+    });
+});
+
+// Process all duplicates
+document.getElementById('process-all-new')?.addEventListener('click', function() {
+    if (confirm('Bạn có chắc muốn sử dụng tất cả ảnh mới?')) {
+        processAllDuplicates('use_new');
+    }
+});
+
+document.getElementById('process-all-existing')?.addEventListener('click', function() {
+    if (confirm('Bạn có chắc muốn giữ tất cả ảnh hiện tại?')) {
+        processAllDuplicates('use_existing');
+    }
+});
+
+function resolveDuplicate(index, action) {
+    const item = document.querySelector(`.duplicate-image-item[data-index="${index}"]`);
+    if (!item) return;
+    
+    item.classList.add('processing');
+    
+    fetchAct('resolve_duplicate', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `index=${index}&action=${action}`
+    })
+    .then(data => {
+        item.classList.remove('processing');
+        
+        if (data.success) {
+            item.classList.add('processed');
+            const badge = document.createElement('div');
+            badge.className = 'result-badge success';
+            badge.textContent = action === 'use_new' ? 'Đã sử dụng ảnh mới' : 'Đã giữ ảnh hiện tại';
+            item.appendChild(badge);
+            
+            setTimeout(() => {
+                item.style.display = 'none';
+                checkAllProcessed();
+            }, 1500);
+        } else {
+            alert('Lỗi: ' + (data.message || 'Không thể xử lý'));
+        }
+    })
+    .catch(error => {
+        item.classList.remove('processing');
+        alert('Lỗi kết nối: ' + error.message);
+    });
+}
+
+function processAllDuplicates(action) {
+    const items = document.querySelectorAll('.duplicate-image-item:not(.processed)');
+    items.forEach(item => {
+        const index = item.getAttribute('data-index');
+        resolveDuplicate(index, action);
+    });
+}
+
+function checkAllProcessed() {
+    const remaining = document.querySelectorAll('.duplicate-image-item:not(.processed)').length;
+    if (remaining === 0) {
+        document.querySelector('.admin-content').classList.add('all-processed');
+        location.reload();
+    }
+}
+
+// Select all checkbox
+document.getElementById('select-all-checkbox')?.addEventListener('change', function() {
+    const checkboxes = document.querySelectorAll('.image-checkbox:not([disabled])');
+    checkboxes.forEach(cb => cb.checked = this.checked);
+    updateSelectedCount();
+});
+
+document.getElementById('select-all')?.addEventListener('click', function() {
+    const checkbox = document.getElementById('select-all-checkbox');
+    if (checkbox) {
+        checkbox.checked = !checkbox.checked;
+        checkbox.dispatchEvent(new Event('change'));
+    }
+});
+
+// Update selected count
+document.querySelectorAll('.image-checkbox').forEach(cb => {
+    cb.addEventListener('change', updateSelectedCount);
+});
+
+function updateSelectedCount() {
+    const selected = document.querySelectorAll('.image-checkbox:checked').length;
+    document.getElementById('selected-count').textContent = selected;
+    document.getElementById('delete-selected').disabled = selected === 0;
+}
+
+// Delete selected images
+document.getElementById('delete-selected')?.addEventListener('click', function() {
+    const selected = Array.from(document.querySelectorAll('.image-checkbox:checked'))
+        .map(cb => cb.getAttribute('data-id'));
+    
+    if (selected.length === 0) return;
+    
+    if (confirm(`Bạn có chắc muốn xóa ${selected.length} ảnh đã chọn?`)) {
+        deleteMultipleImages(selected);
+    }
+});
+
+function getActUrl(reqact) {
+    var base = (typeof window.BASE_URL !== 'undefined' && window.BASE_URL) ? window.BASE_URL : '';
+    return base + '/lequocanh/administrator/elements_LQA/mhinhanh/hinhanhAct.php?reqact=' + reqact;
+}
+
+function fetchAct(reqact, options) {
+    return fetch(getActUrl(reqact), options).then(function(response) {
+        if (!response.ok) {
+            throw new Error('HTTP ' + response.status);
+        }
+        var contentType = response.headers.get('content-type') || '';
+        if (contentType.indexOf('application/json') === -1) {
+            return response.text().then(function(text) {
+                throw new Error('Server trả về HTML thay vì JSON: ' + text.substring(0, 200));
+            });
+        }
+        return response.json();
+    });
+}
+
+function deleteImage(id) {
+    if (!confirm('Bạn có chắc muốn xóa ảnh này?')) return;
+
+    fetchAct('deleteimage', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `id=${id}`
+    })
+    .then(data => {
+        if (data.success) {
+            document.getElementById(`image-row-${id}`).remove();
+            alert('Đã xóa ảnh thành công');
+        } else {
+            alert('Lỗi: ' + (data.message || 'Không thể xóa ảnh'));
+        }
+    })
+    .catch(error => {
+        alert('Lỗi kết nối: ' + error.message);
+    });
+}
+
+function deleteMultipleImages(ids) {
+    fetchAct('deletemultiple', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ ids: ids })
+    })
+    .then(data => {
+        if (data.success) {
+            ids.forEach(id => {
+                document.getElementById(`image-row-${id}`)?.remove();
+            });
+            alert(`Đã xóa ${data.deleted} ảnh thành công`);
+            updateSelectedCount();
+        } else {
+            alert('Lỗi: ' + (data.message || 'Không thể xóa ảnh'));
+        }
+    })
+    .catch(error => {
+        alert('Lỗi kết nối: ' + error.message);
+    });
+}
+</script>

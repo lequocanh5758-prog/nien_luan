@@ -89,29 +89,20 @@ class ConfigManager
 
     private function applyLocalOverrides()
     {
-
-        $useCloudflare = filter_var($_ENV['USE_CLOUDFLARE_TUNNEL'] ?? false, FILTER_VALIDATE_BOOLEAN);
-        
-        if (!$useCloudflare) {
-            $useCloudflare = filter_var($_ENV['FORCE_TUNNEL'] ?? false, FILTER_VALIDATE_BOOLEAN);
+        // Luôn load cả 2 URL từ .env
+        if (isset($_ENV['BASE_URL'])) {
+            $this->configs['app']['url']['base'] = $_ENV['BASE_URL'];
         }
         
-        $forceNgrok = filter_var($_ENV['FORCE_NGROK'] ?? false, FILTER_VALIDATE_BOOLEAN);
-
-        if ($this->isLocalEnvironment() && !$forceNgrok && !$useCloudflare) {
-
-            if (isset($this->configs['app']['url']['base'])) {
-                $this->configs['app']['url']['base'] = $this->configs['app']['url']['local'];
-            }
-
+        // Đảm bảo có localhost URL
+        if (!isset($this->configs['app']['url']['local'])) {
+            $this->configs['app']['url']['local'] = 'http://localhost:20080/lequocanh';
+        }
+        
+        // Bật debug mode cho development
+        if ($this->isLocalEnvironment()) {
             $this->configs['app']['app']['debug'] = true;
-
             $this->configs['logging']['channels']['file']['level'] = 'debug';
-        } elseif ($forceNgrok || $useCloudflare) {
-
-            if (isset($_ENV['BASE_URL'])) {
-                $this->configs['app']['url']['base'] = $_ENV['BASE_URL'];
-            }
         }
     }
 
@@ -180,23 +171,19 @@ class ConfigManager
 
     public function getBaseUrl()
     {
-
-        $useCloudflare = filter_var($_ENV['USE_CLOUDFLARE_TUNNEL'] ?? false, FILTER_VALIDATE_BOOLEAN);
-        
-        if (!$useCloudflare) {
-            $useCloudflare = filter_var($_ENV['FORCE_TUNNEL'] ?? false, FILTER_VALIDATE_BOOLEAN);
-        }
-        
+        // Tự động phát hiện môi trường dựa trên HTTP_HOST thực tế
         $isOnTunnel = isset($_SERVER['HTTP_HOST']) && (
             strpos($_SERVER['HTTP_HOST'], 'ngrok') !== false || 
             strpos($_SERVER['HTTP_HOST'], 'trycloudflare.com') !== false
         );
         
-        if ($useCloudflare || $isOnTunnel) {
+        // Nếu đang truy cập qua tunnel, dùng tunnel URL
+        if ($isOnTunnel) {
             return $this->get('app.url.base', $_ENV['BASE_URL'] ?? 'http://localhost:20080/lequocanh');
-        } else {
-            return $this->get('app.url.local', 'http://localhost:20080/lequocanh');
         }
+        
+        // Nếu đang truy cập qua localhost, dùng localhost URL
+        return $this->get('app.url.local', 'http://localhost:20080/lequocanh');
     }
 
     public function getDatabaseConfig()

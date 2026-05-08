@@ -4,12 +4,12 @@ require_once __DIR__ . '/../mod/SecurityHelpers.php';
 require_once __DIR__ . '/../mod/InputValidator.php';
 
 
-require_once './elements_LQA/mod/sessionManager.php';
-require_once './elements_LQA/config/logger_config.php';
+require_once __DIR__ . '/../mod/sessionManager.php';
+require_once __DIR__ . '/../config/logger_config.php';
 
 SessionManager::start();
 
-require_once './elements_LQA/mod/phanquyenCls.php';
+require_once __DIR__ . '/../mod/phanquyenCls.php';
 $phanQuyen = new PhanQuyen();
 $username = isset($_SESSION['USER']) ? $_SESSION['USER'] : (isset($_SESSION['ADMIN']) ? $_SESSION['ADMIN'] : '');
 
@@ -211,8 +211,8 @@ $statsSql = "SELECT
     SUM(CASE WHEN trang_thai = 'delivered' THEN 1 ELSE 0 END) as delivered,
     SUM(CASE WHEN trang_thai = 'completed' THEN 1 ELSE 0 END) as completed,
     SUM(CASE WHEN trang_thai = 'cancelled' THEN 1 ELSE 0 END) as cancelled,
-    SUM(CASE WHEN trang_thai_doi_tra = 'requested' THEN 1 ELSE 0 END) as return_requested,
-    SUM(CASE WHEN trang_thai_doi_tra = 'approved' THEN 1 ELSE 0 END) as return_approved,
+    0 as return_requested,
+    0 as return_approved,
     SUM(CASE WHEN trang_thai IN ('approved', 'delivered', 'completed') THEN tong_tien ELSE 0 END) as total_revenue
 FROM don_hang";
 
@@ -228,8 +228,7 @@ if ($statusFilter != 'all') {
 }
 
 if ($returnFilter != 'all') {
-    $whereClauses[] = "don_hang.trang_thai_doi_tra = ?";
-    $params[] = $returnFilter;
+    // Bỏ qua filter đổi trả vì cột không tồn tại
 }
 
 if (!empty($searchKeyword)) {

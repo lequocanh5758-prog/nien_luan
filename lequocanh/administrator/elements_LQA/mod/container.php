@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__ . '/database.php';
+
 class Container {
     private static $instance = null;
     private $bindings = [];
@@ -113,11 +115,36 @@ class Container {
 class ServiceProvider {
     public static function register() {
         $container = Container::getInstance();
-        
+
+        $container->singleton('PDO', function() {
+            return Database::getInstance()->getConnection();
+        });
+
+        $container->singleton('DatabaseInterface', function() {
+            return Database::getInstance();
+        });
+
         $container->singleton('Database', function() {
             return Database::getInstance();
         });
-        
+
+        // Repositories
+        $container->singleton('ProductRepositoryInterface', function() {
+            return new ProductRepository();
+        });
+
+        $container->singleton('CartRepositoryInterface', function() {
+            return new CartRepository();
+        });
+
+        $container->singleton('PriceRepositoryInterface', function() {
+            return new PriceRepository();
+        });
+
+        $container->singleton('OrderRepositoryInterface', function() {
+            return new OrderRepository();
+        });
+
         $container->singleton('Logger', function() {
             return Logger::getInstance();
         });

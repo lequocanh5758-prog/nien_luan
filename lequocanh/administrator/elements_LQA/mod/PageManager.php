@@ -10,8 +10,8 @@ class PageManager {
     const TYPE_POLICY = 'policy';
     const TYPE_GUIDE = 'guide';
     
-    public function __construct() {
-        $this->db = Database::getInstance()->getConnection();
+    public function __construct(?PDO $db = null) {
+        $this->db = $db ?: Database::getInstance()->getConnection();
         $this->ensureTableExists();
     }
     
@@ -24,6 +24,8 @@ class PageManager {
             content LONGTEXT,
             excerpt TEXT,
             thumbnail VARCHAR(500),
+            image_data LONGBLOB,
+            image_type VARCHAR(100),
             meta_title VARCHAR(255),
             meta_description TEXT,
             status ENUM('draft', 'published', 'hidden') DEFAULT 'draft',
@@ -38,6 +40,14 @@ class PageManager {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
         
         $this->db->exec($sql);
+
+        $columns = $this->db->query("SHOW COLUMNS FROM pages")->fetchAll(PDO::FETCH_COLUMN);
+        if (!in_array('image_data', $columns)) {
+            $this->db->exec("ALTER TABLE pages ADD COLUMN image_data LONGBLOB AFTER thumbnail");
+        }
+        if (!in_array('image_type', $columns)) {
+            $this->db->exec("ALTER TABLE pages ADD COLUMN image_type VARCHAR(100) AFTER image_data");
+        }
     }
     
     public function createSlug($title) {
@@ -111,8 +121,8 @@ class PageManager {
         try {
             $slug = $data['slug'] ?? $this->createSlug($data['title']);
             
-            $sql = "INSERT INTO pages (type, slug, title, content, excerpt, thumbnail, meta_title, meta_description, status, author_id, position)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            $sql = "INSERT INTO pages (type, slug, title, content, excerpt, thumbnail, image_data, image_type, meta_title, meta_description, status, author_id, position)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
             
             $stmt = $this->db->prepare($sql);
             $result = $stmt->execute([
@@ -122,6 +132,8 @@ class PageManager {
                 $data['content'] ?? '',
                 $data['excerpt'] ?? '',
                 $data['thumbnail'] ?? null,
+                $data['image_data'] ?? null,
+                $data['image_type'] ?? null,
                 $data['meta_title'] ?? $data['title'],
                 $data['meta_description'] ?? '',
                 $data['status'] ?? 'draft',
@@ -141,11 +153,11 @@ class PageManager {
             $fields = [];
             $params = [];
             
-            $allowedFields = ['type', 'slug', 'title', 'content', 'excerpt', 'thumbnail', 
+            $allowedFields = ['type', 'slug', 'title', 'content', 'excerpt', 'thumbnail', 'image_data', 'image_type',
                               'meta_title', 'meta_description', 'status', 'position'];
             
             foreach ($allowedFields as $field) {
-                if (isset($data[$field])) {
+                if (array_key_exists($field, $data)) {
                     $fields[] = "$field = ?";
                     $params[] = $data[$field];
                 }
@@ -226,20 +238,33 @@ class PageManager {
     }
     
     public function uploadThumbnail($file) {
-        $uploadDir = __DIR__ . '/../../uploads/pages/';
-        if (!is_dir($uploadDir)) {
-            mkdir($uploadDir, 0755, true);
+        $allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+        $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+
+        $fileExtension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+        if (!in_array($fileExtension, $allowedExtensions)) {
+            error_log("Page upload error: Invalid file extension - " . $fileExtension);
+            return null;
         }
-        
-        $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
-        $filename = 'page_' . time() . '_' . uniqid() . '.' . $extension;
-        $targetPath = $uploadDir . $filename;
-        
-        if (move_uploaded_file($file['tmp_name'], $targetPath)) {
-            return 'uploads/pages/' . $filename;
+
+        $imageData = file_get_contents($file['tmp_name']);
+        if ($imageData === false) {
+            error_log("Page upload error: Cannot read uploaded file");
+            return null;
         }
-        
-        return null;
+
+        $finfo = new finfo(FILEINFO_MIME_TYPE);
+        $mimeType = $finfo->buffer($imageData);
+        if (!in_array($mimeType, $allowedTypes)) {
+            error_log("Page upload error: Invalid MIME type - " . $mimeType);
+            return null;
+        }
+
+        return [
+            'data' => $imageData,
+            'type' => $mimeType,
+            'name' => $file['name']
+        ];
     }
     
     public static function getTypeLabel($type) {

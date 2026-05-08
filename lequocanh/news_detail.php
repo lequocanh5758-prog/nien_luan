@@ -37,8 +37,8 @@ if (!$news) {
                 </nav>
                 
                 <article class="card shadow-sm">
-                    <?php if ($news['image_url']): ?>
-                    <img src="<?php echo htmlspecialchars($news['image_url']); ?>" 
+                    <?php if ($news['featured_image']): ?>
+                    <img src="/lequocanh/administrator/elements_LQA/madmin/displayImage.php?type=news&id=<?php echo $news['id']; ?>" 
                          class="card-img-top" 
                          alt="<?php echo htmlspecialchars($news['title']); ?>">
                     <?php endif; ?>
@@ -49,7 +49,7 @@ if (!$news) {
                         <div class="text-muted mb-4">
                             <i class="far fa-user"></i> <?php echo htmlspecialchars($news['author']); ?>
                             <span class="mx-2">|</span>
-                            <i class="far fa-clock"></i> <?php echo date('d/m/Y H:i', strtotime($news['published_at'])); ?>
+                            <i class="far fa-clock"></i> <?php echo date('d/m/Y H:i', strtotime($news['published_date'])); ?>
                         </div>
                         
                         <div class="news-content">

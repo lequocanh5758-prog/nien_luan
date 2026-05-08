@@ -54,8 +54,8 @@ if (isset($_GET['reqact'])) {
             if ($kq && $idNhanVien && !empty($phanHeList)) {
                 $phanHeObj = new PhanHeQuanLy();
 
-                foreach ($phanHeList as $idPhanHe) {
-                    $phanHeObj->assignPhanHeToNhanVien($idNhanVien, $idPhanHe);
+                foreach ($phanHeList as $maPhanHe) {
+                    $phanHeObj->assignPhanHeToNhanVienByMa($idNhanVien, $maPhanHe);
                 }
             }
 
@@ -136,8 +136,8 @@ if (isset($_GET['reqact'])) {
                     $phanHeObj->removeAllPhanHeFromNhanVien($idNhanVien);
 
                     if (!empty($phanHeList)) {
-                        foreach ($phanHeList as $idPhanHe) {
-                            $phanHeObj->assignPhanHeToNhanVien($idNhanVien, $idPhanHe);
+                        foreach ($phanHeList as $maPhanHe) {
+                            $phanHeObj->assignPhanHeToNhanVienByMa($idNhanVien, $maPhanHe);
                         }
                     }
                 }

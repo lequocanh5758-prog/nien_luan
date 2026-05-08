@@ -9,9 +9,9 @@ class Shipping
     private $ghnService;
     private $enableGHN = true;
 
-    public function __construct()
+    public function __construct(?PDO $db = null)
     {
-        $this->db = Database::getInstance()->getConnection();
+        $this->db = $db ?: Database::getInstance()->getConnection();
         $this->ghnService = new GHNService();
         $this->enableGHN = true;
     }

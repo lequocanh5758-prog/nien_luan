@@ -102,23 +102,21 @@ $l = count($list_ncc);
                             ?>
                                 <a href="./elements_LQA/mnhacungcap/nhacungcapAct.php?reqact=deletenhacungcap&idNCC=<?php echo $ncc->idNCC; ?>"
                                     onclick="return confirm('Bạn có chắc muốn xóa nhà cung cấp này?');">
-                                    <img src="./elements_LQA/img_LQA/Delete.png" class="iconimg">
+                                    <i class="fas fa-trash-alt" style="font-size:18px; color:#dc3545;"></i>
                                 </a>
                             <?php
                             } else {
                             ?>
-                                <img src="./elements_LQA/img_LQA/Delete.png" class="iconimg">
+                                <i class="fas fa-trash-alt" style="font-size:18px; color:#ccc;"></i>
                             <?php
                             }
                             ?>
-                            <img src="./elements_LQA/img_LQA/Update.png"
-                                class="iconimg generic-update-btn"
+                            <i class="fas fa-edit generic-update-btn" style="font-size:18px; color:#007bff; cursor:pointer;"
                                 data-module="mnhacungcap"
                                 data-update-url="./elements_LQA/mnhacungcap/nhacungcapUpdate.php"
                                 data-id-param="idNCC"
                                 data-title="Cập nhật Nhà cung cấp"
-                                data-id="<?php echo htmlspecialchars($ncc->idNCC); ?>"
-                                alt="Update">
+                                data-id="<?php echo htmlspecialchars($ncc->idNCC); ?>"></i>
                         </td>
                     </tr>
             <?php

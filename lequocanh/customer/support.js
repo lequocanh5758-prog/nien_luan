@@ -6,6 +6,12 @@
 let currentTicketId = null;
 let refreshInterval = null;
 
+// Get CSRF token from meta tag
+function getCSRFToken() {
+    const metaTag = document.querySelector('meta[name="csrf-token"]');
+    return metaTag ? metaTag.getAttribute('content') : '';
+}
+
 // Load user's tickets
 async function loadTickets() {
     try {
@@ -148,6 +154,7 @@ async function createTicket() {
         formData.append('subject', subject);
         formData.append('category', category);
         formData.append('message', message);
+        formData.append('csrf_token', getCSRFToken());
         
         const response = await fetch('../api/support_tickets.php', {
             method: 'POST',
@@ -201,6 +208,7 @@ async function sendMessage(ticketId) {
         formData.append('action', 'send_message');
         formData.append('ticket_id', ticketId);
         formData.append('message', message);
+        formData.append('csrf_token', getCSRFToken());
         
         const response = await fetch('../api/support_tickets.php', {
             method: 'POST',

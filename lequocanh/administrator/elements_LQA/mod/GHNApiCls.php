@@ -10,10 +10,10 @@ class GHNApi
     private $enableCache = true;
     private $cacheExpiry = 86400;
 
-    public function __construct()
+    public function __construct(?PDO $db = null)
     {
         require_once __DIR__ . '/database.php';
-        $this->db = Database::getInstance()->getConnection();
+        $this->db = $db ?: Database::getInstance()->getConnection();
 
         $this->loadConfig();
     }

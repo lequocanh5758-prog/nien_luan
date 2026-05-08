@@ -24,9 +24,9 @@ class Role
 {
     private $db;
 
-    public function __construct()
+    public function __construct(?PDO $db = null)
     {
-        $this->db = Database::getInstance()->getConnection();
+        $this->db = $db ?: Database::getInstance()->getConnection();
         $this->createTablesIfNotExist();
     }
 

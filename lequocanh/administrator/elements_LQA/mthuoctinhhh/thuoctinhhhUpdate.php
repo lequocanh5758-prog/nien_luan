@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../mod/thuoctinhhhCls.php';
 require_once __DIR__ . '/../mod/thuoctinhCls.php';
 require_once __DIR__ . '/../mod/hanghoaCls.php';
+require_once __DIR__ . '/../mod/csrfProtection.php';
 
 $debug = [];
 $debug['POST'] = $_POST;
@@ -57,10 +58,11 @@ $hangHoaList = $hangHoaObj->hanghoaGetAll();
 <div class="update-form">
     <h3>Cập nhật thuộc tính hàng hóa</h3>
     <form name="updatethuoctinhhh" id="updatethuoctinhhh" method="post"
-        action="/administrator/elements_LQA/mthuoctinhhh/thuoctinhhhAct.php?reqact=updatethuoctinhhh">
+        action="">
         <input type="hidden" name="idThuocTinhHH" value="<?php echo $getThuocTinhHHUpdate->idThuocTinhHH ?? ''; ?>" />
         <input type="hidden" name="debug_log" value="true" />
         <input type="hidden" name="ajax" value="true" />
+        <?php echo CSRFProtection::getHiddenField(); ?>
 
         <div class="form-group">
             <label>ID:</label>
@@ -157,9 +159,17 @@ $hangHoaList = $hangHoaObj->hanghoaGetAll();
 </style>
 
 <script>
+    (function() {
+        var form = document.getElementById('updatethuoctinhhh');
+        if (form) {
+            var base = (typeof window.BASE_URL !== 'undefined' && window.BASE_URL) ? window.BASE_URL : '';
+            form.action = base + '/lequocanh/administrator/elements_LQA/mthuoctinhhh/thuoctinhhhAct.php?reqact=updatethuoctinhhh';
+        }
+    })();
 
     document.getElementById('updatethuoctinhhh').addEventListener('submit', function(e) {
         e.preventDefault();
+        e.stopImmediatePropagation();
 
         const submitBtn = document.getElementById('btnsubmit');
         const originalText = submitBtn.value;
@@ -167,19 +177,27 @@ $hangHoaList = $hangHoaObj->hanghoaGetAll();
         submitBtn.disabled = true;
 
         const formData = new FormData(this);
+        var baseUrl = (typeof window.BASE_URL !== 'undefined' && window.BASE_URL) ? window.BASE_URL : '';
 
         fetch(this.action, {
                 method: 'POST',
                 body: formData
             })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) throw new Error('HTTP ' + response.status);
+                var ct = response.headers.get('content-type') || '';
+                if (ct.indexOf('application/json') === -1) {
+                    return response.text().then(function(t) {
+                        throw new Error('Server trả về HTML: ' + t.substring(0, 200));
+                    });
+                }
+                return response.json();
+            })
             .then(data => {
                 console.log("Response:", data);
                 if (data.success) {
-
-                    window.top.location.href = "/administrator/index.php?req=thuoctinhhhview";
+                    window.top.location.href = baseUrl + '/lequocanh/administrator/index.php?req=thuoctinhhhview&t=' + new Date().getTime();
                 } else {
-
                     document.getElementById('noteForm').innerHTML = '<span style="color:red">' + (data.message || 'Cập nhật thất bại') + '</span>';
                     submitBtn.value = originalText;
                     submitBtn.disabled = false;
@@ -187,14 +205,9 @@ $hangHoaList = $hangHoaObj->hanghoaGetAll();
             })
             .catch(error => {
                 console.error("Error:", error);
-
-                document.getElementById('noteForm').innerHTML = '<span style="color:red">Lỗi kết nối: Vui lòng thử lại</span>';
+                document.getElementById('noteForm').innerHTML = '<span style="color:red">Lỗi: ' + error.message + '</span>';
                 submitBtn.value = originalText;
                 submitBtn.disabled = false;
-
-                setTimeout(() => {
-                    window.top.location.href = "/administrator/index.php?req=thuoctinhhhview";
-                }, 2000);
             });
     });
 </script>

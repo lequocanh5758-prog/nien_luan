@@ -9,9 +9,18 @@ SessionManager::start();
 
 require_once __DIR__ . '/../mod/phanquyenCls.php';
 $phanQuyen = new PhanQuyen();
-$username = isset($_SESSION['USER']) ? $_SESSION['USER'] : (isset($_SESSION['ADMIN']) ? $_SESSION['ADMIN'] : '');
 
-if (!$phanQuyen->checkAccess('marketing_content', $username)) {
+if (isset($_SESSION['ADMIN'])) {
+    $username = $_SESSION['ADMIN'];
+} elseif (isset($_SESSION['USER'])) {
+    $username = $_SESSION['USER'];
+} else {
+    $username = '';
+}
+
+$isDirectAdmin = isset($_SESSION['ADMIN']) || $username === 'admin';
+
+if (!$isDirectAdmin && !$phanQuyen->checkAccess('marketing_content', $username)) {
     return;
 }
 
@@ -44,18 +53,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['_marketing_handler'])
             $is_active = isset($_POST['banner_is_active']) ? 1 : 0;
 
             $image_url = '';
+            $image_data = null;
+            $image_type = null;
             if (isset($_FILES['banner_image']) && $_FILES['banner_image']['error'] === UPLOAD_ERR_OK) {
-                $image_url = $bannerManager->uploadBannerImage($_FILES['banner_image']);
+                $uploadResult = $bannerManager->uploadBannerImage($_FILES['banner_image']);
+                if ($uploadResult) {
+                    $image_url = 'db_storage/' . $uploadResult['name'];
+                    $image_data = $uploadResult['data'];
+                    $image_type = $uploadResult['type'];
+                }
             }
 
-            if ($image_url && $bannerManager->addBanner($title, $description, $image_url, $link_url, $position, $is_active)) {
+            if ($image_url && $bannerManager->addBanner($title, $description, $image_url, $link_url, $position, $is_active, $image_data, $image_type)) {
                 $_SESSION['marketing_message'] = 'Thêm banner thành công';
                 $_SESSION['marketing_success'] = true;
             } else {
                 $_SESSION['marketing_message'] = 'Lỗi khi thêm banner';
                 $_SESSION['marketing_success'] = false;
             }
-            header('Location: ?page=marketing_content&tab=' . $redirect_tab);
+            header('Location: index.php?req=marketing_content&tab=' . $redirect_tab);
             exit();
 
         case 'edit_banner':
@@ -72,14 +88,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['_marketing_handler'])
                 $_SESSION['marketing_success'] = false;
             } else {
                 $image_url = $banner['image_url'];
+                $image_data = null;
+                $image_type = null;
                 if (isset($_FILES['banner_image']) && $_FILES['banner_image']['error'] === UPLOAD_ERR_OK) {
-                    $new_image_url = $bannerManager->uploadBannerImage($_FILES['banner_image']);
-                    if ($new_image_url) {
-                        $image_url = $new_image_url;
+                    $uploadResult = $bannerManager->uploadBannerImage($_FILES['banner_image']);
+                    if ($uploadResult) {
+                        $image_url = 'db_storage/' . $uploadResult['name'];
+                        $image_data = $uploadResult['data'];
+                        $image_type = $uploadResult['type'];
                     }
                 }
 
-                if ($bannerManager->updateBanner($id, $title, $description, $image_url, $link_url, $position, $is_active)) {
+                if ($bannerManager->updateBanner($id, $title, $description, $image_url, $link_url, $position, $is_active, $image_data, $image_type)) {
                     $_SESSION['marketing_message'] = 'Cập nhật banner thành công';
                     $_SESSION['marketing_success'] = true;
                     $_SESSION['highlight_banner_id'] = $id;
@@ -88,7 +108,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['_marketing_handler'])
                     $_SESSION['marketing_success'] = false;
                 }
             }
-            header('Location: ?page=marketing_content&tab=' . $redirect_tab);
+            header('Location: index.php?req=marketing_content&tab=' . $redirect_tab);
             exit();
 
         case 'delete_banner':
@@ -100,7 +120,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['_marketing_handler'])
                 $_SESSION['marketing_message'] = 'Lỗi khi xóa banner';
                 $_SESSION['marketing_success'] = false;
             }
-            header('Location: ?page=marketing_content&tab=' . $redirect_tab);
+            header('Location: index.php?req=marketing_content&tab=' . $redirect_tab);
+            exit();
+
+        case 'batch_delete_banners':
+            $ids = $_POST['banner_ids'] ?? '';
+            if (!empty($ids)) {
+                $idArray = array_map('intval', explode(',', $ids));
+                $deleted = 0;
+                foreach ($idArray as $id) {
+                    if ($id > 0 && $bannerManager->deleteBanner($id)) {
+                        $deleted++;
+                    }
+                }
+                $_SESSION['marketing_message'] = "Đã xóa {$deleted} banner";
+                $_SESSION['marketing_success'] = true;
+            } else {
+                $_SESSION['marketing_message'] = 'Không có banner nào được chọn';
+                $_SESSION['marketing_success'] = false;
+            }
+            header('Location: index.php?req=marketing_content&tab=' . $redirect_tab);
             exit();
 
         case 'add_news':
@@ -114,11 +153,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['_marketing_handler'])
                 $_SESSION['marketing_success'] = false;
             } else {
                 $image_url = '';
+                $image_data = null;
+                $image_type = null;
                 if (isset($_FILES['news_image']) && $_FILES['news_image']['error'] === UPLOAD_ERR_OK) {
-                    $image_url = $newsManager->uploadNewsImage($_FILES['news_image']);
+                    $uploadResult = $newsManager->uploadNewsImage($_FILES['news_image']);
+                    if ($uploadResult) {
+                        $image_data = $uploadResult['data'];
+                        $image_type = $uploadResult['type'];
+                        $image_url = $uploadResult['name'];
+                    }
                 }
 
-                if ($newsManager->addNews($title, $content, $image_url, $author, $is_published)) {
+                if ($newsManager->addNews($title, $content, $image_url, $author, $is_published, null, $image_data, $image_type)) {
                     $_SESSION['marketing_message'] = 'Thêm tin tức thành công';
                     $_SESSION['marketing_success'] = true;
                 } else {
@@ -126,7 +172,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['_marketing_handler'])
                     $_SESSION['marketing_success'] = false;
                 }
             }
-            header('Location: ?page=marketing_content&tab=' . $redirect_tab);
+            header('Location: index.php?req=marketing_content&tab=' . $redirect_tab);
             exit();
 
         case 'edit_news':
@@ -166,7 +212,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['_marketing_handler'])
                     $_SESSION['marketing_success'] = false;
                 }
             }
-            header('Location: ?page=marketing_content&tab=' . $redirect_tab);
+            header('Location: index.php?req=marketing_content&tab=' . $redirect_tab);
             exit();
 
         case 'delete_news':
@@ -178,7 +224,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['_marketing_handler'])
                 $_SESSION['marketing_message'] = 'Lỗi khi xóa tin tức';
                 $_SESSION['marketing_success'] = false;
             }
-            header('Location: ?page=marketing_content&tab=' . $redirect_tab);
+            header('Location: index.php?req=marketing_content&tab=' . $redirect_tab);
+            exit();
+
+        case 'batch_delete_news':
+            $ids = $_POST['news_ids'] ?? '';
+            if (!empty($ids)) {
+                $idArray = array_map('intval', explode(',', $ids));
+                $deleted = 0;
+                foreach ($idArray as $id) {
+                    if ($id > 0 && $newsManager->deleteNews($id)) {
+                        $deleted++;
+                    }
+                }
+                $_SESSION['marketing_message'] = "Đã xóa {$deleted} tin tức";
+                $_SESSION['marketing_success'] = true;
+            } else {
+                $_SESSION['marketing_message'] = 'Không có tin tức nào được chọn';
+                $_SESSION['marketing_success'] = false;
+            }
+            header('Location: index.php?req=marketing_content&tab=' . $redirect_tab);
+            exit();
+
+        case 'batch_delete_promotions':
+            $ids = $_POST['promo_ids'] ?? '';
+            if (!empty($ids)) {
+                $idArray = array_map('intval', explode(',', $ids));
+                $deleted = 0;
+                foreach ($idArray as $id) {
+                    if ($id > 0 && $promotionManager->deletePromotion($id)) {
+                        $deleted++;
+                    }
+                }
+                $_SESSION['marketing_message'] = "Đã xóa {$deleted} chương trình ưu đãi";
+                $_SESSION['marketing_success'] = true;
+            } else {
+                $_SESSION['marketing_message'] = 'Không có chương trình nào được chọn';
+                $_SESSION['marketing_success'] = false;
+            }
+            header('Location: index.php?req=marketing_content&tab=' . $redirect_tab);
             exit();
 
         case 'add_promotion':
@@ -196,7 +280,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['_marketing_handler'])
                 $_SESSION['marketing_message'] = 'Lỗi khi thêm chương trình ưu đãi';
                 $_SESSION['marketing_success'] = false;
             }
-            header('Location: ?page=marketing_content&tab=' . $redirect_tab);
+            header('Location: index.php?req=marketing_content&tab=' . $redirect_tab);
             exit();
 
         case 'edit_promotion':
@@ -216,7 +300,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['_marketing_handler'])
                 $_SESSION['marketing_message'] = 'Lỗi khi cập nhật chương trình ưu đãi';
                 $_SESSION['marketing_success'] = false;
             }
-            header('Location: ?page=marketing_content&tab=' . $redirect_tab);
+            header('Location: index.php?req=marketing_content&tab=' . $redirect_tab);
             exit();
 
         case 'delete_promotion':
@@ -228,7 +312,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['_marketing_handler'])
                 $_SESSION['marketing_message'] = 'Lỗi khi xóa chương trình ưu đãi';
                 $_SESSION['marketing_success'] = false;
             }
-            header('Location: ?page=marketing_content&tab=' . $redirect_tab);
+            header('Location: index.php?req=marketing_content&tab=' . $redirect_tab);
             exit();
 
         case 'add_blog':
@@ -242,8 +326,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['_marketing_handler'])
                 $_SESSION['marketing_success'] = false;
             } else {
                 $thumbnail = null;
+                $image_data = null;
+                $image_type = null;
                 if (isset($_FILES['blog_thumbnail']) && $_FILES['blog_thumbnail']['error'] === UPLOAD_ERR_OK) {
-                    $thumbnail = $pageManager->uploadThumbnail($_FILES['blog_thumbnail']);
+                    $uploadResult = $pageManager->uploadThumbnail($_FILES['blog_thumbnail']);
+                    if ($uploadResult) {
+                        $thumbnail = 'db_storage/' . $uploadResult['name'];
+                        $image_data = $uploadResult['data'];
+                        $image_type = $uploadResult['type'];
+                    }
                 }
 
                 $result = $pageManager->addPage([
@@ -252,6 +343,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['_marketing_handler'])
                     'excerpt' => $excerpt,
                     'content' => $content,
                     'thumbnail' => $thumbnail,
+                    'image_data' => $image_data,
+                    'image_type' => $image_type,
                     'status' => $status,
                     'author_id' => $username
                 ]);
@@ -264,7 +357,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['_marketing_handler'])
                     $_SESSION['marketing_success'] = false;
                 }
             }
-            header('Location: ?page=marketing_content&tab=' . $redirect_tab);
+            header('Location: index.php?req=marketing_content&tab=' . $redirect_tab);
             exit();
 
         case 'edit_blog':
@@ -287,9 +380,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['_marketing_handler'])
             }
 
             if (isset($_FILES['blog_thumbnail']) && $_FILES['blog_thumbnail']['error'] === UPLOAD_ERR_OK) {
-                $thumbnail = $pageManager->uploadThumbnail($_FILES['blog_thumbnail']);
-                if ($thumbnail) {
-                    $data['thumbnail'] = $thumbnail;
+                $uploadResult = $pageManager->uploadThumbnail($_FILES['blog_thumbnail']);
+                if ($uploadResult) {
+                    $data['thumbnail'] = 'db_storage/' . $uploadResult['name'];
+                    $data['image_data'] = $uploadResult['data'];
+                    $data['image_type'] = $uploadResult['type'];
                 }
             }
 
@@ -300,7 +395,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['_marketing_handler'])
                 $_SESSION['marketing_message'] = 'Lỗi khi cập nhật bài viết';
                 $_SESSION['marketing_success'] = false;
             }
-            header('Location: ?page=marketing_content&tab=' . $redirect_tab);
+            header('Location: index.php?req=marketing_content&tab=' . $redirect_tab);
             exit();
 
         case 'add_page':
@@ -331,7 +426,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['_marketing_handler'])
                     $_SESSION['marketing_success'] = false;
                 }
             }
-            header('Location: ?page=marketing_content&tab=' . $redirect_tab);
+            header('Location: index.php?req=marketing_content&tab=' . $redirect_tab);
             exit();
 
         case 'edit_page':
@@ -362,7 +457,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['_marketing_handler'])
                 $_SESSION['marketing_message'] = 'Lỗi khi cập nhật trang';
                 $_SESSION['marketing_success'] = false;
             }
-            header('Location: ?page=marketing_content&tab=' . $redirect_tab);
+            header('Location: index.php?req=marketing_content&tab=' . $redirect_tab);
             exit();
 
         case 'delete_page':
@@ -374,7 +469,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['_marketing_handler'])
                 $_SESSION['marketing_message'] = 'Lỗi khi xóa trang';
                 $_SESSION['marketing_success'] = false;
             }
-            header('Location: ?page=marketing_content&tab=' . $redirect_tab);
+            header('Location: index.php?req=marketing_content&tab=' . $redirect_tab);
             exit();
     }
 }

@@ -25,39 +25,47 @@ class QueryCache {
     
     public function query($pdo, $sql, $params = [], $ttl = 300) {
         $cacheKey = $this->generateKey($sql, $params);
-        
+
         $cached = $this->cache->get($cacheKey);
         if ($cached !== null) {
             $this->stats['hits']++;
             return $cached;
         }
-        
+
         $this->stats['misses']++;
         $stmt = $pdo->prepare($sql);
-        $stmt->execute($params);
+        foreach ($params as $i => $param) {
+            $type = is_int($param) ? PDO::PARAM_INT : PDO::PARAM_STR;
+            $stmt->bindValue($i + 1, $param, $type);
+        }
+        $stmt->execute();
         $result = $stmt->fetchAll(PDO::FETCH_OBJ);
-        
+
         $this->cache->set($cacheKey, $result, $ttl);
-        
+
         return $result;
     }
-    
+
     public function queryOne($pdo, $sql, $params = [], $ttl = 300) {
         $cacheKey = $this->generateKey($sql, $params) . '_one';
-        
+
         $cached = $this->cache->get($cacheKey);
         if ($cached !== null) {
             $this->stats['hits']++;
             return $cached;
         }
-        
+
         $this->stats['misses']++;
         $stmt = $pdo->prepare($sql);
-        $stmt->execute($params);
+        foreach ($params as $i => $param) {
+            $type = is_int($param) ? PDO::PARAM_INT : PDO::PARAM_STR;
+            $stmt->bindValue($i + 1, $param, $type);
+        }
+        $stmt->execute();
         $result = $stmt->fetch(PDO::FETCH_OBJ);
-        
+
         $this->cache->set($cacheKey, $result, $ttl);
-        
+
         return $result;
     }
     

@@ -249,7 +249,7 @@ class KhachHang
             $defaultPassword,
             $data['hoten'],
             $data['gioitinh'],
-            $data['ngaysinh'],
+            $data['ngaysinh'] ?? '1990-01-01',
             $data['diachi'],
             $data['dienthoai']
         ];

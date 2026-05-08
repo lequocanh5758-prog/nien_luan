@@ -371,26 +371,67 @@ class BaoCao
                 error_log("Đã đổi vị trí startDate và endDate vì startDate > endDate");
             }
 
-            $sql = "SELECT h.idhanghoa, h.tenhanghoa, h.hinhanh,
-                           SUM(oi.so_luong) as so_luong_ban,
-                           SUM(oi.gia * oi.so_luong) as doanh_thu,
-                           SUM(h.giathamkhao * oi.so_luong) as gia_von,
-                           SUM(oi.gia * oi.so_luong) - SUM(h.giathamkhao * oi.so_luong) as loi_nhuan,
-                           (SUM(oi.gia * oi.so_luong) - SUM(h.giathamkhao * oi.so_luong)) / SUM(oi.gia * oi.so_luong) * 100 as ti_le_loi_nhuan
+            $sql = "SELECT o.id as don_hang_id, o.tong_tien,
+                           h.idhanghoa, h.tenhanghoa, h.hinhanh,
+                           oi.so_luong,
+                           h.giathamkhao * oi.so_luong as gia_von_sp
                     FROM don_hang o
                     JOIN chi_tiet_don_hang oi ON o.id = oi.ma_don_hang
                     JOIN hanghoa h ON oi.ma_san_pham = h.idhanghoa
                     WHERE DATE(o.ngay_tao) BETWEEN :startDate AND :endDate
                     AND o.trang_thai = 'approved'
-                    GROUP BY h.idhanghoa
-                    ORDER BY loi_nhuan DESC
-                    LIMIT :limit";
+                    ORDER BY o.ngay_tao DESC";
             $stmt = $this->conn->prepare($sql);
             $stmt->bindParam(':startDate', $startDateFormatted, PDO::PARAM_STR);
             $stmt->bindParam(':endDate', $endDateFormatted, PDO::PARAM_STR);
-            $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
             $stmt->execute();
-            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Tính tổng giá vốn mỗi đơn hàng
+            $orderCostMap = [];
+            foreach ($rows as $row) {
+                $oid = $row['don_hang_id'];
+                if (!isset($orderCostMap[$oid])) $orderCostMap[$oid] = 0;
+                $orderCostMap[$oid] += floatval($row['gia_von_sp']);
+            }
+
+            // Phân bổ doanh thu theo tỷ lệ giá vốn SP / tổng giá vốn đơn
+            $productMap = [];
+            foreach ($rows as $row) {
+                $hid = $row['idhanghoa'];
+                $oid = $row['don_hang_id'];
+                $tongTien = floatval($row['tong_tien']);
+                $giaVonSP = floatval($row['gia_von_sp']);
+                $tongGiaVonDon = $orderCostMap[$oid];
+                $soLuong = intval($row['so_luong']);
+
+                $doanhThuSP = $tongGiaVonDon > 0 ? $tongTien * ($giaVonSP / $tongGiaVonDon) : 0;
+
+                if (!isset($productMap[$hid])) {
+                    $productMap[$hid] = [
+                        'idhanghoa' => $hid,
+                        'tenhanghoa' => $row['tenhanghoa'],
+                        'hinhanh' => $row['hinhanh'],
+                        'so_luong_ban' => 0,
+                        'doanh_thu' => 0,
+                        'gia_von' => 0,
+                    ];
+                }
+                $productMap[$hid]['so_luong_ban'] += $soLuong;
+                $productMap[$hid]['doanh_thu'] += $doanhThuSP;
+                $productMap[$hid]['gia_von'] += $giaVonSP;
+            }
+
+            $result = [];
+            foreach ($productMap as $p) {
+                $loiNhuan = $p['doanh_thu'] - $p['gia_von'];
+                $tiLe = $p['doanh_thu'] > 0 ? ($loiNhuan / $p['doanh_thu'] * 100) : 0;
+                $p['loi_nhuan'] = $loiNhuan;
+                $p['ti_le_loi_nhuan'] = $tiLe;
+                $result[] = $p;
+            }
+            usort($result, function($a, $b) { return $b['loi_nhuan'] <=> $a['loi_nhuan']; });
+            return array_slice($result, 0, $limit);
         } catch (PDOException $e) {
             error_log("Lỗi khi lấy lợi nhuận theo sản phẩm: " . $e->getMessage());
             return [];

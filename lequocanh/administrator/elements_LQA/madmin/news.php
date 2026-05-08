@@ -35,15 +35,21 @@ switch ($action) {
             }
 
             $image_url = '';
+            $image_data = null;
+            $image_type = null;
             if (isset($_FILES['image']) && $_FILES['image']['error'] === UPLOAD_ERR_OK) {
-                $image_url = $newsManager->uploadNewsImage($_FILES['image']);
-                if (!$image_url) {
-                    $message = 'Lỗi: Không thể upload ảnh. Kiểm tra định dạng file và quyền thư mục';
+                $uploadResult = $newsManager->uploadNewsImage($_FILES['image']);
+                if ($uploadResult) {
+                    $image_url = 'db_storage/' . $uploadResult['name'];
+                    $image_data = $uploadResult['data'];
+                    $image_type = $uploadResult['type'];
+                } else {
+                    $message = 'Lỗi: Không thể upload ảnh. Kiểm tra định dạng file.';
                     break;
                 }
             }
 
-            if ($newsManager->addNews($title, $content, $image_url, $author, $is_published)) {
+            if ($newsManager->addNews($title, $content, $image_url, $author, $is_published, null, $image_data, $image_type)) {
                 $message = 'Thêm tin tức thành công';
                 header('Location: ?msg=success');
                 exit();
@@ -69,23 +75,20 @@ switch ($action) {
             $is_published = isset($_POST['is_published']) ? 1 : 0;
 
             $image_url = $news['featured_image'];
+            $image_data = null;
+            $image_type = null;
             if (isset($_FILES['image']) && $_FILES['image']['error'] === UPLOAD_ERR_OK) {
-                $new_image_url = $newsManager->uploadNewsImage($_FILES['image']);
-                if ($new_image_url) {
-
-                    if ($news['featured_image'] !== $new_image_url && $news['featured_image']) {
-                        $oldImagePath = __DIR__ . '/../../..' . $news['featured_image'];
-                        if (file_exists($oldImagePath)) {
-                            unlink($oldImagePath);
-                        }
-                    }
-                    $image_url = $new_image_url;
+                $uploadResult = $newsManager->uploadNewsImage($_FILES['image']);
+                if ($uploadResult) {
+                    $image_url = 'db_storage/' . $uploadResult['name'];
+                    $image_data = $uploadResult['data'];
+                    $image_type = $uploadResult['type'];
                 } else {
                     $message = 'Lỗi upload ảnh mới';
                 }
             }
 
-            if ($newsManager->updateNews($id, $title, $content, $image_url, $author, $is_published)) {
+            if ($newsManager->updateNews($id, $title, $content, $image_url, $author, $is_published, null, $image_data, $image_type)) {
                 $message = 'Cập nhật tin tức thành công';
                 header('Location: ?msg=success');
             } else {
@@ -99,13 +102,6 @@ switch ($action) {
         $news = $newsManager->getNewsById($id);
         
         if ($news && $newsManager->deleteNews($id)) {
-
-            if ($news['featured_image']) {
-                $imagePath = __DIR__ . '/../../..' . $news['featured_image'];
-                if (file_exists($imagePath)) {
-                    unlink($imagePath);
-                }
-            }
             $message = 'Xóa tin tức thành công';
             header('Location: ?msg=deleted');
         } else {
@@ -159,8 +155,8 @@ if ($msg === 'notfound') $message = 'Tin tức không tồn tại';
                         <tr>
                             <td><?php echo $newsItem['id']; ?></td>
                             <td>
-                                <?php if ($newsItem['featured_image']): ?>
-                                    <img src="<?php echo htmlspecialchars($newsItem['featured_image']); ?>" alt="News" width="10">
+                                <?php if ($newsItem['featured_image'] || !empty($newsItem['image_data'])): ?>
+                                    <img src="displayImage.php?type=news&id=<?php echo $newsItem['id']; ?>" alt="News" width="100">
                                 <?php else: ?>
                                     <span class="text-muted">Không có ảnh</span>
                                 <?php endif; ?>
@@ -196,8 +192,8 @@ if ($msg === 'notfound') $message = 'Tin tức không tồn tại';
                     <div class="col-md-4">
                         <div class="mb-3">
                             <label for="image" class="form-label">Ảnh Tin tức</label>
-                            <?php if ($action === 'edit' && $news['featured_image']): ?>
+                            <?php if ($action === 'edit' && $news['id']): ?>
                                 <div class="mb-2">
-                                    <img src="<?php echo htmlspecialchars($news['featured_image']); ?>" alt="Current News Image" width="200">
+                                    <img src="displayImage.php?type=news&id=<?php echo $news['id']; ?>" alt="Current News Image" width="200">
                                 </div>
                             <?php endif; ?>

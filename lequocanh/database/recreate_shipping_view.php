@@ -28,7 +28,7 @@ try {
     
     echo "<h3>2. Test Current VIEW Output</h3>\n";
     
-    $stmt = $db->query("SELECT * FROM v_shipping_methods_with_fees ORDER BY sort_order DESC");
+    $stmt = $db->query("SELECT * FROM v_shipping_methods_with_fees ORDER BY sort_order ASC, id ASC");
     $viewData = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     echo "<div class='alert alert-info'>VIEW returns: <strong>" . count($viewData) . "</strong> rows</div>\n";
@@ -51,7 +51,7 @@ try {
     $db->exec("DROP VIEW IF EXISTS v_shipping_methods_with_fees");
     
     $createViewSQL = "
-    CREATE OR REPLACE VIEW v_shipping_methods_with_fees AS
+    CREATE VIEW v_shipping_methods_with_fees AS
     SELECT 
         sm.id,
         sm.code,
@@ -61,14 +61,17 @@ try {
         sm.price_multiplier,
         sm.is_active,
         sm.sort_order,
+        sm.supports_tracking,
+        sm.supports_cod,
         sm.created_at,
         sm.updated_at,
         COUNT(DISTINCT sf.id) as fee_config_count,
         MIN(sf.base_fee) as min_base_fee,
+        MAX(sf.base_fee) as max_base_fee,
         MIN(sf.min_order_free_ship) as min_free_ship_threshold
     FROM shipping_methods sm
     LEFT JOIN shipping_fees sf ON sm.id = sf.shipping_method_id AND sf.is_active = 1
-    GROUP BY sm.id, sm.code, sm.name, sm.description, sm.delivery_time, sm.price_multiplier, sm.is_active, sm.sort_order, sm.created_at, sm.updated_at
+    GROUP BY sm.id, sm.code, sm.name, sm.description, sm.delivery_time, sm.price_multiplier, sm.is_active, sm.sort_order, sm.supports_tracking, sm.supports_cod, sm.created_at, sm.updated_at
     ";
     
     $db->exec($createViewSQL);
@@ -78,7 +81,7 @@ try {
     
     echo "<h3>4. Test NEW VIEW Output</h3>\n";
     
-    $stmt = $db->query("SELECT * FROM v_shipping_methods_with_fees ORDER BY sort_order DESC");
+    $stmt = $db->query("SELECT * FROM v_shipping_methods_with_fees ORDER BY sort_order ASC, id ASC");
     $newViewData = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     echo "<div class='alert alert-info'>NEW VIEW returns: <strong>" . count($newViewData) . "</strong> rows</div>\n";

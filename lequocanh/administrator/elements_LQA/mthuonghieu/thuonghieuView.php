@@ -77,15 +77,13 @@ $l = count($list_lh);
                             <?php if (isset($_SESSION['ADMIN'])) { ?>
                                 <a href="./elements_LQA/mthuonghieu/thuonghieuAct.php?reqact=deletethuonghieu&idThuongHieu=<?php echo htmlspecialchars($u->idThuongHieu); ?>"
                                     onclick="return confirm('Bạn có chắc muốn xóa không?');">
-                                    <img src="./elements_LQA/img_LQA/Delete.png" class="iconimg">
+                                    <i class="fas fa-trash-alt" style="font-size:18px; color:#dc3545;"></i>
                                 </a>
                             <?php } else { ?>
-                                <img src="./elements_LQA/img_LQA/Delete.png" class="iconimg">
+                                <i class="fas fa-trash-alt" style="font-size:18px; color:#ccc;"></i>
                             <?php } ?>
-                            <img src="./elements_LQA/img_LQA/Update.png"
-                                class="iconimg w_update_btn_open_th"
-                                value="<?php echo htmlspecialchars($u->idThuongHieu); ?>"
-                                alt="Update">
+                            <i class="fas fa-edit w_update_btn_open_th" style="font-size:18px; color:#007bff; cursor:pointer;"
+                                value="<?php echo htmlspecialchars($u->idThuongHieu); ?>"></i>
                         </td>
                     </tr>
             <?php

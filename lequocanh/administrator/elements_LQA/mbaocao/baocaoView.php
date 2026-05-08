@@ -28,7 +28,7 @@ if (!isset($_SESSION['ADMIN']) && !$phanQuyen->checkAccess('baocaoview', $userna
                     </div>
                 </div>
                 <div class="card-action">
-                    <a href="index.php?req=doanhThuView" class="btn btn-primary">Xem báo cáo</a>
+                    <a href="index.php?req=loiNhuanView" class="btn btn-primary">Xem báo cáo</a>
                 </div>
             </div>
 

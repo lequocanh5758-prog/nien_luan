@@ -1,6 +1,6 @@
 <?php
 
-require_once __DIR__ . '/elements_LQA/mod/database.php';
+require_once __DIR__ . '/../mod/database.php';
 
 $db = Database::getInstance()->getConnection();
 

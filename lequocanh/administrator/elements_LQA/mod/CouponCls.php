@@ -83,7 +83,8 @@ class Coupon {
     }
     
     public function validateCoupon($code, $orderTotal, $userId = null) {
-        $code = strtoupper(trim($code));
+        // Xóa khoảng trắng và chuyển thành chữ hoa
+        $code = strtoupper(preg_replace('/\s+/', '', trim($code)));
         
         if (empty($code)) {
             return ['valid' => false, 'message' => 'Vui lòng nhập mã giảm giá', 'coupon' => null, 'discount' => 0];
@@ -102,11 +103,19 @@ class Coupon {
         }
         
         $now = date('Y-m-d H:i:s');
-        if ($coupon->start_date && $now < $coupon->start_date) {
-            return ['valid' => false, 'message' => 'Mã giảm giá chưa có hiệu lực', 'coupon' => null, 'discount' => 0];
+        
+        // Kiểm tra start_date - chỉ kiểm tra nếu start_date không null và không rỗng
+        if (!empty($coupon->start_date) && $coupon->start_date !== '0000-00-00 00:00:00') {
+            if ($now < $coupon->start_date) {
+                return ['valid' => false, 'message' => 'Mã giảm giá chưa có hiệu lực', 'coupon' => null, 'discount' => 0];
+            }
         }
-        if ($coupon->end_date && $now > $coupon->end_date) {
-            return ['valid' => false, 'message' => 'Mã giảm giá đã hết hạn', 'coupon' => null, 'discount' => 0];
+        
+        // Kiểm tra end_date - chỉ kiểm tra nếu end_date không null và không rỗng
+        if (!empty($coupon->end_date) && $coupon->end_date !== '0000-00-00 00:00:00') {
+            if ($now > $coupon->end_date) {
+                return ['valid' => false, 'message' => 'Mã giảm giá đã hết hạn', 'coupon' => null, 'discount' => 0];
+            }
         }
         
         if ($coupon->usage_limit !== null && $coupon->usage_count >= $coupon->usage_limit) {

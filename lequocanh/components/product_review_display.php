@@ -388,7 +388,7 @@ if (!$productId) {
                                 ${escapeHtml(review.user_name || 'Khách hàng')}
                                 ${review.is_verified_purchase ? '<span class="verified-badge"><i class="fas fa-check-circle"></i> Đã mua hàng</span>' : ''}
                             </div>
-                            <div class="review-date">${formatDate(review.ngay_tao)}</div>
+                            <div class="review-date">${formatDate(review.created_at)}</div>
                         </div>
                     </div>
                     <div class="review-rating">${renderStars(review.rating)}</div>

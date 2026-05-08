@@ -14,9 +14,9 @@ class HinhAnh
 {
     private $db;
 
-    public function __construct()
+    public function __construct(?PDO $db = null)
     {
-        $this->db = Database::getInstance()->getConnection();
+        $this->db = $db ?: Database::getInstance()->getConnection();
     }
 
     public function ThemHinhAnh($ten_file, $duong_dan, $loai_file, $kich_thuoc, $id_tham_chieu, $loai_tham_chieu, $thu_tu)

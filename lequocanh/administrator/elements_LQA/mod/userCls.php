@@ -19,9 +19,9 @@ if (!class_exists('user')) {
     {
         private $db;
 
-        public function __construct()
+        public function __construct(?PDO $db = null)
         {
-            $this->db = Database::getInstance()->getConnection();
+            $this->db = $db ?: Database::getInstance()->getConnection();
         }
 
         public function UserCheckLogin($username, $password)
@@ -140,11 +140,20 @@ if (!class_exists('user')) {
             $hashedPassword = PasswordHelper::hash($password);
 
             $sql = "INSERT INTO user (username, password, hoten, gioitinh, ngaysinh, diachi, province_id, district_id, ward_id, dienthoai, email, setlock) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)";
-            $data = array($username, $hashedPassword, $hoten, $gioitinh, $ngaysinh, $diachi, $province_id, $district_id, $ward_id, $dienthoai, $email, 1);
+            $data = array($username, $hashedPassword, $hoten, $gioitinh, $ngaysinh ?: '1990-01-01', $diachi, $province_id, $district_id, $ward_id, $dienthoai, $email, 1);
 
             $add = $this->db->prepare($sql);
             $add->execute($data);
-            return $add->rowCount();
+            $rowCount = $add->rowCount();
+            
+            // Tự động lưu địa chỉ vào bảng user_addresses nếu có đủ thông tin
+            if ($rowCount > 0 && !empty($province_id) && !empty($district_id)) {
+                $userId = $this->db->lastInsertId();
+                $stmt = $this->db->prepare("INSERT INTO user_addresses (user_id, recipient_name, phone, province_id, district_id, ward_code, address_detail, is_default) VALUES (?, ?, ?, ?, ?, ?, ?, 1)");
+                $stmt->execute([$userId, $hoten, $dienthoai, $province_id, $district_id, $ward_id ?: null, $diachi ?: '']);
+            }
+            
+            return $rowCount;
         }
         public function UserDelete($iduser)
         {

@@ -6,9 +6,9 @@ class GioHang
     private $db;
     private $cart_cache = null;
 
-    public function __construct()
+    public function __construct(?PDO $db = null)
     {
-        $this->db = Database::getInstance()->getConnection();
+        $this->db = $db ?: Database::getInstance()->getConnection();
     }
 
     private function getUserId()

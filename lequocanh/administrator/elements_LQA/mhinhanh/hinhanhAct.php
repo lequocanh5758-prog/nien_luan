@@ -1,15 +1,17 @@
 <?php
+ob_start();
+
 if (session_status() == PHP_SESSION_NONE) {
 
-require_once __DIR__ . '/../mod/sessionManager.php';
-require_once __DIR__ . '/../config/logger_config.php';
+    require_once __DIR__ . '/../mod/sessionManager.php';
+    require_once __DIR__ . '/../config/logger_config.php';
 
-SessionManager::start();
+    SessionManager::start();
 }
 require_once("../mod/database.php");
 require_once("../mod/hanghoaCls.php");
 
-require_once __DIR__ . '/../../includes/upload_security.php';
+require_once __DIR__ . '/../../../includes/upload_security.php';
 
 error_reporting(E_ALL);
 ini_set('display_errors', 0);
@@ -53,8 +55,8 @@ try {
 
         switch ($requestAction) {
             case "addnew":
-                if (isset($_FILES['files'])) {
-                    $files = $_FILES['files'];
+                if (isset($_FILES['fileHinhanh'])) {
+                    $files = $_FILES['fileHinhanh'];
                     $totalFiles = count($files['tmp_name']);
                     $successCount = 0;
                     $failedCount = 0;
@@ -96,7 +98,7 @@ try {
                             $fileType = $files['type'][$key];
                             $fileTmpName = $files['tmp_name'][$key];
                             $fileSize = $files['size'][$key];
-                            
+
                             $singleFile = [
                                 'name' => $fileName,
                                 'type' => $fileType,
@@ -104,198 +106,133 @@ try {
                                 'error' => $files['error'][$key],
                                 'size' => $fileSize
                             ];
-                            
+
                             $validation = UploadSecurity::validate($singleFile, 'image');
-                            
+
                             if (!$validation['valid']) {
                                 $failedCount++;
                                 $errorMsg = "File '{$fileName}': " . $validation['error'];
                                 $errorMessages[] = $errorMsg;
-                                error_log("Upload security validation failed: " . $errorMsg);
                                 continue;
                             }
-                            
-                            $fileType = $validation['mime_type'];
 
+                            $fileType = $validation['mime_type'];
                             $maxFileSize = 10 * 1024 * 1024;
                             if ($fileSize > $maxFileSize) {
                                 $failedCount++;
-                                $errorMsg = "File '{$fileName}' vượt quá kích thước cho phép (10MB).";
-                                $errorMessages[] = $errorMsg;
-                                error_log($errorMsg);
+                                $errorMessages[] = "File '{$fileName}' vượt quá 10MB.";
                                 continue;
                             }
 
                             $imageNameWithoutExt = pathinfo($fileName, PATHINFO_FILENAME);
+                            $autoMatch = isset($_POST['auto_match']) && $_POST['auto_match'] === '1';
 
-                            $sqlMatchProduct = "SELECT idhanghoa, tenhanghoa FROM hanghoa WHERE TRIM(tenhanghoa) = TRIM(?)";
-                            $stmtMatchProduct = $conn->prepare($sqlMatchProduct);
-                            $stmtMatchProduct->execute([$imageNameWithoutExt]);
-                            $matchedProduct = $stmtMatchProduct->fetch(PDO::FETCH_ASSOC);
+                            if (!$autoMatch) {
+                                $failedCount++;
+                                $errorMessages[] = "Tự động khớp bị tắt cho file '{$fileName}'. Bỏ qua.";
+                                continue;
+                            }
 
-                            if ($matchedProduct && trim($matchedProduct['tenhanghoa']) === trim($imageNameWithoutExt)) {
+                            $matchedProduct = null;
+                            $imageNameLower = mb_strtolower(trim($imageNameWithoutExt), 'UTF-8');
 
-                                $fileHash = md5_file($fileTmpName);
-                                $existingImageId = $hanghoa->CheckImageExistsByHash($fileHash);
+                            // Bước 1: So khớp chính xác (không phân biệt hoa thường)
+                            $sqlExact = "SELECT idhanghoa, tenhanghoa FROM hanghoa WHERE LOWER(TRIM(tenhanghoa)) = LOWER(TRIM(?)) LIMIT 1";
+                            $stmtExact = $conn->prepare($sqlExact);
+                            $stmtExact->execute([$imageNameWithoutExt]);
+                            $matchedProduct = $stmtExact->fetch(PDO::FETCH_ASSOC);
 
-                                if ($existingImageId) {
+                            // Bước 2: Nếu không khớp chính xác, tìm khớp một phần
+                            if (!$matchedProduct) {
+                                $sqlPartial = "SELECT idhanghoa, tenhanghoa FROM hanghoa";
+                                $stmtPartial = $conn->prepare($sqlPartial);
+                                $stmtPartial->execute();
+                                $allProducts = $stmtPartial->fetchAll(PDO::FETCH_ASSOC);
 
-                                    error_log("Ảnh trùng lặp đã được phát hiện, ID hiện tại: " . $existingImageId);
+                                $bestMatch = null;
+                                $bestScore = 0;
 
-                                    $existingImageInfo = $hanghoa->GetHinhAnhById($existingImageId);
+                                foreach ($allProducts as $product) {
+                                    $productNameLower = mb_strtolower(trim($product['tenhanghoa']), 'UTF-8');
 
-                                    $newFileName = uniqid() . '_' . basename($fileName);
-                                    $targetPath = $uploadDirAbsolute . $newFileName;
-                                    $relativePath = "administrator/uploads/" . $newFileName;
-
-                                    if (move_uploaded_file($fileTmpName, $targetPath)) {
-
-                                        if (!isset($_SESSION['duplicate_images'])) {
-                                            $_SESSION['duplicate_images'] = [];
-                                        }
-
-                                        $webRoot = $isDocker ? '/' : '/lequocanh/';
-                                        $displayPath = $webRoot . $relativePath;
-
-                                        $_SESSION['duplicate_images'][] = [
-                                            'product_id' => $matchedProduct['idhanghoa'],
-                                            'product_name' => $matchedProduct['tenhanghoa'],
-                                            'existing_image_id' => (int)$existingImageId,
-                                            'existing_image_info' => $existingImageInfo,
-                                            'new_image_path' => $displayPath,
-                                            'new_image_name' => $fileName,
-                                            'new_image_type' => $fileType,
-                                            'new_image_hash' => $fileHash,
-                                            'temp_path' => $targetPath,
-                                            'relative_path' => $relativePath,
-                                            'upload_timestamp' => time()
-                                        ];
-
-                                        $successCount++;
-                                    } else {
-                                        $failedCount++;
-                                        $error = error_get_last();
-                                        $errorMsg = "Không thể tải lên file trùng lặp '" . $fileName . "' để xem trước. ";
-                                        if ($error) {
-                                            $errorMsg .= "Lỗi PHP: " . $error['message'];
-                                        }
-                                        $errorMessages[] = $errorMsg;
-                                        error_log("Failed to move uploaded file for preview: " . $fileName);
+                                    // Bỏ qua nếu tên sản phẩm quá ngắn (tránh match sai)
+                                    if (mb_strlen($productNameLower, 'UTF-8') < 3) {
+                                        continue;
                                     }
 
-                                    continue;
+                                    // Điểm ưu tiên: khớp chính xác > tên file chứa tên SP > tên SP chứa tên file
+                                    if ($productNameLower === $imageNameLower) {
+                                        $score = 1000 + mb_strlen($productNameLower, 'UTF-8');
+                                    } elseif (mb_strpos($imageNameLower, $productNameLower, 0, 'UTF-8') !== false) {
+                                        $score = 500 + mb_strlen($productNameLower, 'UTF-8');
+                                    } elseif (mb_strpos($productNameLower, $imageNameLower, 0, 'UTF-8') !== false) {
+                                        $score = 100 + mb_strlen($productNameLower, 'UTF-8');
+                                    } else {
+                                        continue;
+                                    }
+
+                                    // Ưu tiên tên dài hơn (cụ thể hơn)
+                                    if ($score > $bestScore) {
+                                        $bestScore = $score;
+                                        $bestMatch = $product;
+                                    }
                                 }
 
-                                $newFileName = uniqid() . '_' . basename($fileName);
-                                $targetPath = $uploadDirAbsolute . $newFileName;
+                                $matchedProduct = $bestMatch;
+                            }
 
-                                error_log("Uploading file: " . $fileName);
-                                error_log("Target path: " . $targetPath);
-                                error_log("File hash: " . $fileHash);
+                            if ($matchedProduct) {
+                                $fileHash = md5_file($fileTmpName);
+                                $existingImageId = $hanghoa->CheckImageExistsByHash($fileHash);
+                                $imageBinary = file_get_contents($fileTmpName);
 
-                                if (move_uploaded_file($fileTmpName, $targetPath)) {
+                                if ($existingImageId) {
+                                    // Duplicate detected
+                                    $existingImageInfo = $hanghoa->GetHinhAnhById($existingImageId);
+                                    if (!isset($_SESSION['duplicate_images']))
+                                        $_SESSION['duplicate_images'] = [];
 
-                                    $relativePath = "administrator/uploads/" . $newFileName;
+                                    $_SESSION['duplicate_images'][] = [
+                                        'product_id' => $matchedProduct['idhanghoa'],
+                                        'product_name' => $matchedProduct['tenhanghoa'],
+                                        'existing_image_id' => (int) $existingImageId,
+                                        'existing_image_info' => $existingImageInfo,
+                                        'new_image_data' => 'data:' . $fileType . ';base64,' . base64_encode($imageBinary),
+                                        'new_image_binary' => $imageBinary,
+                                        'new_image_name' => $fileName,
+                                        'new_image_type' => $fileType,
+                                        'new_image_hash' => $fileHash,
+                                        'upload_timestamp' => time()
+                                    ];
+                                    $successCount++;
+                                } else {
+                                    // Normal new image - Store in DB only
+                                    $virtualPath = "db_storage/" . $fileName;
+                                    if ($hanghoa->ThemHinhAnh($fileName, $fileType, $virtualPath, $fileHash, $imageBinary)) {
+                                        $lastInsertId = (int) $hanghoa->GetLastInsertId();
+                                        $hanghoa->ApplyImageToProduct($matchedProduct['idhanghoa'], $lastInsertId);
 
-                                    if ($hanghoa->ThemHinhAnh($fileName, $fileType, $relativePath, $fileHash)) {
-                                        $successCount++;
-                                        $lastInsertId = $hanghoa->GetLastInsertId();
-
-                                        $sqlUpdateProduct = "UPDATE hanghoa SET hinhanh = ? WHERE idhanghoa = ?";
-                                        $stmtUpdateProduct = $conn->prepare($sqlUpdateProduct);
-                                        $stmtUpdateProduct->execute([(int)$lastInsertId, $matchedProduct['idhanghoa']]);
-
-                                        $sqlCheckRelation = "SELECT COUNT(*) FROM hanghoa_hinhanh WHERE idhanghoa = ? AND idhinhanh = ?";
-                                        $stmtCheckRelation = $conn->prepare($sqlCheckRelation);
-                                        $stmtCheckRelation->execute([$matchedProduct['idhanghoa'], (int)$lastInsertId]);
-
-                                        if ($stmtCheckRelation->fetchColumn() == 0) {
-                                            $sqlInsertRelation = "INSERT INTO hanghoa_hinhanh (idhanghoa, idhinhanh) VALUES (?, ?)";
-                                            $stmtInsertRelation = $conn->prepare($sqlInsertRelation);
-                                            $stmtInsertRelation->execute([$matchedProduct['idhanghoa'], (int)$lastInsertId]);
-                                        }
-
-                                        if (!isset($_SESSION['matched_images'])) {
+                                        if (!isset($_SESSION['matched_images']))
                                             $_SESSION['matched_images'] = [];
-                                        }
-
                                         $_SESSION['matched_images'][] = [
                                             'product_id' => $matchedProduct['idhanghoa'],
                                             'product_name' => $matchedProduct['tenhanghoa'],
-                                            'image_id' => (int)$lastInsertId,
+                                            'image_id' => $lastInsertId,
                                             'image_name' => $fileName
                                         ];
-
-                                        if ($hanghoa->ApplyImageToProduct($matchedProduct['idhanghoa'], (int)$lastInsertId)) {
-                                            $_SESSION['matched_images'][] = [
-                                                'image_name' => $fileName,
-                                                'product_name' => $matchedProduct['tenhanghoa'],
-                                                'product_id' => $matchedProduct['idhanghoa'],
-                                                'image_id' => (int)$lastInsertId,
-                                                'auto_applied' => true
-                                            ];
-                                        }
+                                        $successCount++;
                                     } else {
                                         $failedCount++;
-                                        $errorMsg = "Không thể lưu thông tin ảnh '{$fileName}' vào cơ sở dữ liệu.";
-                                        $errorMessages[] = $errorMsg;
-                                        error_log($errorMsg);
-
-                                        if (file_exists($targetPath)) {
-                                            unlink($targetPath);
-                                        }
+                                        $errorMessages[] = "Lỗi lưu database cho '{$fileName}'.";
                                     }
-                                } else {
-                                    $failedCount++;
-                                    $error = error_get_last();
-                                    $errorMsg = "Không thể tải lên file '" . $fileName . "'. ";
-                                    if ($error) {
-                                        $errorMsg .= "Lỗi PHP: " . $error['message'];
-                                    }
-                                    $errorMessages[] = $errorMsg;
-                                    error_log("Failed to move uploaded file: " . $fileName);
-                                    error_log("PHP Upload error: " . ($error ? $error['message'] : 'Unknown error'));
                                 }
                             } else {
                                 $failedCount++;
-                                $errorMsg = "Không tìm thấy sản phẩm nào có tên trùng khớp với tên file '{$imageNameWithoutExt}'.";
-                                $errorMessages[] = $errorMsg;
-                                error_log($errorMsg);
-                                continue;
+                                $errorMessages[] = "Không tìm thấy sản phẩm khớp với '{$imageNameWithoutExt}'. Tên file phải chứa tên sản phẩm.";
                             }
                         } else {
                             $failedCount++;
-                            $errorCode = $files['error'][$key];
-                            $errorMsg = "Lỗi tải lên file '" . $files['name'][$key] . "'. ";
-
-                            switch ($errorCode) {
-                                case UPLOAD_ERR_INI_SIZE:
-                                    $errorMsg .= "File vượt quá kích thước cho phép trong php.ini.";
-                                    break;
-                                case UPLOAD_ERR_FORM_SIZE:
-                                    $errorMsg .= "File vượt quá kích thước cho phép trong form.";
-                                    break;
-                                case UPLOAD_ERR_PARTIAL:
-                                    $errorMsg .= "File chỉ được tải lên một phần.";
-                                    break;
-                                case UPLOAD_ERR_NO_FILE:
-                                    $errorMsg .= "Không có file nào được tải lên.";
-                                    break;
-                                case UPLOAD_ERR_NO_TMP_DIR:
-                                    $errorMsg .= "Thiếu thư mục tạm.";
-                                    break;
-                                case UPLOAD_ERR_CANT_WRITE:
-                                    $errorMsg .= "Không thể ghi file vào đĩa.";
-                                    break;
-                                case UPLOAD_ERR_EXTENSION:
-                                    $errorMsg .= "Tải lên bị chặn bởi extension.";
-                                    break;
-                                default:
-                                    $errorMsg .= "Lỗi không xác định (code: " . $errorCode . ").";
-                            }
-
-                            $errorMessages[] = $errorMsg;
-                            error_log("File upload error code: " . $errorCode . " for file: " . $files['name'][$key]);
+                            $errorMessages[] = "Lỗi tải lên file '{$files['name'][$key]}' (Code: {$files['error'][$key]}).";
                         }
                     }
 
@@ -338,7 +275,7 @@ try {
                 $products = $hanghoa->GetProductsByImageId($id);
 
                 if (!empty($products)) {
-                    $productNames = array_map(function($product) {
+                    $productNames = array_map(function ($product) {
                         return $product['tenhanghoa'];
                     }, $products);
 
@@ -459,9 +396,9 @@ try {
                     exit();
                 }
 
-                if (isset($_GET['action'], $_GET['index'])) {
-                    $action = $_GET['action'];
-                    $index = (int)$_GET['index'];
+                if (isset($_POST['action'], $_POST['index'])) {
+                    $action = $_POST['action'];
+                    $index = (int) $_POST['index'];
 
                     error_log("resolve_duplicate - Action: " . $action . ", Index: " . $index);
                     error_log("resolve_duplicate - Session duplicate_images exists: " . (isset($_SESSION['duplicate_images']) ? 'Yes' : 'No'));
@@ -484,16 +421,18 @@ try {
 
                     if ($action === 'use_new') {
 
-                        if ($hanghoa->ThemHinhAnh($dupInfo['new_image_name'], $dupInfo['new_image_type'], $dupInfo['relative_path'], $dupInfo['new_image_hash'])) {
+                        $imageBinary = isset($dupInfo['new_image_binary']) ? $dupInfo['new_image_binary'] : null;
+                        $virtualPath = "db_storage/" . $dupInfo['new_image_name'];
+                        if ($hanghoa->ThemHinhAnh($dupInfo['new_image_name'], $dupInfo['new_image_type'], $virtualPath, $dupInfo['new_image_hash'], $imageBinary)) {
                             $newImageId = $hanghoa->GetLastInsertId();
 
                             $sqlUpdateProduct = "UPDATE hanghoa SET hinhanh = ? WHERE idhanghoa = ?";
                             $stmtUpdateProduct = $conn->prepare($sqlUpdateProduct);
-                            $stmtUpdateProduct->execute([(int)$newImageId, $dupInfo['product_id']]);
+                            $stmtUpdateProduct->execute([(int) $newImageId, $dupInfo['product_id']]);
 
                             $sqlInsertRelation = "INSERT INTO hanghoa_hinhanh (idhanghoa, idhinhanh) VALUES (?, ?)";
                             $stmtInsertRelation = $conn->prepare($sqlInsertRelation);
-                            $stmtInsertRelation->execute([$dupInfo['product_id'], (int)$newImageId]);
+                            $stmtInsertRelation->execute([$dupInfo['product_id'], (int) $newImageId]);
 
                             $_SESSION['resolved_images'][] = [
                                 'product_name' => $dupInfo['product_name'],
@@ -509,21 +448,20 @@ try {
 
                         $sqlUpdateProduct = "UPDATE hanghoa SET hinhanh = ? WHERE idhanghoa = ?";
                         $stmtUpdateProduct = $conn->prepare($sqlUpdateProduct);
-                        $stmtUpdateProduct->execute([(int)$dupInfo['existing_image_id'], $dupInfo['product_id']]);
+                        $stmtUpdateProduct->execute([(int) $dupInfo['existing_image_id'], $dupInfo['product_id']]);
 
                         $sqlCheckRelation = "SELECT COUNT(*) FROM hanghoa_hinhanh WHERE idhanghoa = ? AND idhinhanh = ?";
                         $stmtCheckRelation = $conn->prepare($sqlCheckRelation);
-                        $stmtCheckRelation->execute([$dupInfo['product_id'], (int)$dupInfo['existing_image_id']]);
+                        $stmtCheckRelation->execute([$dupInfo['product_id'], (int) $dupInfo['existing_image_id']]);
 
                         if ($stmtCheckRelation->fetchColumn() == 0) {
                             $sqlInsertRelation = "INSERT INTO hanghoa_hinhanh (idhanghoa, idhinhanh) VALUES (?, ?)";
                             $stmtInsertRelation = $conn->prepare($sqlInsertRelation);
-                            $stmtInsertRelation->execute([$dupInfo['product_id'], (int)$dupInfo['existing_image_id']]);
+                            $stmtInsertRelation->execute([$dupInfo['product_id'], (int) $dupInfo['existing_image_id']]);
                         }
 
-                        if (file_exists($dupInfo['temp_path'])) {
-                            unlink($dupInfo['temp_path']);
-                        }
+                        // Không còn sử dụng file tạm trên disk
+
 
                         $_SESSION['resolved_images'][] = [
                             'product_name' => $dupInfo['product_name'],
@@ -575,7 +513,7 @@ try {
         $_SESSION['upload_errors'] = ['Lỗi hệ thống: ' . $e->getMessage()];
         header("location: ../../index.php?req=hinhanhview&result=notok");
     } else if ($requestAction === "resolve_duplicate") {
-
+        ob_clean();
         header('Content-Type: application/json; charset=utf-8');
         echo json_encode([
             'success' => false,
@@ -585,6 +523,8 @@ try {
             'line' => $e->getLine()
         ]);
     } else {
+        ob_clean();
+        header('Content-Type: application/json; charset=utf-8');
         echo json_encode([
             'success' => false,
             'message' => 'Lỗi: ' . $e->getMessage()

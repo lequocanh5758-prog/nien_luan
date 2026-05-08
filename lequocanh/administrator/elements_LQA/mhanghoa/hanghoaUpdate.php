@@ -245,23 +245,14 @@ $nhanVienList = $nhanVienObj->nhanvienGetAll();
 
 <style>
 
-    * {
-        pointer-events: auto;
-    }
-
     .editable-input {
-        pointer-events: auto !important;
         cursor: text !important;
     }
 
     .update-form-container {
         padding: 15px;
         background-color: #fff;
-        border: 1px solid #ddd;
         border-radius: 4px;
-        position: relative;
-        z-index: 9999;
-        pointer-events: auto;
     }
 
     .update-header {
@@ -271,8 +262,6 @@ $nhanVienList = $nhanVienObj->nhanvienGetAll();
         margin-bottom: 15px;
         border-bottom: 1px solid #ddd;
         padding-bottom: 10px;
-        position: relative;
-        z-index: 9999;
     }
 
     .update-header h3 {
@@ -291,20 +280,18 @@ $nhanVienList = $nhanVienObj->nhanvienGetAll();
         justify-content: center;
         cursor: pointer;
         font-weight: bold;
-        pointer-events: auto !important;
+        flex-shrink: 0;
     }
 
     .form-group {
-        position: relative;
-        z-index: 9999;
         margin-bottom: 15px;
-        pointer-events: auto;
     }
 
     .form-group label {
         display: block;
         margin-bottom: 5px;
         font-weight: bold;
+        font-size: 14px;
     }
 
     .form-control {
@@ -312,14 +299,20 @@ $nhanVienList = $nhanVienObj->nhanvienGetAll();
         padding: 8px;
         border: 1px solid #ddd;
         border-radius: 4px;
-        cursor: text !important;
-        pointer-events: auto !important;
+        box-sizing: border-box;
+    }
+
+    .form-control:focus {
+        border-color: #007bff;
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(0,123,255,0.25);
     }
 
     .form-actions {
         text-align: center;
-        margin-top: 15px;
-        pointer-events: auto;
+        margin-top: 20px;
+        padding-top: 15px;
+        border-top: 1px solid #eee;
     }
 
     .btn-primary {
@@ -329,7 +322,6 @@ $nhanVienList = $nhanVienObj->nhanvienGetAll();
         border: none;
         border-radius: 4px;
         cursor: pointer;
-        pointer-events: auto !important;
     }
 
     .btn-primary:hover {
@@ -338,8 +330,26 @@ $nhanVienList = $nhanVienObj->nhanvienGetAll();
 
     .hint {
         margin: 5px 0;
-        font-size: 0.9em;
-        color: #666;
+        font-size: 0.85em;
+        color: #888;
+    }
+
+    .update-form-container .alert {
+        padding: 10px 15px;
+        border-radius: 4px;
+        font-size: 14px;
+    }
+
+    .update-form-container .alert-success {
+        background: #d4edda;
+        border: 1px solid #c3e6cb;
+        color: #155724;
+    }
+
+    .update-form-container .alert-warning {
+        background: #fff3cd;
+        border: 1px solid #ffeeba;
+        color: #856404;
     }
 </style>
 
@@ -364,14 +374,15 @@ $nhanVienList = $nhanVienObj->nhanvienGetAll();
 
     document.getElementById('close-btn').addEventListener('click', function(e) {
         e.stopPropagation();
-
-        if (window.parent) {
-            window.parent.postMessage('closeUpdateForm', '*');
-        }
-
-        var parentElement = window.frameElement && window.frameElement.parentElement;
-        if (parentElement) {
-            parentElement.style.display = 'none';
+        var popup = document.getElementById('w_update_hh');
+        if (popup) {
+            popup.style.display = 'none';
+        } else {
+            // Fallback: tìm popup từ parent nếu có
+            if (window.parent && window.parent.document) {
+                var parentPopup = window.parent.document.getElementById('w_update_hh');
+                if (parentPopup) parentPopup.style.display = 'none';
+            }
         }
     });
 
@@ -429,6 +440,7 @@ $nhanVienList = $nhanVienObj->nhanvienGetAll();
         e.preventDefault();
 
         var formData = new FormData(this);
+        var baseUrl = (typeof window.BASE_URL !== 'undefined' && window.BASE_URL) ? window.BASE_URL : '';
 
         fetch(this.action, {
                 method: 'POST',
@@ -439,7 +451,7 @@ $nhanVienList = $nhanVienObj->nhanvienGetAll();
                 console.log("Response:", data);
                 if (data.success) {
 
-                    window.location.href = "../../index.php?req=hanghoaview";
+                    window.top.location.href = baseUrl + '/lequocanh/administrator/index.php?req=hanghoaview&t=' + new Date().getTime();
                 } else {
 
                     alert("Lỗi: " + data.message);
@@ -450,7 +462,7 @@ $nhanVienList = $nhanVienObj->nhanvienGetAll();
             .catch(error => {
                 console.error("Error:", error);
 
-                window.top.location.href = "/administrator/index.php?req=hanghoaview";
+                window.top.location.href = baseUrl + '/lequocanh/administrator/index.php?req=hanghoaview';
             });
 
         return false;

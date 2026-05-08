@@ -206,7 +206,7 @@ if (!$page) {
         <div class="row">
             <div class="col-lg-8">
                 <?php if ($page['thumbnail']): ?>
-                <img src="<?php echo htmlspecialchars($page['thumbnail']); ?>" alt="<?php echo htmlspecialchars($page['title']); ?>" class="blog-thumbnail mb-4">
+                <img src="/lequocanh/administrator/elements_LQA/madmin/displayImage.php?type=page&id=<?php echo $page['id']; ?>" alt="<?php echo htmlspecialchars($page['title']); ?>" class="blog-thumbnail mb-4">
                 <?php endif; ?>
                 
                 <div class="page-content">

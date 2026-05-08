@@ -1,14 +1,14 @@
 <?php
 
-require_once 'database.php';
+require_once __DIR__ . '/database.php';
 
 class BannerManager
 {
     private $db;
 
-    public function __construct()
+    public function __construct(?PDO $db = null)
     {
-        $this->db = Database::getInstance()->getConnection();
+        $this->db = $db ?: Database::getInstance()->getConnection();
     }
 
     public function getActiveBanners()
@@ -50,33 +50,6 @@ class BannerManager
         }
     }
 
-    public function addBanner($title, $description, $image_url, $link_url, $position, $is_active)
-    {
-        try {
-            $sql = "INSERT INTO banners (title, description, image_url, link_url, position, is_active) 
-                    VALUES (?, ?, ?, ?, ?, ?)";
-            $stmt = $this->db->prepare($sql);
-            return $stmt->execute([$title, $description, $image_url, $link_url, $position, $is_active]);
-        } catch (Exception $e) {
-            error_log("Error adding banner: " . $e->getMessage());
-            return false;
-        }
-    }
-
-    public function updateBanner($id, $title, $description, $image_url, $link_url, $position, $is_active)
-    {
-        try {
-            $sql = "UPDATE banners SET title = ?, description = ?, image_url = ?, 
-                           link_url = ?, position = ?, is_active = ?, updated_at = NOW() 
-                    WHERE id = ?";
-            $stmt = $this->db->prepare($sql);
-            return $stmt->execute([$title, $description, $image_url, $link_url, $position, $is_active, $id]);
-        } catch (Exception $e) {
-            error_log("Error updating banner: " . $e->getMessage());
-            return false;
-        }
-    }
-
     public function deleteBanner($id)
     {
         try {
@@ -96,13 +69,8 @@ class BannerManager
             return false;
         }
 
-        $allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
-        $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif'];
-        
-        if (!in_array($file['type'], $allowedTypes)) {
-            error_log("Banner upload error: Invalid file type - " . $file['type']);
-            return false;
-        }
+        $allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+        $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
 
         $fileExtension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
         if (!in_array($fileExtension, $allowedExtensions)) {
@@ -110,27 +78,58 @@ class BannerManager
             return false;
         }
 
-        $newFileName = 'banner_' . time() . '_' . uniqid() . '.' . $fileExtension;
-        $uploadDir = __DIR__ . '/../../../administrator/uploads/';
-        $uploadPath = $uploadDir . $newFileName;
-
-        if (!file_exists($uploadDir)) {
-            if (!mkdir($uploadDir, 0755, true)) {
-                error_log("Banner upload error: Cannot create upload directory - " . $uploadDir);
-                return false;
-            }
-        }
-
-        if (!is_writable($uploadDir)) {
-            error_log("Banner upload error: Upload directory is not writable - " . $uploadDir);
+        $imageData = file_get_contents($file['tmp_name']);
+        if ($imageData === false) {
+            error_log("Banner upload error: Cannot read uploaded file");
             return false;
         }
 
-        if (move_uploaded_file($file['tmp_name'], $uploadPath)) {
-            return '/lequocanh/administrator/uploads/' . $newFileName;
+        $finfo = new finfo(FILEINFO_MIME_TYPE);
+        $mimeType = $finfo->buffer($imageData);
+        if (!in_array($mimeType, $allowedTypes)) {
+            error_log("Banner upload error: Invalid MIME type - " . $mimeType);
+            return false;
         }
 
-        error_log("Banner upload error: Cannot move uploaded file to - " . $uploadPath);
-        return false;
+        return [
+            'data' => $imageData,
+            'type' => $mimeType,
+            'name' => $file['name']
+        ];
+    }
+
+    public function addBanner($title, $description, $image_url, $link_url, $position, $is_active, $image_data = null, $image_type = null)
+    {
+        try {
+            $sql = "INSERT INTO banners (title, description, image_url, image_data, image_type, link_url, position, is_active)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+            $stmt = $this->db->prepare($sql);
+            return $stmt->execute([$title, $description, $image_url, $image_data, $image_type, $link_url, $position, $is_active]);
+        } catch (Exception $e) {
+            error_log("Error adding banner: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    public function updateBanner($id, $title, $description, $image_url, $link_url, $position, $is_active, $image_data = null, $image_type = null)
+    {
+        try {
+            if ($image_data !== null) {
+                $sql = "UPDATE banners SET title = ?, description = ?, image_url = ?, image_data = ?, image_type = ?,
+                               link_url = ?, position = ?, is_active = ?, updated_at = NOW()
+                        WHERE id = ?";
+                $stmt = $this->db->prepare($sql);
+                return $stmt->execute([$title, $description, $image_url, $image_data, $image_type, $link_url, $position, $is_active, $id]);
+            } else {
+                $sql = "UPDATE banners SET title = ?, description = ?, image_url = ?,
+                               link_url = ?, position = ?, is_active = ?, updated_at = NOW()
+                        WHERE id = ?";
+                $stmt = $this->db->prepare($sql);
+                return $stmt->execute([$title, $description, $image_url, $link_url, $position, $is_active, $id]);
+            }
+        } catch (Exception $e) {
+            error_log("Error updating banner: " . $e->getMessage());
+            return false;
+        }
     }
 }
