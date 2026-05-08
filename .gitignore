@@ -1,24 +1,66 @@
-# Loại trừ thư mục dữ liệu MySQL
+# === Database ===
 DB/
-# Các tệp hệ thống
+
+# === System files ===
 .DS_Store
 Thumbs.db
+nul
 
-# PHP
+# === PHP ===
 vendor/
 composer.lock
 .phpunit.result.cache
+.php-cs-fixer.cache
 
-# Các tệp tạm thời
+# === Cache (generated runtime) ===
+cache/ratelimit/
+cache/pages/
+cache/advanced/
+
+# === Logs ===
 *.log
 *.tmp
 *.temp
+debug_log.txt
+update_log.txt
 
-# IDE
+# === IDE ===
 .idea/
 .vscode/
 *.sublime-*
 
-# Docker
+# === Security ===
+.env
+*.pem
+
+# === Binaries ===
+cloudflared.exe
+ngrok.exe
+
+# === Docker ===
 .docker/
-docker-compose.override.yml 
+docker-compose.override.yml
+
+# === Tool output (generated) ===
+graphify-out/
+.gitnexus-setup/
+.gitnexus
+.opencode/
+.remotion/
+.graphify_*
+
+# === Test results (generated) ===
+test-results/
+
+# === Commit helper ===
+commit_msg.txt
+
+# === Temp docs (one-time setup artifacts) ===
+EMAIL_SYSTEM_COMPLETE.txt
+FINAL_EMAIL_INTEGRATION_SUMMARY.txt
+INSTALLATION_COMPLETE.txt
+
+# === Backup files ===
+*.backup
+*.backup_*
+*.bak

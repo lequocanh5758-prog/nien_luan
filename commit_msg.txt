@@ -1,4 +1,0 @@
-chore: remove 18 .backup files from repo
-
-These backup files should be in git history, not in the working tree.
-Removed files dating from 2025-05-24 to 2026-01-04.
