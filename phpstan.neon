@@ -11,10 +11,9 @@ parameters:
         - */node_modules/*
     bootstrapFiles:
         - lequocanh/includes/helpers.php
-        - lequocanh/administrator/elements_LQA/mod/database.php
         - lequocanh/cache/QueryCache.php
     ignoreErrors:
-        # Classes loaded via require (not autoload) - legacy architecture
+        # Legacy classes loaded via require (not autoload)
         - '#on an unknown class (Database|SessionManager|GioHang|CacheManager|ProductReview|hanghoa|ConfigManager|CorsMiddleware|ValidationMiddleware)#'
         - '#Instantiated class (GioHang|hanghoa|ProductReview|CorsMiddleware|ValidationMiddleware) not found#'
         # Firebase JWT - loaded via vendor but not in scanned paths
@@ -23,7 +22,7 @@ parameters:
         # Active Record pattern - unsafe new static()
         - '#Unsafe usage of new static\(\)#'
         # Legacy properties accessed dynamically
-        - '#Access to an undefined property Product::\$#'
+        - '#Access to an undefined property .+Product::\$#'
         # Dead catch in try/catch (safeRedirect always exits)
         - '#Dead catch - Exception is never thrown#'
         # Defensive programming - comparison always true after validation

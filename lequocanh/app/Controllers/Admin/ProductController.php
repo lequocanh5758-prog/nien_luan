@@ -1,7 +1,12 @@
 <?php
 
-require_once __DIR__ . '/../BaseController.php';
-require_once __DIR__ . '/../../Models/Product.php';
+namespace App\Controllers\Admin;
+
+use App\Controllers\BaseController;
+use App\Models\Product;
+use Database;
+use PDO;
+use Exception;
 
 class ProductController extends BaseController
 {

@@ -1,7 +1,9 @@
 <?php
 
-require_once __DIR__ . '/../../administrator/elements_LQA/mod/database.php';
-require_once __DIR__ . '/../../cache/QueryCache.php';
+namespace App\Services;
+
+use Database;
+use QueryCache;
 
 class OrderService
 {
@@ -114,6 +116,6 @@ class OrderService
 if (!function_exists('getOrderService')) {
     function getOrderService()
     {
-        return OrderService::getInstance();
+        return \App\Services\OrderService::getInstance();
     }
 }

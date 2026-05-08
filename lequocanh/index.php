@@ -35,7 +35,9 @@ if (isset($_GET['payment_success']) && $_GET['payment_success'] == '1') {
 
 require_once __DIR__ . '/administrator/elements_LQA/mod/giohangCls.php';
 require_once __DIR__ . '/administrator/elements_LQA/mod/database.php';
-require_once __DIR__ . '/app/Services/UserService.php';
+require_once __DIR__ . '/app/autoload.php';
+
+use App\Services\UserService;
 
 $giohang = new GioHang();
 $cartItemCount = $giohang->getCartItemCount();

@@ -30,7 +30,7 @@
                             <i class="fas fa-user me-2"></i>
                             <?php
                             $username = $_SESSION['USER'];
-                            $user = UserService::getInstance()->getUserByUsername($username);
+                            $user = \App\Services\UserService::getInstance()->getUserByUsername($username);
                             echo $user ? $user->hoten : $username;
                             ?>
                         </button>

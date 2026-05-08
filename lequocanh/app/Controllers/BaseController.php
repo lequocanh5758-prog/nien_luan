@@ -1,5 +1,10 @@
 <?php
 
+namespace App\Controllers;
+
+use ConfigManager;
+use Exception;
+
 abstract class BaseController
 {
     protected $config;

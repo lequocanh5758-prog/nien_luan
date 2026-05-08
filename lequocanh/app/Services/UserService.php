@@ -1,7 +1,9 @@
 <?php
 
-require_once __DIR__ . '/../../administrator/elements_LQA/mod/database.php';
-require_once __DIR__ . '/../../cache/QueryCache.php';
+namespace App\Services;
+
+use Database;
+use QueryCache;
 
 class UserService
 {
@@ -77,6 +79,6 @@ class UserService
 if (!function_exists('getUserService')) {
     function getUserService()
     {
-        return UserService::getInstance();
+        return \App\Services\UserService::getInstance();
     }
 }

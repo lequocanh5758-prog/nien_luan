@@ -1,7 +1,11 @@
 <?php
 
-require_once __DIR__ . '/../../administrator/elements_LQA/mod/database.php';
-require_once __DIR__ . '/../../cache/QueryCache.php';
+namespace App\Services;
+
+use Database;
+use QueryCache;
+use PDO;
+use PDOException;
 
 class ShippingService
 {
@@ -112,6 +116,6 @@ class ShippingService
 if (!function_exists('getShippingService')) {
     function getShippingService()
     {
-        return ShippingService::getInstance();
+        return \App\Services\ShippingService::getInstance();
     }
 }

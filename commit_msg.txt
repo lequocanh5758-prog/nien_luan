@@ -1,0 +1,9 @@
+refactor: add PSR-4 namespaces to app/ classes
+
+- Add namespace declarations: App\Services, App\Models, App\Controllers
+- Replace require_once with use statements for global classes (Database, QueryCache, PDO, etc.)
+- Update autoloader with legacy class map (Database, QueryCache, ConfigManager)
+- Update helper functions to use fully qualified class names
+- Update navbar.php to use FQN for UserService
+- Clean up phpstan.neon: remove no-longer-needed ignore patterns
+- All PHPStan (0 errors) and PHPCS (0 errors/warnings) checks pass

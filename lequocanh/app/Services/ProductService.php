@@ -1,7 +1,10 @@
 <?php
 
-require_once __DIR__ . '/../../administrator/elements_LQA/mod/database.php';
-require_once __DIR__ . '/../../cache/QueryCache.php';
+namespace App\Services;
+
+use Database;
+use QueryCache;
+use PDO;
 
 class ProductService
 {
@@ -192,6 +195,6 @@ class ProductService
 if (!function_exists('getProductService')) {
     function getProductService()
     {
-        return ProductService::getInstance();
+        return \App\Services\ProductService::getInstance();
     }
 }

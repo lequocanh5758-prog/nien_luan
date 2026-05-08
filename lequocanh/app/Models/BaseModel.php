@@ -1,5 +1,10 @@
 <?php
 
+namespace App\Models;
+
+use Database;
+use PDO;
+
 abstract class BaseModel
 {
     protected static $table = '';

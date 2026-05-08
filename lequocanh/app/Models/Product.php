@@ -1,6 +1,10 @@
 <?php
 
-require_once __DIR__ . '/BaseModel.php';
+namespace App\Models;
+
+use Database;
+use PDO;
+use Exception;
 
 class Product extends BaseModel
 {
