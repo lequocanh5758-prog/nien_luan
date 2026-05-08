@@ -13,9 +13,9 @@ composer.lock
 .php-cs-fixer.cache
 
 # === Cache (generated runtime) ===
-cache/ratelimit/
-cache/pages/
-cache/advanced/
+**/cache/ratelimit/
+**/cache/pages/
+**/cache/advanced/
 
 # === Logs ===
 *.log
