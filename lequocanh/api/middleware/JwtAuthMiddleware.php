@@ -9,7 +9,7 @@ class JwtAuthMiddleware {
     
     public function __construct() {
 
-        $secret = $_ENV['JWT_SECRET'] ?? getenv('JWT_SECRET') ?? '';
+        $secret = $_ENV['JWT_SECRET'] ?? (getenv('JWT_SECRET') ?: '');
         
         if (empty($secret) || $secret === 'your-secret-key-here' || strlen($secret) < 32) {
             error_log('SECURITY WARNING: JWT_SECRET is not properly configured!');
@@ -66,7 +66,7 @@ class JwtAuthMiddleware {
     
     public static function generateToken($payload, $expiry = 3600) {
 
-        $secret = $_ENV['JWT_SECRET'] ?? getenv('JWT_SECRET') ?? '';
+        $secret = $_ENV['JWT_SECRET'] ?? (getenv('JWT_SECRET') ?: '');
         
         if (empty($secret) || $secret === 'your-secret-key-here' || strlen($secret) < 32) {
             error_log('SECURITY WARNING: JWT_SECRET is not properly configured for token generation!');

@@ -2,11 +2,11 @@
 
 header('Content-Type: application/json; charset=utf-8');
 
-require_once __DIR__ . '/middleware/ApiSecurityMiddleware.php';
 require_once __DIR__ . '/../administrator/elements_LQA/mod/sessionManager.php';
-require_once __DIR__ . '/../administrator/elements_LQA/mod/database.php';
-
 SessionManager::start();
+
+require_once __DIR__ . '/middleware/ApiSecurityMiddleware.php';
+require_once __DIR__ . '/../administrator/elements_LQA/mod/database.php';
 
 $security = ApiSecurityMiddleware::getInstance();
 $security->handle('support_tickets');
@@ -186,7 +186,7 @@ class SupportTicketAPI {
                 return $this->error('Ticket không tồn tại');
             }
             
-            if (!$isAdmin && intval($ticket['user_id']) !== intval($userId)) {
+            if (!$isAdmin && $ticket['user_id'] !== $userId) {
                 return $this->error('Không có quyền truy cập', 403);
             }
             
@@ -240,7 +240,7 @@ class SupportTicketAPI {
                 return $this->error('Ticket không tồn tại');
             }
             
-            if (!$isAdmin && intval($ticket['user_id']) !== intval($userId)) {
+            if (!$isAdmin && $ticket['user_id'] !== $userId) {
                 return $this->error('Không có quyền truy cập', 403);
             }
             

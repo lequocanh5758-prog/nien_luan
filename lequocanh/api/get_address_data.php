@@ -27,14 +27,27 @@ try {
                 exit;
             }
             
+            // Query vietnam_districts (bảng có dữ liệu)
             $stmt = $db->prepare("
-                SELECT id, code, name
-                FROM districts
-                WHERE province_id = ? AND is_active = 1
-                ORDER BY name ASC
+                SELECT district_id as id, district_code as code, district_name as name
+                FROM vietnam_districts
+                WHERE province_id = ? AND status = 1
+                ORDER BY district_name ASC
             ");
             $stmt->execute([$provinceId]);
             $districts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            // Nếu không có, thử bảng districts
+            if (empty($districts)) {
+                $stmt = $db->prepare("
+                    SELECT id, code, name
+                    FROM districts
+                    WHERE province_id = ? AND is_active = 1
+                    ORDER BY name ASC
+                ");
+                $stmt->execute([$provinceId]);
+                $districts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            }
             
             echo json_encode([
                 'success' => true,
@@ -51,14 +64,27 @@ try {
                 exit;
             }
             
+            // Query vietnam_wards (bảng có dữ liệu)
             $stmt = $db->prepare("
-                SELECT id, code, name
-                FROM wards
-                WHERE district_id = ? AND is_active = 1
-                ORDER BY name ASC
+                SELECT ward_code as code, ward_name as name
+                FROM vietnam_wards
+                WHERE district_id = ? AND status = 1
+                ORDER BY ward_name ASC
             ");
             $stmt->execute([$districtId]);
             $wards = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            // Nếu không có, thử bảng wards
+            if (empty($wards)) {
+                $stmt = $db->prepare("
+                    SELECT id, code, name
+                    FROM wards
+                    WHERE district_id = ? AND is_active = 1
+                    ORDER BY name ASC
+                ");
+                $stmt->execute([$districtId]);
+                $wards = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            }
             
             echo json_encode([
                 'success' => true,

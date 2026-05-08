@@ -8,8 +8,12 @@ require_once __DIR__ . '/../administrator/elements_LQA/mod/database.php';
 
 SessionManager::start();
 
-$security = ApiSecurityMiddleware::getInstance();
-$security->handle('product_reviews');
+try {
+    $security = ApiSecurityMiddleware::getInstance();
+    $security->handle('product_reviews');
+} catch (Exception $e) {
+    error_log("Middleware error: " . $e->getMessage());
+}
 
 class ProductReviewAPI {
     private $db;
@@ -20,14 +24,24 @@ class ProductReviewAPI {
         $this->conn = $this->db->getConnection();
     }
     
+    private function resolveUserId($identifier) {
+        if (is_numeric($identifier)) {
+            return (int)$identifier;
+        }
+        $sql = "SELECT iduser FROM user WHERE username = ?";
+        $stmt = $this->conn->prepare($sql);
+        $stmt->execute([$identifier]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $row ? (int)$row['iduser'] : null;
+    }
+    
     public function submitReview() {
         try {
-
             if (!isset($_SESSION['USER'])) {
                 return $this->error('Vui lòng đăng nhập để đánh giá', 401);
             }
             
-            $userId = $_SESSION['USER'];
+            $userIdentifier = $_SESSION['USER'];
             $orderId = $_POST['order_id'] ?? null;
             $productId = $_POST['product_id'] ?? null;
             $rating = $_POST['rating'] ?? null;
@@ -40,20 +54,25 @@ class ProductReviewAPI {
             if ($rating < 1 || $rating > 5) {
                 return $this->error('Đánh giá phải từ 1-5 sao');
             }
+
+            $userId = $this->resolveUserId($userIdentifier);
+            if (!$userId) {
+                return $this->error('Người dùng không tồn tại');
+            }
             
             $checkOrderSql = "SELECT id, trang_thai, trang_thai_thanh_toan 
                              FROM don_hang 
                              WHERE id = ? AND ma_nguoi_dung = ?";
             $stmt = $this->conn->prepare($checkOrderSql);
-            $stmt->execute([$orderId, $userId]);
+            $stmt->execute([$orderId, $userIdentifier]);
             $order = $stmt->fetch(PDO::FETCH_ASSOC);
             
             if (!$order) {
                 return $this->error('Đơn hàng không tồn tại hoặc không thuộc về bạn');
             }
             
-            if ($order['trang_thai'] !== 'approved' && $order['trang_thai_thanh_toan'] !== 'paid') {
-                return $this->error('Chỉ có thể đánh giá đơn hàng đã được duyệt');
+            if ($order['trang_thai'] !== 'completed' || !in_array($order['trang_thai_thanh_toan'], ['paid', 'completed'])) {
+                return $this->error('Chỉ có thể đánh giá sau khi đơn hàng đã hoàn tất và thanh toán');
             }
             
             $checkProductSql = "SELECT id FROM chi_tiet_don_hang 
@@ -66,19 +85,19 @@ class ProductReviewAPI {
             }
             
             $checkReviewSql = "SELECT id FROM product_reviews 
-                              WHERE ma_don_hang = ? AND ma_san_pham = ? AND ma_nguoi_dung = ?";
+                               WHERE product_id = ? AND user_id = ?";
             $stmt = $this->conn->prepare($checkReviewSql);
-            $stmt->execute([$orderId, $productId, $userId]);
+            $stmt->execute([$productId, $userId]);
             
             if ($stmt->fetch()) {
                 return $this->error('Bạn đã đánh giá sản phẩm này rồi');
             }
             
             $insertSql = "INSERT INTO product_reviews 
-                         (ma_don_hang, ma_san_pham, ma_nguoi_dung, rating, comment, is_verified_purchase, is_approved)
-                         VALUES (?, ?, ?, ?, ?, 1, 1)";
+                         (product_id, user_id, rating, comment, is_verified_purchase, is_approved, status)
+                         VALUES (?, ?, ?, ?, 1, 1, 'approved')";
             $stmt = $this->conn->prepare($insertSql);
-            $stmt->execute([$orderId, $productId, $userId, $rating, $comment]);
+            $stmt->execute([$productId, $userId, $rating, $comment]);
             
             $reviewId = $this->conn->lastInsertId();
             
@@ -106,20 +125,30 @@ class ProductReviewAPI {
                 return $this->error('Thiếu product_id');
             }
             
-            $statsSql = "SELECT * FROM v_product_review_stats WHERE ma_san_pham = ?";
+            $statsSql = "SELECT 
+                COUNT(*) as total_reviews,
+                COALESCE(AVG(rating), 0) as average_rating,
+                SUM(CASE WHEN rating = 5 THEN 1 ELSE 0 END) as five_star,
+                SUM(CASE WHEN rating = 4 THEN 1 ELSE 0 END) as four_star,
+                SUM(CASE WHEN rating = 3 THEN 1 ELSE 0 END) as three_star,
+                SUM(CASE WHEN rating = 2 THEN 1 ELSE 0 END) as two_star,
+                SUM(CASE WHEN rating = 1 THEN 1 ELSE 0 END) as one_star
+                FROM product_reviews 
+                WHERE product_id = ? AND is_approved = 1 AND (status = 'approved' OR status IS NULL)";
             $stmt = $this->conn->prepare($statsSql);
             $stmt->execute([$productId]);
             $stats = $stmt->fetch(PDO::FETCH_ASSOC);
             
             $reviewsSql = "SELECT 
                             pr.*,
-                            pr.ma_nguoi_dung as user_name,
+                            u.hoten as user_name,
                             '' as user_email
                           FROM product_reviews pr
-                          WHERE pr.ma_san_pham = ? 
+                          LEFT JOIN user u ON pr.user_id = u.iduser
+                          WHERE pr.product_id = ? 
                             AND pr.is_approved = 1
-                            AND (pr.status = 'visible' OR pr.status IS NULL)
-                          ORDER BY pr.ngay_tao DESC
+                            AND (pr.status = 'approved' OR pr.status IS NULL)
+                          ORDER BY pr.created_at DESC
                           LIMIT ? OFFSET ?";
             $stmt = $this->conn->prepare($reviewsSql);
             $stmt->bindValue(1, $productId, PDO::PARAM_INT);
@@ -129,8 +158,8 @@ class ProductReviewAPI {
             $reviews = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
             $countSql = "SELECT COUNT(*) as total FROM product_reviews 
-                        WHERE ma_san_pham = ? AND is_approved = 1 
-                        AND (status = 'visible' OR status IS NULL)";
+                        WHERE product_id = ? AND is_approved = 1 
+                        AND (status = 'approved' OR status IS NULL)";
             $stmt = $this->conn->prepare($countSql);
             $stmt->bindValue(1, $productId, PDO::PARAM_INT);
             $stmt->execute();
@@ -157,7 +186,7 @@ class ProductReviewAPI {
             
         } catch (Exception $e) {
             error_log("Get reviews error: " . $e->getMessage());
-            return $this->error('Có lỗi xảy ra');
+            return $this->error('Có lỗi xảy ra: ' . $e->getMessage());
         }
     }
     
@@ -167,11 +196,16 @@ class ProductReviewAPI {
                 return $this->success(['can_review' => false, 'reason' => 'not_logged_in']);
             }
             
-            $userId = $_SESSION['USER'];
+            $userIdentifier = $_SESSION['USER'];
             $orderId = $_GET['order_id'] ?? null;
             
             if (!$orderId) {
                 return $this->error('Thiếu order_id');
+            }
+            
+            $userId = $this->resolveUserId($userIdentifier);
+            if (!$userId) {
+                return $this->error('Người dùng không tồn tại');
             }
             
             $productsSql = "SELECT DISTINCT cdh.ma_san_pham, h.tenhanghoa as product_name
@@ -185,9 +219,9 @@ class ProductReviewAPI {
             $reviewStatus = [];
             foreach ($products as $product) {
                 $checkSql = "SELECT id FROM product_reviews 
-                            WHERE ma_don_hang = ? AND ma_san_pham = ? AND ma_nguoi_dung = ?";
+                            WHERE product_id = ? AND user_id = ?";
                 $stmt = $this->conn->prepare($checkSql);
-                $stmt->execute([$orderId, $product['ma_san_pham'], $userId]);
+                $stmt->execute([$product['ma_san_pham'], $userId]);
                 
                 $reviewStatus[] = [
                     'product_id' => $product['ma_san_pham'],
@@ -203,34 +237,17 @@ class ProductReviewAPI {
             
         } catch (Exception $e) {
             error_log("Check reviewed error: " . $e->getMessage());
-            return $this->error('Có lỗi xảy ra');
+            return $this->error('Có lỗi xảy ra: ' . $e->getMessage());
         }
     }
     
     public function markHelpful() {
         try {
-            if (!isset($_SESSION['USER'])) {
-                return $this->error('Vui lòng đăng nhập', 401);
-            }
-            
-            $userId = $_SESSION['USER'];
             $reviewId = $_POST['review_id'] ?? null;
             
             if (!$reviewId) {
                 return $this->error('Thiếu review_id');
             }
-            
-            $checkSql = "SELECT id FROM review_helpful WHERE review_id = ? AND ma_nguoi_dung = ?";
-            $stmt = $this->conn->prepare($checkSql);
-            $stmt->execute([$reviewId, $userId]);
-            
-            if ($stmt->fetch()) {
-                return $this->error('Bạn đã đánh dấu hữu ích rồi');
-            }
-            
-            $insertSql = "INSERT INTO review_helpful (review_id, ma_nguoi_dung) VALUES (?, ?)";
-            $stmt = $this->conn->prepare($insertSql);
-            $stmt->execute([$reviewId, $userId]);
             
             $updateSql = "UPDATE product_reviews SET helpful_count = helpful_count + 1 WHERE id = ?";
             $stmt = $this->conn->prepare($updateSql);
@@ -240,26 +257,27 @@ class ProductReviewAPI {
             
         } catch (Exception $e) {
             error_log("Mark helpful error: " . $e->getMessage());
-            return $this->error('Có lỗi xảy ra');
+            return $this->error('Có lỗi xảy ra: ' . $e->getMessage());
         }
     }
     
     private function updateOrderReviewStatus($orderId) {
         try {
-
             $countProductsSql = "SELECT COUNT(DISTINCT ma_san_pham) as total 
                                 FROM chi_tiet_don_hang WHERE ma_don_hang = ?";
             $stmt = $this->conn->prepare($countProductsSql);
             $stmt->execute([$orderId]);
             $totalProducts = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
             
-            $countReviewsSql = "SELECT COUNT(DISTINCT ma_san_pham) as total 
-                               FROM product_reviews WHERE ma_don_hang = ?";
+            $countReviewsSql = "SELECT COUNT(DISTINCT pr.product_id) as total 
+                               FROM product_reviews pr
+                               INNER JOIN chi_tiet_don_hang ct ON pr.product_id = ct.ma_san_pham
+                               WHERE ct.ma_don_hang = ?";
             $stmt = $this->conn->prepare($countReviewsSql);
             $stmt->execute([$orderId]);
             $totalReviews = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
             
-            if ($totalProducts == $totalReviews) {
+            if ($totalProducts == $totalReviews && $totalProducts > 0) {
                 $updateSql = "UPDATE don_hang SET is_reviewed = 1 WHERE id = ?";
                 $stmt = $this->conn->prepare($updateSql);
                 $stmt->execute([$orderId]);

@@ -30,7 +30,7 @@ class ShippingService
                 FROM shipping_methods 
                 WHERE is_active = 1
                 ORDER BY sort_order DESC";
-        
+
         return $this->cache->query($this->db, $sql, [], 600);
     }
 
@@ -40,7 +40,7 @@ class ShippingService
                        min_order_free_ship, estimated_days
                 FROM shipping_methods 
                 WHERE code = ?";
-        
+
         return $this->cache->queryOne($this->db, $sql, [$code], 600);
     }
 
@@ -50,7 +50,7 @@ class ShippingService
                        min_order_free_ship, estimated_days
                 FROM shipping_methods 
                 WHERE id = ?";
-        
+
         return $this->cache->queryOne($this->db, $sql, [$id], 600);
     }
 
@@ -61,7 +61,7 @@ class ShippingService
                 FROM shipping_fees 
                 WHERE shipping_method_id = ? AND is_active = 1
                 ORDER BY priority DESC";
-        
+
         return $this->cache->query($this->db, $sql, [$methodId], 600);
     }
 
@@ -95,7 +95,7 @@ class ShippingService
                 FROM v_shipping_methods_with_fees 
                 WHERE is_active = 1
                 ORDER BY sort_order DESC";
-        
+
         try {
             return $this->cache->query($this->db, $sql, [], 600);
         } catch (PDOException $e) {

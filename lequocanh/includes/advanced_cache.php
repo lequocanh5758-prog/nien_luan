@@ -112,12 +112,12 @@ class AdvancedCache
     
     public function getStats()
     {
-        $total = $this->stats['hits'] + $this->stats['misses'];
+        $total = (int)$this->stats['hits'] + (int)$this->stats['misses'];
         return [
             'hits' => $this->stats['hits'],
             'misses' => $this->stats['misses'],
             'writes' => $this->stats['writes'],
-            'hit_rate' => $total > 0 ? round($this->stats['hits'] / $total * 100, 2) : 0,
+            'hit_rate' => $total > 0 ? round((int)$this->stats['hits'] / $total * 100, 2) : 0,
             'memory_items' => count($this->memoryCache)
         ];
     }

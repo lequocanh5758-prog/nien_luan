@@ -14,7 +14,6 @@ abstract class BaseController
 
     protected function initializeController()
     {
-
     }
 
     protected function view($viewName, $data = [])

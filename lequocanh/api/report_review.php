@@ -8,8 +8,12 @@ require_once __DIR__ . '/../administrator/elements_LQA/mod/database.php';
 
 SessionManager::start();
 
-$security = ApiSecurityMiddleware::getInstance();
-$security->handle('report_review');
+try {
+    $security = ApiSecurityMiddleware::getInstance();
+    $security->handle('report_review');
+} catch (Exception $e) {
+    error_log("Middleware error: " . $e->getMessage());
+}
 
 class ReportReviewAPI {
     private $db;
@@ -26,7 +30,16 @@ class ReportReviewAPI {
                 return $this->error('Vui lòng đăng nhập để báo cáo', 401);
             }
             
-            $userId = $_SESSION['USER'];
+            $username = $_SESSION['USER'];
+            
+            $userStmt = $this->conn->prepare("SELECT iduser FROM user WHERE username = ?");
+            $userStmt->execute([$username]);
+            $userId = intval($userStmt->fetchColumn());
+            
+            if ($userId <= 0) {
+                return $this->error('Không tìm thấy người dùng');
+            }
+            
             $reviewId = $_POST['review_id'] ?? null;
             $reason = $_POST['reason'] ?? null;
             $description = trim($_POST['description'] ?? '');
@@ -78,7 +91,14 @@ class ReportReviewAPI {
                 return $this->error('Vui lòng đăng nhập', 401);
             }
             
-            $userId = $_SESSION['USER'];
+            $username = $_SESSION['USER'];
+            $userStmt = $this->conn->prepare("SELECT iduser FROM user WHERE username = ?");
+            $userStmt->execute([$username]);
+            $userId = intval($userStmt->fetchColumn());
+            
+            if ($userId <= 0) {
+                return $this->error('Không tìm thấy người dùng');
+            }
             
             $sql = "SELECT 
                         rr.*,
@@ -87,7 +107,7 @@ class ReportReviewAPI {
                         h.tenhanghoa as product_name
                     FROM review_reports rr
                     JOIN product_reviews pr ON rr.review_id = pr.id
-                    LEFT JOIN hanghoa h ON pr.ma_san_pham = h.idhanghoa
+                    LEFT JOIN hanghoa h ON pr.product_id = h.idhanghoa
                     WHERE rr.reporter_id = ?
                     ORDER BY rr.created_at DESC";
             

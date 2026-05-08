@@ -25,28 +25,28 @@ class UserService
 
     public function getUserByUsername($username)
     {
-        $sql = "SELECT iduser, username, hoten, email, sodienthoai, diachi 
+        $sql = "SELECT iduser, username, hoten, email, dienthoai, diachi 
                 FROM user 
                 WHERE username = ?";
-        
+
         return $this->cache->queryOne($this->db, $sql, [$username], 300);
     }
 
     public function getUserById($userId)
     {
-        $sql = "SELECT iduser, username, hoten, email, sodienthoai, diachi 
+        $sql = "SELECT iduser, username, hoten, email, dienthoai, diachi 
                 FROM user 
                 WHERE iduser = ?";
-        
+
         return $this->cache->queryOne($this->db, $sql, [$userId], 300);
     }
 
     public function getUserByEmail($email)
     {
-        $sql = "SELECT iduser, username, hoten, email, sodienthoai, diachi 
+        $sql = "SELECT iduser, username, hoten, email, dienthoai, diachi 
                 FROM user 
                 WHERE email = ?";
-        
+
         return $this->cache->queryOne($this->db, $sql, [$email], 300);
     }
 

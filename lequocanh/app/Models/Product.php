@@ -171,7 +171,6 @@ class Product extends BaseModel
         $result = parent::save();
 
         if ($result && !$this->exists) {
-
             $this->createInitialInventory();
         }
 

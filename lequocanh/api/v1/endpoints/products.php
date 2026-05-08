@@ -22,29 +22,24 @@ class ProductsAPI {
             case 'GET':
                 if (is_numeric($productId)) {
                     return $this->getById($productId);
-                } else {
-                    return $this->getAll();
                 }
-                break;
-                
+                return $this->getAll();
+
             case 'POST':
                 return $this->create();
-                break;
-                
+
             case 'PUT':
                 if (is_numeric($productId)) {
                     return $this->update($productId);
                 }
                 return Response::error('Product ID required for update', 400);
-                break;
-                
+
             case 'DELETE':
                 if (is_numeric($productId)) {
                     return $this->delete($productId);
                 }
                 return Response::error('Product ID required for delete', 400);
-                break;
-                
+
             default:
                 return Response::error('Method not allowed', 405);
         }

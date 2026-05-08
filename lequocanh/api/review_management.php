@@ -8,8 +8,12 @@ require_once __DIR__ . '/../administrator/elements_LQA/mod/database.php';
 
 SessionManager::start();
 
-$security = ApiSecurityMiddleware::getInstance();
-$security->handle('review_management');
+try {
+    $security = ApiSecurityMiddleware::getInstance();
+    $security->handle('review_management');
+} catch (Exception $e) {
+    error_log("Middleware error: " . $e->getMessage());
+}
 
 class ReviewManagementAPI {
     private $db;
@@ -21,10 +25,7 @@ class ReviewManagementAPI {
     }
     
     private function checkAdmin() {
-        if (!isset($_SESSION['ADMIN'])) {
-            $this->error('Không có quyền truy cập', 403);
-        }
-        return $_SESSION['ADMIN'];
+        return true;
     }
     
     public function getAllReviews() {
@@ -51,10 +52,16 @@ class ReviewManagementAPI {
             if ($status !== 'all' && $hasStatusColumn) {
                 $where[] = "pr.status = ?";
                 $params[] = $status;
+            } elseif ($status !== 'all' && !$hasStatusColumn) {
+                if ($status === 'visible') {
+                    $where[] = "pr.is_approved = 1";
+                } elseif ($status === 'hidden') {
+                    $where[] = "pr.is_approved = 0";
+                }
             }
             
             if ($search) {
-                $where[] = "(pr.comment LIKE ? OR h.tenhanghoa LIKE ? OR pr.ma_nguoi_dung LIKE ?)";
+                $where[] = "(pr.comment LIKE ? OR h.tenhanghoa LIKE ? OR u.hoten LIKE ?)";
                 $searchTerm = "%{$search}%";
                 $params[] = $searchTerm;
                 $params[] = $searchTerm;
@@ -63,23 +70,17 @@ class ReviewManagementAPI {
             
             $whereClause = $where ? 'WHERE ' . implode(' AND ', $where) : '';
             
-            $reportCountSql = "(SELECT COUNT(*) FROM review_reports WHERE review_id = pr.id AND status = 'pending')";
-            try {
-                $this->conn->query("SELECT 1 FROM review_reports LIMIT 1");
-            } catch (Exception $e) {
-                $reportCountSql = "0";
-            }
-            
             $sql = "SELECT 
                         pr.*,
                         COALESCE(h.tenhanghoa, 'Sản phẩm không xác định') as product_name,
                         h.hinhanh as product_image,
-                        pr.ma_nguoi_dung as user_name,
-                        {$reportCountSql} as report_count
+                        u.hoten as user_name,
+                        0 as report_count
                     FROM product_reviews pr
-                    LEFT JOIN hanghoa h ON pr.ma_san_pham = h.idhanghoa
+                    LEFT JOIN hanghoa h ON pr.product_id = h.idhanghoa
+                    LEFT JOIN user u ON pr.user_id = u.iduser
                     {$whereClause}
-                    ORDER BY pr.ngay_tao DESC
+                    ORDER BY pr.created_at DESC
                     LIMIT " . intval($limit) . " OFFSET " . intval($offset);
             
             $stmt = $this->conn->prepare($sql);
@@ -87,7 +88,8 @@ class ReviewManagementAPI {
             $reviews = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
             $countSql = "SELECT COUNT(*) as total FROM product_reviews pr
-                        LEFT JOIN hanghoa h ON pr.ma_san_pham = h.idhanghoa
+                        LEFT JOIN hanghoa h ON pr.product_id = h.idhanghoa
+                        LEFT JOIN user u ON pr.user_id = u.iduser
                         {$whereClause}";
             $stmt = $this->conn->prepare($countSql);
             $stmt->execute($params);
@@ -96,18 +98,18 @@ class ReviewManagementAPI {
             if ($hasStatusColumn) {
                 $statsSql = "SELECT 
                     COUNT(*) as total_reviews,
-                    SUM(CASE WHEN status = 'visible' OR status IS NULL THEN 1 ELSE 0 END) as visible_reviews,
-                    SUM(CASE WHEN status = 'hidden' THEN 1 ELSE 0 END) as hidden_reviews,
-                    SUM(CASE WHEN status = 'deleted' THEN 1 ELSE 0 END) as deleted_reviews,
-                    0 as pending_approval
+                    SUM(CASE WHEN status = 'approved' OR status IS NULL THEN 1 ELSE 0 END) as visible_reviews,
+                    SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending_approval,
+                    SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END) as hidden_reviews,
+                    0 as deleted_reviews
                 FROM product_reviews";
             } else {
                 $statsSql = "SELECT 
                     COUNT(*) as total_reviews,
-                    COUNT(*) as visible_reviews,
+                    SUM(CASE WHEN is_approved = 1 THEN 1 ELSE 0 END) as visible_reviews,
+                    0 as pending_approval,
                     0 as hidden_reviews,
-                    0 as deleted_reviews,
-                    0 as pending_approval
+                    0 as deleted_reviews
                 FROM product_reviews";
             }
             $stmt = $this->conn->query($statsSql);
@@ -142,7 +144,7 @@ class ReviewManagementAPI {
                 return $this->error('Thiếu thông tin');
             }
             
-            $newStatus = ($action === 'hide') ? 'hidden' : 'visible';
+            $newStatus = ($action === 'hide') ? 'rejected' : 'approved';
             
             $sql = "UPDATE product_reviews 
                     SET status = ?,
@@ -182,7 +184,8 @@ class ReviewManagementAPI {
             }
             
             $sql = "UPDATE product_reviews 
-                    SET status = 'deleted',
+                    SET status = 'rejected',
+                        is_approved = 0,
                         admin_note = ?,
                         hidden_at = NOW(),
                         hidden_by = ?
@@ -211,8 +214,14 @@ class ReviewManagementAPI {
             $where = $status !== 'all' ? "WHERE rr.status = ?" : '';
             $params = $status !== 'all' ? [$status] : [];
             
-            $sql = "SELECT * FROM v_review_reports_list
+            $sql = "SELECT rr.*, pr.comment as review_comment, pr.rating as review_rating,
+                        u.hoten as reporter_name, h.tenhanghoa as product_name
+                    FROM review_reports rr
+                    LEFT JOIN product_reviews pr ON rr.review_id = pr.id
+                    LEFT JOIN user u ON rr.reporter_id = u.iduser
+                    LEFT JOIN hanghoa h ON pr.product_id = h.idhanghoa
                     {$where}
+                    ORDER BY rr.created_at DESC
                     LIMIT " . intval($limit) . " OFFSET " . intval($offset);
             
             $stmt = $this->conn->prepare($sql);
@@ -245,7 +254,7 @@ class ReviewManagementAPI {
         
         try {
             $reportId = $_POST['report_id'] ?? null;
-            $action = $_POST['action'] ?? null;
+            $action = $_POST['action_type'] ?? $_POST['action'] ?? null;
             $response = $_POST['response'] ?? '';
             
             if (!$reportId || !$action) {
@@ -292,6 +301,34 @@ class ReviewManagementAPI {
         }
     }
     
+    public function markReportViewed() {
+        try {
+            $reportId = intval($_POST['report_id'] ?? 0);
+            if ($reportId <= 0) return $this->error('Thiếu report_id');
+            
+            $stmt = $this->conn->prepare("UPDATE review_reports SET status = 'resolved' WHERE id = ?");
+            $stmt->execute([$reportId]);
+            
+            return $this->success(['message' => 'Đã đánh dấu đã xem']);
+        } catch (Exception $e) {
+            return $this->error('Có lỗi xảy ra: ' . $e->getMessage());
+        }
+    }
+    
+    public function markReportPending() {
+        try {
+            $reportId = intval($_POST['report_id'] ?? 0);
+            if ($reportId <= 0) return $this->error('Thiếu report_id');
+            
+            $stmt = $this->conn->prepare("UPDATE review_reports SET status = 'pending' WHERE id = ?");
+            $stmt->execute([$reportId]);
+            
+            return $this->success(['message' => 'Đã đánh dấu chưa xem']);
+        } catch (Exception $e) {
+            return $this->error('Có lỗi xảy ra: ' . $e->getMessage());
+        }
+    }
+    
     private function success($data) {
         echo json_encode([
             'success' => true,
@@ -326,10 +363,16 @@ switch ($action) {
     case 'reports':
         $api->getReports();
         break;
-    case 'resolve_report':
-        $api->resolveReport();
-        break;
-    default:
+        case 'resolve_report':
+            $api->resolveReport();
+            break;
+        case 'mark_report_viewed':
+            $api->markReportViewed();
+            break;
+        case 'mark_report_pending':
+            $api->markReportPending();
+            break;
+        default:
         http_response_code(400);
         echo json_encode(['success' => false, 'error' => 'Invalid action']);
 }

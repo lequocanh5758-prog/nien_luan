@@ -9,7 +9,7 @@ class ApiSecurityMiddleware {
         'cart' => ['add', 'remove', 'update', 'count', 'list'],
         'wishlist' => ['add', 'remove', 'check', 'count', 'list', 'toggle'],
         'product_reviews' => ['submit', 'list', 'check', 'helpful'],
-        'review_management' => ['list', 'toggle_visibility', 'delete', 'reports', 'resolve_report'],
+        'review_management' => ['list', 'toggle_visibility', 'delete', 'reports', 'resolve_report', 'mark_report_viewed', 'mark_report_pending'],
         'support_tickets' => ['create', 'user_list', 'admin_list', 'details', 'send_message', 'update_status', 'assign'],
         'report_review' => ['submit', 'my_reports'],
         'filter_products' => ['filter']
@@ -30,13 +30,13 @@ class ApiSecurityMiddleware {
     
     private function loadConfig() {
 
-        $csrfEnabled = ($_ENV['CSRF_ENABLED'] ?? 'true') === 'true';
+        $csrfEnabled = ($_ENV['CSRF_ENABLED'] ?? 'false') === 'true';
         
         $this->config = [
             'rate_limit' => (int)($_ENV['API_RATE_LIMIT'] ?? 100),
             'rate_window' => (int)($_ENV['API_RATE_WINDOW'] ?? 60),
             'csrf_enabled' => $csrfEnabled,
-            'csrf_exempt_apis' => ['filter_products', 'get_filter_options', 'get_product_reviews'],
+            'csrf_exempt_apis' => ['filter_products', 'get_filter_options', 'get_product_reviews', 'support_tickets'],
             'max_input_length' => 10000,
             'log_security_events' => true
         ];

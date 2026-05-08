@@ -30,7 +30,7 @@ class ProductService
                 WHERE idloaihang = ?
                 ORDER BY idhanghoa DESC
                 LIMIT ? OFFSET ?";
-        
+
         return $this->cache->query($this->db, $sql, [$categoryId, $limit, $offset], 300);
     }
 
@@ -40,7 +40,7 @@ class ProductService
                 FROM hanghoa 
                 ORDER BY idhanghoa DESC
                 LIMIT ? OFFSET ?";
-        
+
         return $this->cache->query($this->db, $sql, [$limit, $offset], 300);
     }
 
@@ -49,7 +49,7 @@ class ProductService
         $sql = "SELECT idhanghoa, tenhanghoa, giathamkhao, giakhuyenmai, hinhanh, idloaihang, mota, idThuongHieu, trang_thai
                 FROM hanghoa 
                 WHERE idhanghoa = ?";
-        
+
         return $this->cache->queryOne($this->db, $sql, [$productId], 300);
     }
 
@@ -66,9 +66,9 @@ class ProductService
                     COUNT(*) as count
                 FROM product_reviews 
                 WHERE product_id = ? AND status = 'approved'";
-        
+
         $result = $this->cache->queryOne($this->db, $sql, [$productId], 180);
-        
+
         return [
             'average' => round($result->average ?? 0, 1),
             'count' => $result->count ?? 0
@@ -90,11 +90,11 @@ class ProductService
                     CASE WHEN idThuongHieu = ? THEN 0 ELSE 1 END,
                     RAND()
                 LIMIT ?";
-        
+
         return $this->cache->query(
-            $this->db, 
-            $sql, 
-            [$productId, $product->idloaihang, $product->idThuongHieu, $product->idThuongHieu, $limit], 
+            $this->db,
+            $sql,
+            [$productId, $product->idloaihang, $product->idThuongHieu, $product->idThuongHieu, $limit],
             300
         );
     }
@@ -109,7 +109,7 @@ class ProductService
                     CASE WHEN tenhanghoa LIKE ? THEN 0 ELSE 1 END,
                     idhanghoa DESC
                 LIMIT ?";
-        
+
         return $this->cache->query($this->db, $sql, [$keyword, $keyword, $keyword, $limit], 180);
     }
 
@@ -120,19 +120,18 @@ class ProductService
                 WHERE giakhuyenmai > 0 AND giakhuyenmai < giathamkhao
                 ORDER BY (giathamkhao - giakhuyenmai) / giathamkhao DESC
                 LIMIT ?";
-        
+
         return $this->cache->query($this->db, $sql, [$limit], 300);
     }
 
     public function getFeaturedProducts($limit = 8)
     {
-        $sql = "SELECT h.idhanghoa, h.tenhanghoa, h.giathamkhao, h.giakhuyenmai, h.hinhanh, h.idloaihang
-                FROM hanghoa h
-                INNER JOIN san_pham_noi_bat sp ON h.idhanghoa = sp.idhanghoa
-                WHERE sp.is_active = 1 AND sp.end_date >= NOW()
-                ORDER BY sp.priority DESC
+        $sql = "SELECT idhanghoa, tenhanghoa, giathamkhao, giakhuyenmai, hinhanh, idloaihang
+                FROM hanghoa
+                WHERE is_noi_bat = 1
+                ORDER BY idhanghoa DESC
                 LIMIT ?";
-        
+
         return $this->cache->query($this->db, $sql, [$limit], 300);
     }
 

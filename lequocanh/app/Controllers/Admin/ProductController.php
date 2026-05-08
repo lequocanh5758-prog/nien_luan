@@ -5,7 +5,6 @@ require_once __DIR__ . '/../../Models/Product.php';
 
 class ProductController extends BaseController
 {
-
     public function index()
     {
         $this->requireAuth();
@@ -63,7 +62,6 @@ class ProductController extends BaseController
         }
 
         try {
-
             $productData = [
                 'tenhanghoa' => $this->input('tenhanghoa'),
                 'mota' => $this->input('mota', ''),
@@ -147,7 +145,6 @@ class ProductController extends BaseController
         }
 
         try {
-
             $product->tenhanghoa = $this->input('tenhanghoa');
             $product->mota = $this->input('mota', '');
             $product->giathamkhao = $this->input('giathamkhao');

@@ -28,7 +28,7 @@ class CategoryService
         $sql = "SELECT idloaihang, tenloaihang, mota, hinhanh 
                 FROM loaihang 
                 ORDER BY tenloaihang ASC";
-        
+
         return $this->cache->query($this->db, $sql, [], 600);
     }
 
@@ -37,7 +37,7 @@ class CategoryService
         $sql = "SELECT idloaihang, tenloaihang, mota, hinhanh 
                 FROM loaihang 
                 WHERE idloaihang = ?";
-        
+
         return $this->cache->queryOne($this->db, $sql, [$categoryId], 600);
     }
 
@@ -49,7 +49,7 @@ class CategoryService
                 LEFT JOIN hanghoa h ON l.idloaihang = h.idloaihang
                 GROUP BY l.idloaihang, l.tenloaihang, l.mota, l.hinhanh
                 ORDER BY l.tenloaihang ASC";
-        
+
         return $this->cache->query($this->db, $sql, [], 600);
     }
 
