@@ -8,10 +8,17 @@ if (session_status() == PHP_SESSION_NONE) {
 
     SessionManager::start();
 }
+require_once __DIR__ . '/../../../includes/csrf_helper.php';
 require_once("../mod/database.php");
 require_once("../mod/hanghoaCls.php");
 
 require_once __DIR__ . '/../../../includes/upload_security.php';
+
+// Verify CSRF token for POST requests
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !verify_csrf_token()) {
+    http_response_code(403);
+    die('CSRF token validation failed');
+}
 
 error_reporting(E_ALL);
 ini_set('display_errors', 0);

@@ -1,12 +1,19 @@
 <?php
 
 require_once __DIR__ . '/../mod/sessionManager.php';
+require_once __DIR__ . '/../../../includes/csrf_helper.php';
 SessionManager::start();
 
 if (!isset($_SESSION['USER'])) {
     $_SESSION['error_message'] = 'Vui lòng đăng nhập để thực hiện thao tác này!';
     header('Location: ../../userLogin.php');
     exit();
+}
+
+// Verify CSRF token for POST requests
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !verify_csrf_token()) {
+    http_response_code(403);
+    die('CSRF token validation failed');
 }
 
 require_once '../mod/database.php';

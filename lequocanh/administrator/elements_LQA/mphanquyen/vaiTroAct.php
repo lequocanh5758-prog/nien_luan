@@ -12,7 +12,13 @@ if (session_status() == PHP_SESSION_NONE) {
     SessionManager::start();
 }
 
+require_once __DIR__ . '/../../../includes/csrf_helper.php';
 require_once '../mod/phanquyenCls.php';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !verify_csrf_token()) {
+    http_response_code(403);
+    die('CSRF token validation failed');
+}
 $phanQuyen = new PhanQuyen();
 $username = isset($_SESSION['USER']) ? $_SESSION['USER'] : (isset($_SESSION['ADMIN']) ? $_SESSION['ADMIN'] : '');
 

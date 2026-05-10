@@ -1,4 +1,7 @@
-<?php require_once __DIR__ . '/../mod/auth_check.php'; ?>
+<?php
+require_once __DIR__ . '/../mod/auth_check.php';
+require_once __DIR__ . '/../../../includes/csrf_helper.php';
+?>
 <head>
     <link href="./bootstrap/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" type="text/css" href="../public_files/mycss.css">
@@ -21,6 +24,7 @@ if (!$getUserUpdate) {
 <div class="admin-content">
     <h3 class="admin-title">Cập nhật thông tin người dùng</h3>
     <form name="updateuser" id="formupdateuser" method="post" action="./elements_LQA/mUser/userAct.php?reqact=updateuser">
+        <?= csrf_field() ?>
         <input type="hidden" name="iduser" value="<?php echo $getUserUpdate->iduser; ?>" />
         <table class="form-table">
             <tr>

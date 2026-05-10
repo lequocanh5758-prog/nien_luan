@@ -1,4 +1,7 @@
-<?php require_once __DIR__ . '/../mod/auth_check.php'; ?>
+<?php
+require_once __DIR__ . '/../mod/auth_check.php';
+require_once __DIR__ . '/../../../includes/csrf_helper.php';
+?>
 <head>
     <link href="./bootstrap/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" type="text/css" href="../public_files/mycss.css">
@@ -177,6 +180,7 @@
         <h3>Thêm người dùng mới</h3>
         <div id="formMessages"></div>
         <form name="newuser" id="formreg" method="post" action='./elements_LQA/mUser/userAct.php?reqact=addnew'>
+            <?= csrf_field() ?>
             <table class="form-table">
                 <tr>
                     <td>Tên đăng nhập:</td>

@@ -2,8 +2,15 @@
 
 require_once __DIR__ . '/../mod/sessionManager.php';
 require_once __DIR__ . '/../config/logger_config.php';
+require_once __DIR__ . '/../../../includes/csrf_helper.php';
 
 SessionManager::start();
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !verify_csrf_token()) {
+    http_response_code(403);
+    die('CSRF token validation failed');
+}
+
 require_once __DIR__ . '/../mod/thuoctinhCls.php';
 
 if (isset($_GET['reqact'])) {

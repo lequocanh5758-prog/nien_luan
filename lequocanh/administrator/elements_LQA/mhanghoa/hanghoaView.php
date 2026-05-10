@@ -1,4 +1,7 @@
-<?php require_once __DIR__ . '/../mod/auth_check.php'; ?>
+<?php
+require_once __DIR__ . '/../mod/auth_check.php';
+require_once __DIR__ . '/../../../includes/csrf_helper.php';
+?>
 <div class="admin-title">Quản lý hàng hóa</div>
 <hr>
 <?php
@@ -125,6 +128,7 @@ $missing_images = $hanghoaObj->FindMissingImages();
     <h3>Thêm hàng hóa mới</h3>
     <form name="newhanghoa" id="formaddhanghoa" method="post"
         action='./elements_LQA/mhanghoa/hanghoaAct.php?reqact=addnew' enctype="multipart/form-data">
+        <?= csrf_field() ?>
         <table>
             <tr>
                 <td>Tên hàng hóa</td>

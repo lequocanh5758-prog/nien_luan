@@ -439,9 +439,12 @@ if (isset($_SESSION['USER'])) {
         function updateTotalPrice() {
             let total = 0;
             document.querySelectorAll('.cart-table tbody tr').forEach(row => {
-                if (row.querySelector('.product-select').checked) {
-                    const subtotal = parseInt(row.querySelector('.subtotal').textContent.replace(/[^\d]/g, ''));
-                    total += subtotal;
+                const subtotalEl = row.querySelector('.subtotal');
+                if (subtotalEl) {
+                    const subtotal = parseInt(subtotalEl.textContent.replace(/[^\d]/g, ''));
+                    if (!isNaN(subtotal)) {
+                        total += subtotal;
+                    }
                 }
             });
             document.querySelector('.total-amount').textContent = new Intl.NumberFormat('vi-VN').format(total) + ' ₫';

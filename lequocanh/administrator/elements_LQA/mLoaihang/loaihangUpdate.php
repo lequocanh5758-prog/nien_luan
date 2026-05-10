@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/../mod/auth_check.php';
+require_once __DIR__ . '/../../../includes/csrf_helper.php';
 require_once __DIR__ . '/../mod/loaihangCls.php';
 
 $debug = [];
@@ -41,6 +43,7 @@ if (!$getLhUpdate) {
 <div class="update-form">
     <h3>Cập nhật loại hàng</h3>
     <form name="updateloaihang" id="formupdatelh" method="post" enctype="multipart/form-data">
+        <?= csrf_field() ?>
         <input type="hidden" name="idloaihang" value="<?php echo $getLhUpdate->idloaihang; ?>" />
         <input type="hidden" name="hinhanh" value="<?php echo $getLhUpdate->hinhanh; ?>" />
 

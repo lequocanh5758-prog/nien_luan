@@ -2,6 +2,13 @@
 // Security includes
 require_once __DIR__ . '/../mod/SecurityHelpers.php';
 require_once __DIR__ . '/../mod/InputValidator.php';
+require_once __DIR__ . '/../../../includes/csrf_helper.php';
+
+// Verify CSRF token for POST requests
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !verify_csrf_token()) {
+    http_response_code(403);
+    die('CSRF token validation failed. Vui lòng tải lại trang và thử lại.');
+}
 
 
 ob_start();

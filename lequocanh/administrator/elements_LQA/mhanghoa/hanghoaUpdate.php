@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/../mod/auth_check.php';
+require_once __DIR__ . '/../../../includes/csrf_helper.php';
 require_once __DIR__ . '/../mod/hanghoaCls.php';
 require_once __DIR__ . '/../mod/loaihangCls.php';
 require_once __DIR__ . '/../mod/thuonghieuCls.php';
@@ -107,6 +109,7 @@ $nhanVienList = $nhanVienObj->nhanvienGetAll();
     <form name="updatehanghoa" id="updatehanghoa" method="post"
         action="./elements_LQA/mhanghoa/hanghoaAct.php?reqact=updatehanghoa"
         enctype="multipart/form-data">
+        <?= csrf_field() ?>
         <input type="hidden" name="idhanghoa" value="<?php echo htmlspecialchars($idhanghoa); ?>" />
         <input type="hidden" name="debug_log" value="true" />
         <input type="hidden" name="ajax" value="false" />

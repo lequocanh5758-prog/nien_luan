@@ -1,9 +1,14 @@
+<?php
+require_once __DIR__ . '/../mod/auth_check.php';
+require_once __DIR__ . '/../../../includes/csrf_helper.php';
+?>
 <div>Quản lý loại hàng</div>
 <hr>
 <div>Thêm loại hàng</div>
 <div>
     <form name="newloaihang" id="formaddloaihang" method="post"
         action='./elements_LQA/mloaihang/loaihangAct.php?reqact=addnew' enctype="multipart/form-data">
+        <?= csrf_field() ?>
         <table>
             <tr>
                 <td>Tên loại hàng</td>
