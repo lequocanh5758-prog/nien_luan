@@ -46,18 +46,28 @@
             <div class="col-lg-3 col-md-6">
                 <h5 class="text-white mb-3">Đăng ký nhận tin</h5>
                 <p class="small text-muted">Đăng ký để nhận thông tin về sản phẩm mới và khuyến mãi</p>
-                <form class="mb-3">
+                <form class="mb-3" onsubmit="event.preventDefault(); this.querySelector('button').innerHTML='<i class=\'fas fa-check\'></i>'; this.querySelector('input').value=''; alert('Cảm ơn bạn đã đăng ký!');">
                     <div class="input-group">
-                        <input class="form-control" type="email" placeholder="Email của bạn"
+                        <input class="form-control" type="email" name="newsletter_email" placeholder="Email của bạn" required
                             style="border-radius: 20px 0 0 20px;">
                         <button class="btn btn-primary" type="submit" style="border-radius: 0 20px 20px 0;">
                             <i class="fas fa-paper-plane"></i>
                         </button>
                     </div>
                 </form>
-                <div class="mt-4">
-                    <img src="path/to/payment-methods.png" alt="Phương thức thanh toán" class="img-fluid"
-                        style="max-height: 30px;">
+                <div class="mt-4 d-flex gap-2 align-items-center flex-wrap">
+                    <span class="badge bg-dark border border-secondary px-2 py-1" style="font-size: 0.7rem;">
+                        <i class="fas fa-money-bill-wave me-1"></i>COD
+                    </span>
+                    <span class="badge bg-dark border border-secondary px-2 py-1" style="font-size: 0.7rem;">
+                        <i class="fas fa-university me-1"></i>Bank
+                    </span>
+                    <span class="badge bg-dark border border-secondary px-2 py-1" style="font-size: 0.7rem;">
+                        <i class="fas fa-mobile-alt me-1"></i>MoMo
+                    </span>
+                    <span class="badge bg-dark border border-secondary px-2 py-1" style="font-size: 0.7rem;">
+                        <i class="fas fa-credit-card me-1"></i>Visa
+                    </span>
                 </div>
             </div>
         </div>
@@ -71,8 +81,9 @@
                 </p>
             </div>
             <div class="col-md-6 text-center text-md-end">
-                <img src="path/to/verified-badge.png" alt="Chứng nhận" class="img-fluid"
-                    style="max-height: 40px;">
+                <span class="badge bg-success px-2 py-1">
+                    <i class="fas fa-shield-alt me-1"></i>Đã xác minh
+                </span>
             </div>
         </div>
     </div>

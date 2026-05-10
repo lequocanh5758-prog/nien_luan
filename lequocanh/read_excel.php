@@ -28,28 +28,7 @@ function readExcelFile($filePath) {
     }
 }
 
-if (isset($_GET['file'])) {
-    $filePath = $_GET['file'];
-    $result = readExcelFile($filePath);
-    
-    if ($result['success']) {
-        echo "<h2>Đọc file thành công!</h2>";
-        echo "<p>Số dòng: " . $result['rows'] . "</p>";
-        echo "<p>Số cột: " . $result['columns'] . "</p>";
-        
-        echo "<table border='1' style='border-collapse: collapse;'>";
-        foreach ($result['data'] as $row) {
-            echo "<tr>";
-            foreach ($row as $cell) {
-                echo "<td style='padding: 5px;'>" . htmlspecialchars($cell) . "</td>";
-            }
-            echo "</tr>";
-        }
-        echo "</table>";
-    } else {
-        echo "<p style='color: red;'>Lỗi: " . $result['error'] . "</p>";
-    }
-}
+<?php /* GET file parameter removed - LFI vulnerability fix. Use POST upload only. */ ?>
 ?>
 
 <!DOCTYPE html>
