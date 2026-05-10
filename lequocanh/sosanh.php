@@ -9,6 +9,8 @@ SessionManager::start();
 
 require_once __DIR__ . '/administrator/elements_LQA/mod/database.php';
 require_once __DIR__ . '/administrator/elements_LQA/mod/hanghoaCls.php';
+require_once __DIR__ . '/administrator/elements_LQA/mod/thuoctinhhhCls.php';
+require_once __DIR__ . '/administrator/elements_LQA/mod/thuonghieuCls.php';
 
 $productIds = [];
 if (isset($_GET['products'])) {
@@ -20,9 +22,41 @@ if (isset($_GET['products'])) {
 $products = [];
 if (!empty($productIds)) {
     $hanghoa = new hanghoa();
+    $thuonghieu = new ThuongHieu();
+
+    $db = Database::getInstance()->getConnection();
+
     foreach ($productIds as $id) {
         $product = $hanghoa->HanghoaGetbyId($id);
         if ($product) {
+            // Load attributes with attribute names from thuoctinh table
+            $attrStmt = $db->prepare("
+                SELECT t.tenThuocTinh, tt.tenThuocTinhHH, tt.ghiChu
+                FROM thuoctinhhh tt
+                LEFT JOIN thuoctinh t ON tt.idThuocTinh = t.idThuocTinh
+                WHERE tt.idhanghoa = ?
+            ");
+            $attrStmt->execute([$product->idhanghoa]);
+            $attrs = $attrStmt->fetchAll(PDO::FETCH_OBJ);
+
+            $product->specs = [];
+            if ($attrs) {
+                foreach ($attrs as $attr) {
+                    $label = !empty($attr->tenThuocTinh) ? $attr->tenThuocTinh : $attr->tenThuocTinhHH;
+                    $value = !empty($attr->tenThuocTinhHH) ? $attr->tenThuocTinhHH : '';
+                    if (!empty($attr->ghiChu)) {
+                        $value .= ' - ' . $attr->ghiChu;
+                    }
+                    $product->specs[$label] = $value;
+                }
+            }
+            // Load brand name
+            if (!empty($product->idThuongHieu)) {
+                $brand = $thuonghieu->thuonghieuGetbyId($product->idThuongHieu);
+                $product->brand_name = $brand ? $brand->tenTH : 'N/A';
+            } else {
+                $product->brand_name = 'N/A';
+            }
             $products[] = $product;
         }
     }
@@ -273,6 +307,33 @@ if (!empty($productIds)) {
                                         <td><?php echo htmlspecialchars($product->mota ?? 'Không có mô tả'); ?></td>
                                     <?php endforeach; ?>
                                 </tr>
+                                <tr>
+                                    <th scope="row">Thương hiệu</th>
+                                    <?php foreach ($products as $product): ?>
+                                        <td><?php echo htmlspecialchars($product->brand_name); ?></td>
+                                    <?php endforeach; ?>
+                                </tr>
+                                <?php
+                                // Collect all unique spec keys across all products
+                                $allSpecKeys = [];
+                                foreach ($products as $product) {
+                                    if (!empty($product->specs)) {
+                                        foreach (array_keys($product->specs) as $key) {
+                                            if (!in_array($key, $allSpecKeys)) {
+                                                $allSpecKeys[] = $key;
+                                            }
+                                        }
+                                    }
+                                }
+                                // Render a row for each spec
+                                foreach ($allSpecKeys as $specKey): ?>
+                                <tr>
+                                    <th scope="row"><?php echo htmlspecialchars($specKey); ?></th>
+                                    <?php foreach ($products as $product): ?>
+                                        <td><?php echo htmlspecialchars($product->specs[$specKey] ?? '-'); ?></td>
+                                    <?php endforeach; ?>
+                                </tr>
+                                <?php endforeach; ?>
                                 <tr>
                                     <th scope="row">Hành động</th>
                                     <?php foreach ($products as $product): ?>

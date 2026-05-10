@@ -46,10 +46,11 @@ try {
     
     if (empty($user->email)) {
         error_log("Password reset requested for user without email: " . $user->username);
-        
+
+        // Return same message as non-existent user to prevent user enumeration
         echo json_encode([
-            'success' => false,
-            'message' => 'Tài khoản này chưa đăng ký email. Vui lòng liên hệ quản trị viên để được hỗ trợ.'
+            'success' => true,
+            'message' => $successMessage
         ]);
         exit;
     }

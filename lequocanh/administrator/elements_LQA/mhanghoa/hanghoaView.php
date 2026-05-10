@@ -1,3 +1,4 @@
+<?php require_once __DIR__ . '/../mod/auth_check.php'; ?>
 <div class="admin-title">Quản lý hàng hóa</div>
 <hr>
 <?php

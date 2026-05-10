@@ -443,30 +443,32 @@ const Wishlist = {
     
     /**
      * Khởi tạo nút wishlist trên product cards
+     * Sử dụng 1 request batch thay vì N request riêng lẻ để tránh rate limit
      */
     initProductButtons: async function() {
         const buttons = document.querySelectorAll('.product-wishlist-btn');
         if (buttons.length === 0) return;
-        
-        // Get all product IDs
-        const productIds = Array.from(buttons).map(btn => btn.dataset.productId);
-        
-        // Check which ones are in wishlist
-        for (const btn of buttons) {
-            const productId = btn.dataset.productId;
-            try {
-                const response = await fetch(`${this.apiUrl}?action=check&product_id=${productId}`, {
-                    credentials: 'include'
+
+        try {
+            // Chỉ 1 request để lấy toàn bộ wishlist
+            const response = await fetch(`${this.apiUrl}?action=list`, {
+                credentials: 'include'
+            });
+            const result = await response.json();
+
+            if (result.success && result.data.items && result.data.items.length > 0) {
+                const wishlistIds = new Set(result.data.items.map(item => String(item.product_id)));
+
+                buttons.forEach(btn => {
+                    const productId = btn.dataset.productId;
+                    if (wishlistIds.has(productId)) {
+                        btn.classList.add('active');
+                        btn.innerHTML = '<i class="fas fa-heart"></i>';
+                    }
                 });
-                const result = await response.json();
-                
-                if (result.success && result.data.in_wishlist) {
-                    btn.classList.add('active');
-                    btn.innerHTML = '<i class="fas fa-heart"></i>';
-                }
-            } catch (error) {
-                console.error('Error checking wishlist:', error);
             }
+        } catch (error) {
+            console.error('Error checking wishlist:', error);
         }
     },
     

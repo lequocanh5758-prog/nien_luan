@@ -1,3 +1,4 @@
+<?php require_once __DIR__ . '/../mod/auth_check.php'; ?>
 <head>
     <link href="./bootstrap/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" type="text/css" href="../public_files/mycss.css">

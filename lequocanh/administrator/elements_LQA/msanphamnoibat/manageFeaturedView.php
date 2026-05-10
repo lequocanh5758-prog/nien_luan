@@ -1,5 +1,6 @@
 <?php
 
+require_once __DIR__ . '/../mod/auth_check.php';
 require_once __DIR__ . '/../mod/database.php';
 require_once __DIR__ . '/../mod/AutoFeaturedCls.php';
 

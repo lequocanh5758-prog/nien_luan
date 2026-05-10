@@ -2,6 +2,7 @@
 
 header('Content-Type: application/json');
 
+require_once __DIR__ . '/../mod/auth_check.php';
 require_once __DIR__ . '/../mod/database.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['idhanghoa'])) {

@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../mod/auth_check.php';
 require_once("./elements_LQA/mod/hanghoaCls.php");
 $hanghoa = new hanghoa();
 $list_hinhanh = $hanghoa->GetAllHinhAnh();
