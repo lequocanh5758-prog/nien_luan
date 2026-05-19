@@ -1,9 +1,25 @@
 <head>
     <meta charset="UTF-8">
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/lequocanh/manifest.json">
+    <meta name="theme-color" content="#3498db">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="LQA Shop">
+    <link rel="apple-touch-icon" href="/lequocanh/public_files/images/icon-192.png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <link rel="icon" type="image/x-icon" href="/lequocanh/administrator/elements_LQA/img_LQA/no-image.png">
     <?= csrf_meta() ?>
     <base href="/lequocanh/">
+    
+    <!-- Preconnect hints for faster DNS/TLS -->
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
+    <link rel="dns-prefetch" href="https://fonts.googleapis.com">
 
     <title>Cửa Hàng Điện Thoại - Giá tốt nhất thị trường</title>
     <meta name="description" content="Cửa hàng điện thoại uy tín, chất lượng cao với giá tốt nhất. Giao hàng nhanh, bảo hành chính hãng.">
@@ -12,16 +28,14 @@
 
     <!-- Preload critical resources -->
     <link rel="preload" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" as="style">
-    <link rel="preload" href="public_files/mycss.css" as="style">
+    <link rel="preload" href="/lequocanh/public_files/mycss.css" as="style">
+    <link rel="preload" href="/lequocanh/public_files/bundle.min.css" as="style">
 
     <!-- CSS -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link rel="stylesheet" href="public_files/mycss.css">
-    <link rel="stylesheet" href="public_files/notification.css">
-    <link rel="stylesheet" href="public_files/product_filter.css">
-    <link rel="stylesheet" href="public_files/product_reviews.css">
-    <link rel="stylesheet" href="public_files/wishlist.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="/lequocanh/public_files/mycss.css">
+    <link rel="stylesheet" href="/lequocanh/public_files/bundle.min.css">
 
     <style>
         .navbar { z-index: 1030 !important; }
@@ -50,6 +64,33 @@
         .blog-card-home .card-title a { color: #333; text-decoration: none; }
         .blog-card-home .card-title a:hover { color: #0d6efd; }
         .blog-card-home .card-text { font-size: 0.85rem; color: #666; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        
+        /* Lazy load placeholder */
+        img[loading="lazy"] {
+            background: linear-gradient(135deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+            min-height: 100px;
+        }
+        img[loading="lazy"].loaded {
+            background: none;
+            animation: none;
+        }
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
     </style>
 
+
+    <!-- PWA Service Worker -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/lequocanh/sw.js')
+                    .then(reg => console.log('SW registered:', reg.scope))
+                    .catch(err => console.log('SW registration failed:', err));
+            });
+        }
+    </script>
 </head>

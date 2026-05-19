@@ -2,12 +2,23 @@
 // Security includes
 require_once __DIR__ . '/../mod/SecurityHelpers.php';
 require_once __DIR__ . '/../mod/InputValidator.php';
+require_once __DIR__ . '/../../../includes/csrf_helper.php';
 
 
 require_once __DIR__ . '/../mod/sessionManager.php';
 require_once __DIR__ . '/../config/logger_config.php';
 
 SessionManager::start();
+
+// CSRF Protection
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $token = $_POST['csrf_token'] ?? '';
+    if (!verify_csrf_token($token)) {
+        http_response_code(403);
+        die('CSRF token validation failed.');
+    }
+}
+
 require_once '../../elements_LQA/mod/database.php';
 require_once '../../elements_LQA/mod/giohangCls.php';
 require_once '../../elements_LQA/mod/mtonkhoCls.php';
@@ -242,11 +253,13 @@ try {
         }
     }
 
-    $insertOrderSql = "INSERT INTO don_hang (ma_don_hang_text, ma_nguoi_dung, dia_chi_giao_hang, tong_tien, thue, phi_van_chuyen, shipping_method, shipping_method_name, estimated_delivery, coupon_code, coupon_discount, trang_thai, phuong_thuc_thanh_toan, trang_thai_thanh_toan, pending_read, ngay_tao, ngay_cap_nhat)
-                      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, 0, NOW(), NOW())";
+    $orderNotes = trim($_POST['order_notes'] ?? '');
+
+    $insertOrderSql = "INSERT INTO don_hang (ma_don_hang_text, ma_nguoi_dung, dia_chi_giao_hang, tong_tien, thue, phi_van_chuyen, shipping_method, shipping_method_name, estimated_delivery, coupon_code, coupon_discount, trang_thai, phuong_thuc_thanh_toan, trang_thai_thanh_toan, pending_read, order_notes, ngay_tao, ngay_cap_nhat)
+                      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, 0, ?, NOW(), NOW())";
 
     $insertOrderStmt = $conn->prepare($insertOrderSql);
-    $insertOrderStmt->execute([$orderCode, $userId, $shippingAddress, $totalAmount, $vatAmount, $shippingFee, $shippingMethodCode, $shippingMethodName, $estimatedDelivery, $couponCode, $couponDiscount, $paymentMethod, $paymentStatus]);
+    $insertOrderStmt->execute([$orderCode, $userId, $shippingAddress, $totalAmount, $vatAmount, $shippingFee, $shippingMethodCode, $shippingMethodName, $estimatedDelivery, $couponCode, $couponDiscount, $paymentMethod, $paymentStatus, $orderNotes ?: null]);
 
     $orderId = $conn->lastInsertId();
 

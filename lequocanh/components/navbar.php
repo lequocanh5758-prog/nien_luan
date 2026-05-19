@@ -35,17 +35,17 @@
                             ?>
                         </button>
                         <ul class="dropdown-menu" aria-labelledby="userDropdown">
-                            <li><a class="dropdown-item" href="./administrator/elements_LQA/mUser/userProfile.php">
+                            <li><a class="dropdown-item" href="/lequocanh/administrator/elements_LQA/mUser/userProfile.php">
                                     <i class="fas fa-user-circle me-2"></i>Thông tin tài khoản
                                 </a></li>
                             <?php if ($isNhanVien): ?>
-                                <li><a class="dropdown-item" href="./administrator/index.php">
+                                <li><a class="dropdown-item" href="/lequocanh/administrator/index.php">
                                         <i class="fas fa-user-cog me-2"></i>Đến trang quản trị
                                     </a></li>
                             <?php endif; ?>
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item"
-                                    href="./administrator/elements_LQA/mUser/userAct.php?reqact=userlogout">
+                                    href="/lequocanh/administrator/elements_LQA/mUser/userAct.php?reqact=userlogout">
                                     <i class="fas fa-sign-out-alt me-2"></i>Đăng xuất
                                 </a></li>
                         </ul>
@@ -58,18 +58,18 @@
                             Quản trị viên
                         </button>
                         <ul class="dropdown-menu" aria-labelledby="adminDropdown">
-                            <li><a class="dropdown-item" href="./administrator/index.php">
+                            <li><a class="dropdown-item" href="/lequocanh/administrator/index.php">
                                     <i class="fas fa-tachometer-alt me-2"></i>Bảng điều khiển
                                 </a></li>
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item"
-                                    href="./administrator/elements_LQA/mUser/userAct.php?reqact=userlogout">
+                                    href="/lequocanh/administrator/elements_LQA/mUser/userAct.php?reqact=userlogout">
                                     <i class="fas fa-sign-out-alt me-2"></i>Đăng xuất
                                 </a></li>
                         </ul>
                     </div>
                 <?php else: ?>
-                    <a href="./administrator/userLogin.php" class="btn btn-light me-2">
+                    <a href="/lequocanh/administrator/userLogin.php" class="btn btn-light me-2">
                         <i class="fas fa-user me-2"></i>
                         Đăng nhập
                     </a>
@@ -98,7 +98,7 @@
                     </div>
 
                     <!-- Nút Hỗ Trợ/Khiếu Nại -->
-                    <a href="./customer/support.php" class="btn btn-warning me-2 pulse-animation" title="Liên hệ hỗ trợ">
+                    <a href="/lequocanh/customer/support.php" class="btn btn-warning me-2 pulse-animation" title="Liên hệ hỗ trợ">
                         <i class="fas fa-headset"></i>
                     </a>
 
@@ -128,20 +128,23 @@
                                     </li>
                                 </ul>
                                 <div class="notification-footer">
-                                    <a href="./customer/order_history.php">Lịch sử mua hàng</a>
+                                    <a href="/lequocanh/customer/order_history.php">Lịch sử mua hàng</a>
                                 </div>
                             </div>
                         </div>
                     </div>
 
                     <!-- Icon giỏ hàng -->
-                    <a href="./administrator/elements_LQA/mgiohang/giohangView.php"
+                    <?php if (!isset($cartItemCount)) $cartItemCount = 0; ?>
+                    <a href="/lequocanh/administrator/elements_LQA/mgiohang/giohangView.php"
                         class="btn btn-light position-relative">
                         <i class="fas fa-shopping-cart"></i>
+                        <?php if ($cartItemCount > 0): ?>
                         <span
                             class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
                             <?php echo $cartItemCount; ?>
                         </span>
+                        <?php endif; ?>
                     </a>
                 <?php endif; ?>
 

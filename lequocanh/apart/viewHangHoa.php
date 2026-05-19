@@ -1,5 +1,80 @@
-<link rel="stylesheet" href="public_files/toast-notification.css">
-<script src="public_files/toast-notification.js"></script>
+<!DOCTYPE html>
+<html lang="vi">
+<?php
+if (session_status() == PHP_SESSION_NONE) {
+    session_start();
+}
+require_once __DIR__ . '/../app/autoload.php';
+require_once __DIR__ . '/../includes/csrf_helper.php';
+require_once __DIR__ . '/../includes/performance_bootstrap.php';
+require_once __DIR__ . '/../administrator/elements_LQA/mod/loaihangCls.php';
+require_once __DIR__ . '/../administrator/elements_LQA/mod/thuoctinhhhCls.php';
+require_once __DIR__ . '/../administrator/elements_LQA/mod/mtonkhoCls.php';
+require_once __DIR__ . '/../administrator/elements_LQA/mod/giohangCls.php';
+require_once __DIR__ . '/../includes/query_builder.php';
+require_once __DIR__ . '/../includes/advanced_cache.php';
+
+// Initialize cart count for navbar
+$giohang = new GioHang();
+$cartItemCount = $giohang->getCartItemCount();
+
+include __DIR__ . '/../components/head.php';
+?>
+<body>
+<div class="page-loader" id="pageLoader"></div>
+
+<?php include __DIR__ . '/../components/navbar.php'; ?>
+
+<?php
+// SEO Meta Tags for Product Page
+if (isset($obj) && $obj) {
+    $pageTitle = htmlspecialchars($obj->tenhanghoa) . ' - Cửa Hàng Điện Thoại';
+    $pageDescription = htmlspecialchars(strip_tags($obj->mota ?? 'Mua ' . $obj->tenhanghoa . ' chính hãng, giá tốt tại Cửa Hàng Điện Thoại.'));
+    $pageImage = $imageSrc ?? '/lequocanh/administrator/elements_LQA/img_LQA/no-image.png';
+    $pageUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
+}
+?>
+<script>
+    // Update page title and meta tags dynamically
+    document.addEventListener('DOMContentLoaded', function() {
+        <?php if (isset($pageTitle)): ?>
+        document.title = '<?php echo $pageTitle; ?>';
+        
+        // Update or create meta description
+        let metaDesc = document.querySelector('meta[name="description"]');
+        if (!metaDesc) {
+            metaDesc = document.createElement('meta');
+            metaDesc.name = 'description';
+            document.head.appendChild(metaDesc);
+        }
+        metaDesc.content = '<?php echo addslashes($pageDescription); ?>';
+        
+        // Add Open Graph tags
+        const ogTags = {
+            'og:title': '<?php echo addslashes($pageTitle); ?>',
+            'og:description': '<?php echo addslashes($pageDescription); ?>',
+            'og:image': '<?php echo addslashes($pageImage); ?>',
+            'og:url': '<?php echo addslashes($pageUrl); ?>',
+            'og:type': 'product',
+            'og:site_name': 'Cửa Hàng Điện Thoại'
+        };
+        
+        Object.entries(ogTags).forEach(([property, content]) => {
+            let meta = document.querySelector(`meta[property="${property}"]`);
+            if (!meta) {
+                meta = document.createElement('meta');
+                meta.setAttribute('property', property);
+                document.head.appendChild(meta);
+            }
+            meta.content = content;
+        });
+        <?php endif; ?>
+    });
+</script>
+
+<div class="container mt-4">
+<link rel="stylesheet" href="/lequocanh/public_files/toast-notification.css">
+<script src="/lequocanh/public_files/toast-notification.js"></script>
 <script>
     function goBack() {
         window.history.back();
@@ -110,21 +185,24 @@
 if (session_status() == PHP_SESSION_NONE) {
     session_start();
 }
-require_once __DIR__ . '/../administrator/elements_LQA/mod/hanghoaCls.php';
 require_once __DIR__ . '/../administrator/elements_LQA/mod/thuoctinhhhCls.php';
 require_once __DIR__ . '/../administrator/elements_LQA/mod/thuoctinhCls.php';
 require_once __DIR__ . '/../administrator/elements_LQA/mod/mtonkhoCls.php';
 require_once __DIR__ . '/../includes/query_builder.php';
 require_once __DIR__ . '/../includes/advanced_cache.php';
+require_once __DIR__ . '/../app/autoload.php';
 
-$hanghoa = new hanghoa();
+use App\Models\Product;
+use App\Models\ProductImage;
+use App\Models\ProductReview;
+
 $tonkho = new MTonKho();
 
 if (isset($_GET['reqHanghoa'])) {
     $idhanghoa = $_GET['reqHanghoa'];
     
-    $obj = cache_remember('product_detail_' . $idhanghoa, 300, function() use ($hanghoa, $idhanghoa) {
-        return $hanghoa->HanghoaGetbyId($idhanghoa);
+    $obj = cache_remember('product_detail_' . $idhanghoa, 300, function() use ($idhanghoa) {
+        return Product::getById((int)$idhanghoa);
     });
 
     $thuocTinhHHObj = new ThuocTinhHH();
@@ -135,25 +213,26 @@ if (isset($_GET['reqHanghoa'])) {
     $tonkhoInfo = $tonkho->getTonKhoByIdHangHoa($idhanghoa);
 }
 ?>
-<link rel="stylesheet" href="public_files/mycss.css">
-<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-<script src="administrator/js_LQA/jscript.js"></script>
+<link rel="stylesheet" href="/lequocanh/public_files/mycss.css">
+<link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.1/css/all.min.css" rel="stylesheet">
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="/lequocanh/administrator/js_LQA/jscript.js"></script>
 
 <div class="card mb-3">
     <div class="row g-0">
         <div class="col-md-4">
             <?php
 
-            $hinhanh = $hanghoa->GetHinhAnhById($obj->hinhanh);
+            $hinhanh = ProductImage::getById((int)$obj->hinhanh);
 
-            if ($hinhanh && !empty($hinhanh->duong_dan)) {
+            if ($hinhanh && (!empty($hinhanh->duong_dan) || !empty($hinhanh->du_lieu))) {
 
-                echo '<img src="./administrator/elements_LQA/mhanghoa/displayImage.php?id=' . $obj->hinhanh . '"
-                    class="img-fluid rounded-start" alt="' . htmlspecialchars($obj->tenhanghoa) . '">';
+                echo '<img src="/lequocanh/administrator/elements_LQA/mhanghoa/displayImage.php?id=' . $obj->hinhanh . '"
+                    class="img-fluid rounded-start" loading="lazy" alt="' . htmlspecialchars($obj->tenhanghoa) . '">';
             } else {
 
                 echo '<div class="text-center p-3 border rounded" style="height: 100%;">
-                        <img src="./administrator/elements_LQA/img_LQA/no-image.png" class="img-fluid rounded-start" style="max-height: 200px"
+                        <img src="/lequocanh/administrator/elements_LQA/img_LQA/no-image.png" class="img-fluid rounded-start" style="max-height: 200px"
                             alt="Không có hình ảnh">
                       </div>';
             }
@@ -202,7 +281,7 @@ if (isset($_GET['reqHanghoa'])) {
             <p class="card-text">
                 <strong>Đánh giá: </strong>
                 <?php
-                $productRating = $hanghoa->getAverageRating($obj->idhanghoa);
+                $productRating = ProductReview::getAverageRating((int)$obj->idhanghoa);
                 ?>
                 <?php if ($productRating['count'] > 0): ?>
                     <span class="me-2">
@@ -231,7 +310,7 @@ if (isset($_GET['reqHanghoa'])) {
             </p>
             
             <p class="card-text"><strong>Thương hiệu:
-                </strong><?php echo $obj->idThuongHieu ? $hanghoa->GetThuongHieuById($obj->idThuongHieu)->tenTH : 'Chưa chọn'; ?>
+                </strong><?php echo $obj->idThuongHieu ? Product::getThuongHieuById((int)$obj->idThuongHieu)->tenTH : 'Chưa chọn'; ?>
             </p>
 
             <!-- Hiển thị thông tin tồn kho -->
@@ -359,6 +438,15 @@ if (isset($_GET['reqHanghoa'])) {
                     style="background-color: #6c757d; color: white; padding: 12px 20px; margin: 5px; border-radius: 5px; border: none; cursor: pointer; font-weight: bold;">
                     ⬅️ Quay lại
                 </button>
+
+                <?php if (isset($_SESSION['USER'])): ?>
+                <!-- Wishlist button -->
+                <button onclick="toggleWishlist(<?php echo $obj->idhanghoa; ?>)"
+                    id="wishlist-btn-<?php echo $obj->idhanghoa; ?>"
+                    style="background-color: #fff; color: #dc3545; padding: 12px 20px; margin: 5px; border-radius: 5px; border: 2px solid #dc3545; cursor: pointer; font-weight: bold; transition: all 0.3s;">
+                    <i class="fas fa-heart" id="wishlist-icon-<?php echo $obj->idhanghoa; ?>"></i> Yêu thích
+                </button>
+                <?php endif; ?>
             </div>
             </div>
         </div>
@@ -435,18 +523,18 @@ if (isset($_GET['reqHanghoa'])) {
             <?php echo $_SESSION['USER']; ?>
         </button>
         <ul class="dropdown-menu" aria-labelledby="userDropdown">
-            <li><a class="dropdown-item" href="./administrator/elements_LQA/mUser/userAct.php?reqact=userlogout">
+            <li><a class="dropdown-item" href="/lequocanh/administrator/elements_LQA/mUser/userAct.php?reqact=userlogout">
                     <i class="fas fa-sign-out-alt me-2"></i>Đăng xuất
                 </a></li>
         </ul>
     </div>
 <?php elseif (isset($_SESSION['ADMIN'])): ?>
-    <a href="./administrator/index.php" class="btn btn-light me-2">
+    <a href="/lequocanh/administrator/index.php" class="btn btn-light me-2">
         <i class="fas fa-user-shield me-2"></i>
         Quản trị viên
     </a>
 <?php else: ?>
-    <a href="./administrator/userLogin.php" class="btn btn-light me-2">
+    <a href="/lequocanh/administrator/userLogin.php" class="btn btn-light me-2">
         <i class="fas fa-user me-2"></i>
         Đăng nhập
     </a>
@@ -458,6 +546,52 @@ $productId = $idhanghoa;
 include __DIR__ . '/../components/product_review_display.php';
 ?>
 
+<!-- Recently Viewed Section -->
+<div class="recently-viewed mt-5 mb-5" id="recentlyViewedSection" style="display: none;">
+    <h4 class="mb-4 border-bottom pb-2">
+        <i class="fas fa-history text-primary"></i>
+        Sản phẩm đã xem gần đây
+    </h4>
+    <div class="row row-cols-2 row-cols-md-4 g-3" id="recentlyViewedList">
+        <!-- Filled by JavaScript -->
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const recentlyViewed = JSON.parse(localStorage.getItem('recentlyViewed') || '[]');
+    const currentProductId = <?php echo $obj->idhanghoa ?? 0; ?>;
+    
+    // Filter out current product
+    const filtered = recentlyViewed.filter(item => item.id !== currentProductId);
+    
+    if (filtered.length > 0) {
+        const section = document.getElementById('recentlyViewedSection');
+        const list = document.getElementById('recentlyViewedList');
+        
+        section.style.display = 'block';
+        
+        filtered.slice(0, 4).forEach(item => {
+            list.innerHTML += `
+                <div class="col">
+                    <div class="card h-100 shadow-sm">
+                        <a href="${item.url}">
+                            <img src="${item.image}" class="card-img-top" style="height: 150px; object-fit: contain; padding: 10px;" alt="${item.name}" loading="lazy">
+                        </a>
+                        <div class="card-body p-2">
+                            <h6 class="card-title text-truncate mb-1" style="font-size: 13px;">
+                                <a href="${item.url}" class="text-decoration-none text-dark">${item.name}</a>
+                            </h6>
+                            <div class="text-danger fw-bold" style="font-size: 14px;">${item.price}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+    }
+});
+</script>
+
 <!-- Related Products Section -->
 <div class="related-products mt-5 mb-5">
     <h4 class="mb-4 border-bottom pb-2">
@@ -467,7 +601,7 @@ include __DIR__ . '/../components/product_review_display.php';
 
     <?php
 
-    $relatedProducts = $hanghoa->getRelatedProducts($idhanghoa, 4);
+    $relatedProducts = Product::getRelatedProducts((int)$idhanghoa, 4);
 
     if (!empty($relatedProducts)):
     ?>
@@ -484,7 +618,7 @@ include __DIR__ . '/../components/product_review_display.php';
                         
                         <!-- Same Brand Badge -->
                         <?php 
-                        $currentProduct = $hanghoa->HanghoaGetbyId($idhanghoa);
+                        $currentProduct = Product::getById((int)$idhanghoa);
                         if ($currentProduct && $rp->idThuongHieu == $currentProduct->idThuongHieu): 
                         ?>
                             <div class="position-absolute top-0 end-0 m-2 badge bg-primary rounded-pill" style="font-size: 10px;">
@@ -495,8 +629,8 @@ include __DIR__ . '/../components/product_review_display.php';
                         <!-- Image -->
                         <div class="position-relative bg-white rounded-top" style="padding-top: 100%; overflow: hidden;">
                             <?php
-                            $rpHinhanh = $hanghoa->GetHinhAnhById($rp->hinhanh);
-                            $imgSrc = ($rpHinhanh && !empty($rpHinhanh->duong_dan))
+                            $rpHinhanh = ProductImage::getById((int)$rp->hinhanh);
+                            $imgSrc = ($rpHinhanh && (!empty($rpHinhanh->duong_dan) || !empty($rpHinhanh->du_lieu)))
                                 ? "./administrator/elements_LQA/mhanghoa/displayImage.php?id=" . $rp->hinhanh
                                 : "./administrator/elements_LQA/img_LQA/no-image.png";
                             ?>
@@ -519,7 +653,7 @@ include __DIR__ . '/../components/product_review_display.php';
 
                             <!-- Rating -->
                             <?php
-                            $rpRating = $hanghoa->getAverageRating($rp->idhanghoa);
+                            $rpRating = ProductReview::getAverageRating((int)$rp->idhanghoa);
                             ?>
                             <div class="mb-2 d-flex align-items-center" style="font-size: 12px;">
                                 <?php if ($rpRating['count'] > 0): ?>
@@ -573,3 +707,48 @@ include __DIR__ . '/../components/product_review_display.php';
     <?php endif; ?>
 </div>
 </div>
+
+</div> <!-- End container -->
+
+<!-- Footer -->
+<?php include __DIR__ . '/../components/footer.php'; ?>
+
+<!-- Scripts -->
+<?php include __DIR__ . '/../components/scripts.php'; ?>
+
+
+<!-- Recently Viewed Products -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const productId = <?php echo $obj->idhanghoa ?? 0; ?>;
+    const productName = '<?php echo addslashes($obj->tenhanghoa ?? ""); ?>';
+    const productImage = '<?php echo addslashes($imageSrc ?? ""); ?>';
+    const productPrice = '<?php echo number_format($obj->giakhuyenmai ?? $obj->giathamkhao ?? 0, 0, ",", ".") . " ₫"; ?>';
+    
+    if (productId > 0) {
+        // Get existing recently viewed from localStorage
+        let recentlyViewed = JSON.parse(localStorage.getItem('recentlyViewed') || '[]');
+        
+        // Remove if already exists
+        recentlyViewed = recentlyViewed.filter(item => item.id !== productId);
+        
+        // Add to beginning
+        recentlyViewed.unshift({
+            id: productId,
+            name: productName,
+            image: productImage,
+            price: productPrice,
+            url: './index.php?reqHanghoa=' + productId,
+            timestamp: Date.now()
+        });
+        
+        // Keep only last 8 items
+        recentlyViewed = recentlyViewed.slice(0, 8);
+        
+        // Save back to localStorage
+        localStorage.setItem('recentlyViewed', JSON.stringify(recentlyViewed));
+    }
+});
+</script>
+</body>
+</html>

@@ -2,10 +2,21 @@
 // Security includes
 require_once __DIR__ . '/../mod/SecurityHelpers.php';
 require_once __DIR__ . '/../mod/InputValidator.php';
+require_once __DIR__ . '/../../../includes/csrf_helper.php';
 
 
 if (session_status() == PHP_SESSION_NONE) {
     session_start();
+}
+
+// CSRF Protection
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $token = $_POST['csrf_token'] ?? '';
+    if (!verify_csrf_token($token)) {
+        header('Content-Type: application/json');
+        echo json_encode(['success' => false, 'message' => 'CSRF token validation failed.']);
+        exit();
+    }
 }
 
 require_once __DIR__ . '/../../../payment/MoMoPayment.php';
@@ -209,11 +220,13 @@ try {
                 }
             }
 
+            $orderNotes = trim($_POST['order_notes'] ?? '');
+
             $insertOrderSql = "INSERT INTO don_hang (ma_don_hang_text, ma_nguoi_dung, dia_chi_giao_hang,
                               tong_tien, thue, phi_van_chuyen, shipping_method, shipping_method_name, estimated_delivery,
                               coupon_code, coupon_discount, trang_thai, phuong_thuc_thanh_toan, trang_thai_thanh_toan,
-                              pending_read, ngay_tao, ngay_cap_nhat)
-                              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'momo', 'pending', 0, NOW(), NOW())";
+                              pending_read, order_notes, ngay_tao, ngay_cap_nhat)
+                              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'momo', 'pending', 0, ?, NOW(), NOW())";
 
             $stmt = $conn->prepare($insertOrderSql);
             $stmt->execute([
@@ -227,7 +240,8 @@ try {
                 $shippingMethodName,
                 $estimatedDelivery,
                 $couponCode,
-                $couponDiscount
+                $couponDiscount,
+                $orderNotes ?: null
             ]);
             $orderId = $conn->lastInsertId();
 

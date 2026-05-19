@@ -108,11 +108,15 @@ $shippingAddress = $extraDataDecoded['shipping_address'] ?? '';
                                     </a>
                                 </div>
                             <?php else: ?>
-                                <a href="checkout.php" class="btn btn-primary">
-                                    <i class="fas fa-redo"></i> Thử Lại
-                                </a>
-                                <a href="giohangView.php" class="btn btn-secondary">
+                                <div class="alert alert-warning">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    <strong>Đơn hàng đã được hủy tự động.</strong> Tồn kho đã được hoàn lại. Bạn có thể đặt lại đơn hàng mới.
+                                </div>
+                                <a href="giohangView.php" class="btn btn-primary">
                                     <i class="fas fa-shopping-cart"></i> Về Giỏ Hàng
+                                </a>
+                                <a href="../page.php?p=donhang" class="btn btn-outline-secondary">
+                                    <i class="fas fa-list"></i> Xem Đơn Hàng
                                 </a>
                             <?php endif; ?>
                         </div>
@@ -349,9 +353,75 @@ if ($resultCode == '0') {
         flush();
     }
 } else {
-
-    echo "<script>
-        console.log('Payment failed. Result code:', '<?php echo $resultCode; ?>');
-    </script>";
+    // ===== PAYMENT FAILED - Hủy đơn hàng và hoàn tồn kho =====
+    try {
+        $db = Database::getInstance();
+        $conn = $db->getConnection();
+        
+        $findOrderSql = "SELECT id, ma_nguoi_dung, tong_tien FROM don_hang WHERE ma_don_hang_text = ? LIMIT 1";
+        $findStmt = $conn->prepare($findOrderSql);
+        $findStmt->execute([$orderId]);
+        $order = $findStmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($order) {
+            $dbOrderId = $order['id'];
+            $orderUserId = $order['ma_nguoi_dung'];
+            
+            // Cập nhật trạng thái đơn hàng thành 'cancelled'
+            $updateSql = "UPDATE don_hang SET 
+                          trang_thai = 'cancelled',
+                          trang_thai_thanh_toan = 'failed',
+                          ghi_chu = CONCAT(IFNULL(ghi_chu, ''), '\n[MoMo] Thanh toán thất bại - Mã lỗi: {$resultCode} - ', NOW()),
+                          ngay_cap_nhat = NOW()
+                          WHERE id = ?";
+            $stmt = $conn->prepare($updateSql);
+            $stmt->execute([$dbOrderId]);
+            
+            // Hoàn tồn kho
+            require_once __DIR__ . '/../mod/mtonkhoCls.php';
+            $tonkho = new MTonKho();
+            
+            $orderItemsSql = "SELECT ma_san_pham, so_luong FROM chi_tiet_don_hang WHERE ma_don_hang = ?";
+            $orderItemsStmt = $conn->prepare($orderItemsSql);
+            $orderItemsStmt->execute([$dbOrderId]);
+            $orderItems = $orderItemsStmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            foreach ($orderItems as $item) {
+                $restoreResult = $tonkho->updateSoLuong($item['ma_san_pham'], $item['so_luong'], true, false);
+                if ($restoreResult) {
+                    error_log("MoMo Failed - Restored inventory for product ID: {$item['ma_san_pham']}, qty: {$item['so_luong']}");
+                } else {
+                    error_log("MoMo Failed - Failed to restore inventory for product ID: {$item['ma_san_pham']}");
+                }
+            }
+            
+            // Hủy coupon nếu có
+            if (isset($_SESSION['pending_coupon'])) {
+                unset($_SESSION['pending_coupon']);
+                unset($_SESSION['applied_coupon']);
+                unset($_SESSION['coupon_discount']);
+                unset($_SESSION['coupon_data']);
+            }
+            
+            // Xóa pending order
+            unset($_SESSION['pending_order']);
+            
+            error_log("MoMo Failed - Order {$orderId} (DB ID: {$dbOrderId}) cancelled, inventory restored");
+            
+            echo "<script>
+                console.log('Payment failed. Order cancelled, inventory restored.');
+            </script>";
+        } else {
+            error_log("MoMo Failed - Order not found in database: {$orderId}");
+            echo "<script>
+                console.log('Payment failed. Order not found.');
+            </script>";
+        }
+    } catch (Exception $e) {
+        error_log("MoMo Failed - Error cancelling order: " . $e->getMessage());
+        echo "<script>
+            console.log('Payment failed. Error: " . addslashes($e->getMessage()) . "');
+        </script>";
+    }
 }
 ?>
