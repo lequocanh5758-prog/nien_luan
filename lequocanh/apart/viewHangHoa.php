@@ -25,52 +25,36 @@ include __DIR__ . '/../components/head.php';
 
 <?php include __DIR__ . '/../components/navbar.php'; ?>
 
-<?php
-// SEO Meta Tags for Product Page
-if (isset($obj) && $obj) {
-    $pageTitle = htmlspecialchars($obj->tenhanghoa) . ' - Cửa Hàng Điện Thoại';
-    $pageDescription = htmlspecialchars(strip_tags($obj->mota ?? 'Mua ' . $obj->tenhanghoa . ' chính hãng, giá tốt tại Cửa Hàng Điện Thoại.'));
-    $pageImage = $imageSrc ?? '/lequocanh/administrator/elements_LQA/img_LQA/no-image.png';
-    $pageUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
-}
-?>
+<?php if (isset($pageTitle)): ?>
 <script>
-    // Update page title and meta tags dynamically
-    document.addEventListener('DOMContentLoaded', function() {
-        <?php if (isset($pageTitle)): ?>
-        document.title = '<?php echo $pageTitle; ?>';
-        
-        // Update or create meta description
-        let metaDesc = document.querySelector('meta[name="description"]');
-        if (!metaDesc) {
-            metaDesc = document.createElement('meta');
-            metaDesc.name = 'description';
-            document.head.appendChild(metaDesc);
+    document.title = '<?php echo $pageTitle; ?>';
+    
+    // Update meta description
+    let metaDesc = document.querySelector('meta[name="description"]');
+    if (metaDesc) metaDesc.content = '<?php echo addslashes($pageDescription); ?>';
+    
+    // Add Open Graph tags
+    const ogTags = {
+        'og:title': '<?php echo addslashes($pageTitle); ?>',
+        'og:description': '<?php echo addslashes($pageDescription); ?>',
+        'og:image': '<?php echo addslashes($pageImage); ?>',
+        'og:type': 'product',
+        'og:site_name': 'Cửa Hàng Điện Thoại'
+    };
+    
+    Object.entries(ogTags).forEach(([property, content]) => {
+        let meta = document.querySelector('meta[property="' + property + '"]');
+        if (!meta) {
+            meta = document.createElement('meta');
+            meta.setAttribute('property', property);
+            document.head.appendChild(meta);
         }
-        metaDesc.content = '<?php echo addslashes($pageDescription); ?>';
-        
-        // Add Open Graph tags
-        const ogTags = {
-            'og:title': '<?php echo addslashes($pageTitle); ?>',
-            'og:description': '<?php echo addslashes($pageDescription); ?>',
-            'og:image': '<?php echo addslashes($pageImage); ?>',
-            'og:url': '<?php echo addslashes($pageUrl); ?>',
-            'og:type': 'product',
-            'og:site_name': 'Cửa Hàng Điện Thoại'
-        };
-        
-        Object.entries(ogTags).forEach(([property, content]) => {
-            let meta = document.querySelector(`meta[property="${property}"]`);
-            if (!meta) {
-                meta = document.createElement('meta');
-                meta.setAttribute('property', property);
-                document.head.appendChild(meta);
-            }
-            meta.content = content;
-        });
-        <?php endif; ?>
+        meta.content = content;
     });
 </script>
+<?php endif; ?>
+
+
 
 <div class="container mt-4">
 <link rel="stylesheet" href="/lequocanh/public_files/toast-notification.css">
@@ -204,6 +188,16 @@ if (isset($_GET['reqHanghoa'])) {
     $obj = cache_remember('product_detail_' . $idhanghoa, 300, function() use ($idhanghoa) {
         return Product::getById((int)$idhanghoa);
     });
+
+    // SEO Meta Tags for Product Page
+    if ($obj) {
+        $pageTitle = htmlspecialchars($obj->tenhanghoa) . ' - Cửa Hàng Điện Thoại';
+        $pageDescription = htmlspecialchars(strip_tags($obj->mota ?? 'Mua ' . $obj->tenhanghoa . ' chính hãng, giá tốt tại Cửa Hàng Điện Thoại.'));
+        $pageImage = '/lequocanh/administrator/elements_LQA/img_LQA/no-image.png';
+        if (!empty($obj->hinhanh)) {
+            $pageImage = '/lequocanh/administrator/elements_LQA/mhanghoa/displayImage.php?id=' . $obj->hinhanh;
+        }
+    }
 
     $thuocTinhHHObj = new ThuocTinhHH();
     $listThuocTinh = cache_remember('product_attributes_' . $idhanghoa, 600, function() use ($thuocTinhHHObj, $idhanghoa) {

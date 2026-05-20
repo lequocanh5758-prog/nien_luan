@@ -81,7 +81,7 @@ try {
                    th.tenTH as brand_name, lh.tenloaihang as category_name,
                    t.soLuong as stock_quantity
             FROM hanghoa h
-            LEFT JOIN thuonghieu th ON h.idThuongHieu = th.idTH
+            LEFT JOIN thuonghieu th ON h.idThuongHieu = th.idThuongHieu
             LEFT JOIN loaihang lh ON h.idloaihang = lh.idloaihang
             LEFT JOIN tonkho t ON h.idhanghoa = t.idhanghoa
             WHERE {$whereSQL}
