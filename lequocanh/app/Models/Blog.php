@@ -18,7 +18,7 @@ class Blog
     public function getAll(int $limit = 10, int $offset = 0, string $status = 'published'): array
     {
         try {
-            $sql = "SELECT * FROM blog_posts WHERE status = ? ORDER BY created_at DESC LIMIT ? OFFSET ?";
+            $sql = "SELECT id, title, slug, content, excerpt, featured_image, author, status, view_count, created_at, updated_at FROM blog_posts WHERE status = ? ORDER BY created_at DESC LIMIT ? OFFSET ?";
             $stmt = $this->db->prepare($sql);
             $stmt->execute([$status, $limit, $offset]);
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -31,7 +31,7 @@ class Blog
     public function getBySlug(string $slug): ?array
     {
         try {
-            $sql = "SELECT * FROM blog_posts WHERE slug = ? AND status = 'published'";
+            $sql = "SELECT id, title, slug, content, excerpt, featured_image, author, status, view_count, created_at, updated_at FROM blog_posts WHERE slug = ? AND status = 'published'";
             $stmt = $this->db->prepare($sql);
             $stmt->execute([$slug]);
             $post = $stmt->fetch(PDO::FETCH_ASSOC);
