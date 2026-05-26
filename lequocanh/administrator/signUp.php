@@ -257,6 +257,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .form-select.is-invalid + .invalid-feedback {
             display: block;
         }
+        .input-group .form-control.is-invalid ~ .input-group-text {
+            border-color: #dc3545;
+        }
+        .form-group:has(.input-group .form-control.is-invalid) > .invalid-feedback {
+            display: block;
+        }
+        .form-group:has(.input-group .form-control.is-invalid) > .password-strength + .invalid-feedback {
+            display: block;
+        }
         .valid-feedback {
             display: none;
             color: #28a745;

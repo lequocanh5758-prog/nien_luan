@@ -30,7 +30,6 @@ if (class_exists('Logger')) {
 }
 
 require_once './elements_LQA/mod/database.php';
-require_once './elements_LQA/mod/hanghoaCls.php';
 require_once './elements_LQA/mod/mtonkhoCls.php';
 require_once './elements_LQA/mod/CustomerNotificationManager.php';
 
@@ -50,7 +49,6 @@ try {
     die('<div class="alert alert-danger">Lỗi khi kiểm tra kết nối cơ sở dữ liệu: ' . $e->getMessage() . '</div>');
 }
 
-$hanghoa = new hanghoa();
 $tonkho = new MTonKho();
 
 $checkTableSql = "SHOW TABLES LIKE 'don_hang'";

@@ -39,8 +39,8 @@ $categories = cache_remember('all_categories', 600, function() {
     
     <?php echo perf_head(); ?>
     
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.1/css/all.min.css">
     
     <style>
         .product-card {
@@ -130,7 +130,7 @@ $categories = cache_remember('all_categories', 600, function() {
             <?php
                 $hasDiscount = $product->giakhuyenmai > 0 && $product->giakhuyenmai < $product->giathamkhao;
                 $discountPercent = $hasDiscount ? round((($product->giathamkhao - $product->giakhuyenmai) / $product->giathamkhao) * 100) : 0;
-                $imageUrl = './administrator/elements_LQA/mhanghoa/displayImage.php?id=' . $product->hinhanh;
+                $imageUrl = '/lequocanh/administrator/elements_LQA/mhanghoa/displayImage.php?id=' . $product->hinhanh;
             ?>
             <div class="col">
                 <div class="card product-card h-100 position-relative">
@@ -219,7 +219,7 @@ $categories = cache_remember('all_categories', 600, function() {
         </div>
     </footer>
     
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" defer></script>
     
     <?php echo perf_footer(); ?>
 </body>

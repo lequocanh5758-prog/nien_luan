@@ -12,18 +12,19 @@ Phase 2 focuses on **Security**, **Performance**, and **Shipping** improvements 
 
 ### Features to Implement
 
-| # | Feature | Priority | Timeline |
-|---|---------|----------|----------|
-| 1 | CDN (Cloudflare) | 🔴 High | Week 1 |
-| 2 | OAuth2 (Google/Facebook) | 🔴 High | Week 2-3 |
-| 3 | J&T Express Tracking | 🟡 Medium | Week 3-4 |
-| 4 | Auto Return System | 🟡 Medium | Week 4-5 |
+| #   | Feature                  | Priority  | Timeline |
+| --- | ------------------------ | --------- | -------- |
+| 1   | CDN (Cloudflare)         | 🔴 High   | Week 1   |
+| 2   | OAuth2 (Google/Facebook) | 🔴 High   | Week 2-3 |
+| 3   | J&T Express Tracking     | 🟡 Medium | Week 3-4 |
+| 4   | Auto Return System       | 🟡 Medium | Week 4-5 |
 
 ---
 
 ## 1. CDN (Cloudflare)
 
 ### Goals
+
 - Reduce server load by 60-70%
 - Improve page load time by 50%
 - Enable global content delivery
@@ -31,6 +32,7 @@ Phase 2 focuses on **Security**, **Performance**, and **Shipping** improvements 
 ### Implementation
 
 **Step 1: Cloudflare Setup**
+
 ```
 1. Create Cloudflare account
 2. Add domain to Cloudflare
@@ -39,6 +41,7 @@ Phase 2 focuses on **Security**, **Performance**, and **Shipping** improvements 
 ```
 
 **Step 2: Configuration**
+
 ```php
 // config/cdn.php
 return [
@@ -53,6 +56,7 @@ return [
 ```
 
 **Step 3: Image URL Helper**
+
 ```php
 // app/Services/CDNService.php
 class CDNService {
@@ -60,7 +64,7 @@ class CDNService {
         $cdnUrl = config('cdn.cdn_url');
         return $cdnUrl . '/' . ltrim($path, '/');
     }
-    
+
     public static function image(string $path): string {
         // Auto-optimize images via Cloudflare Images
         return self::url('/cdn-cgi/image/width=auto,quality=80/' . $path);
@@ -69,6 +73,7 @@ class CDNService {
 ```
 
 **Step 4: Update Image Paths**
+
 ```php
 // Before
 <img src="/lequocanh/uploads/product.jpg">
@@ -78,6 +83,7 @@ class CDNService {
 ```
 
 ### Expected Results
+
 - TTFB: 200ms → 50ms
 - Page Load: 3s → 1.5s
 - Bandwidth: -70%
@@ -87,6 +93,7 @@ class CDNService {
 ## 2. OAuth2 (Google/Facebook)
 
 ### Goals
+
 - Increase user registration by 30-40%
 - Simplify login process
 - Reduce password fatigue
@@ -94,6 +101,7 @@ class CDNService {
 ### Implementation
 
 **Step 1: Google OAuth Setup**
+
 ```
 1. Go to console.cloud.google.com
 2. Create new project
@@ -103,6 +111,7 @@ class CDNService {
 ```
 
 **Step 2: Facebook OAuth Setup**
+
 ```
 1. Go to developers.facebook.com
 2. Create new app
@@ -111,6 +120,7 @@ class CDNService {
 ```
 
 **Step 3: OAuth Configuration**
+
 ```php
 // config/oauth.php
 return [
@@ -130,6 +140,7 @@ return [
 ```
 
 **Step 4: OAuth Service**
+
 ```php
 // app/Services/OAuthService.php
 class OAuthService {
@@ -141,21 +152,21 @@ class OAuthService {
             'scope' => implode(' ', config('oauth.google.scopes')),
             'access_type' => 'offline',
         ]);
-        
+
         return "https://accounts.google.com/o/oauth2/auth?{$params}";
     }
-    
+
     public function handleGoogleCallback(string $code): ?User {
         // Exchange code for access token
         // Get user info from Google
         // Create or update user in database
         // Return user object
     }
-    
+
     public function getFacebookAuthUrl(): string {
         // Similar to Google
     }
-    
+
     public function handleFacebookCallback(string $code): ?User {
         // Similar to Google
     }
@@ -163,6 +174,7 @@ class OAuthService {
 ```
 
 **Step 5: Database Schema**
+
 ```sql
 -- Add OAuth fields to users table
 ALTER TABLE users ADD COLUMN google_id VARCHAR(50) NULL;
@@ -176,19 +188,21 @@ CREATE INDEX idx_users_facebook_id ON users(facebook_id);
 ```
 
 **Step 6: Login Buttons**
+
 ```html
 <!-- Login Page -->
 <div class="social-login">
-    <a href="/auth/google" class="btn btn-google">
-        <img src="/images/google-icon.png"> Đăng nhập với Google
-    </a>
-    <a href="/auth/facebook" class="btn btn-facebook">
-        <img src="/images/facebook-icon.png"> Đăng nhập với Facebook
-    </a>
+  <a href="/auth/google" class="btn btn-google">
+    <img src="/images/google-icon.png" /> Đăng nhập với Google
+  </a>
+  <a href="/auth/facebook" class="btn btn-facebook">
+    <img src="/images/facebook-icon.png" /> Đăng nhập với Facebook
+  </a>
 </div>
 ```
 
 ### Expected Results
+
 - Registration: +30-40%
 - Login conversion: +20%
 - Password reset requests: -50%
@@ -198,6 +212,7 @@ CREATE INDEX idx_users_facebook_id ON users(facebook_id);
 ## 3. J&T Express Tracking
 
 ### Goals
+
 - Real-time order tracking
 - Automated shipping label generation
 - Delivery status notifications
@@ -205,6 +220,7 @@ CREATE INDEX idx_users_facebook_id ON users(facebook_id);
 ### Implementation
 
 **Step 1: J&T API Registration**
+
 ```
 1. Contact J&T Express for API access
 2. Get API credentials (API Key, API Secret)
@@ -212,6 +228,7 @@ CREATE INDEX idx_users_facebook_id ON users(facebook_id);
 ```
 
 **Step 2: J&T Configuration**
+
 ```php
 // config/jtexpress.php
 return [
@@ -224,29 +241,30 @@ return [
 ```
 
 **Step 3: J&T Express Service**
+
 ```php
 // app/Services/JTExpressService.php
 class JTExpressService {
     private $apiUrl;
     private $apiKey;
-    
+
     public function createOrder(array $orderData): array {
         // Create shipping order via J&T API
         // Return tracking number and label
     }
-    
+
     public function trackOrder(string $trackingNumber): array {
         // Get tracking status from J&T API
         // Return timeline array
     }
-    
+
     public function cancelOrder(string $trackingNumber): bool {
         // Cancel shipping order
     }
-    
+
     public function getTrackingTimeline(string $trackingNumber): array {
         $response = $this->trackOrder($trackingNumber);
-        
+
         return array_map(function($status) {
             return [
                 'time' => $status['updateTime'],
@@ -256,7 +274,7 @@ class JTExpressService {
             ];
         }, $response['details']);
     }
-    
+
     private function getStatusIcon(string $statusCode): string {
         return match($statusCode) {
             'PICKUP' => '📦',
@@ -271,6 +289,7 @@ class JTExpressService {
 ```
 
 **Step 4: Webhook Handler**
+
 ```php
 // api/jtexpress/webhook.php
 class JTWebhookHandler {
@@ -278,13 +297,13 @@ class JTWebhookHandler {
         $trackingNumber = $data['trackingNo'];
         $statusCode = $data['statusCode'];
         $statusDesc = $data['statusDesc'];
-        
+
         // Update order status in database
         $this->updateOrderStatus($trackingNumber, $statusCode);
-        
+
         // Send notification to customer
         $this->sendNotification($trackingNumber, $statusDesc);
-        
+
         // Log webhook
         $this->logWebhook($data);
     }
@@ -292,6 +311,7 @@ class JTWebhookHandler {
 ```
 
 **Step 5: Tracking Page**
+
 ```php
 <!-- order_tracking.php -->
 <div class="tracking-timeline">
@@ -309,6 +329,7 @@ class JTWebhookHandler {
 ```
 
 ### Expected Results
+
 - Customer inquiries: -60%
 - Delivery transparency: +100%
 - Customer satisfaction: +40%
@@ -318,6 +339,7 @@ class JTWebhookHandler {
 ## 4. Auto Return System
 
 ### Goals
+
 - Automate return process
 - Optimize return method selection
 - Reduce manual processing
@@ -325,6 +347,7 @@ class JTWebhookHandler {
 ### Implementation
 
 **Step 1: Return Policy Configuration**
+
 ```php
 // config/return_policy.php
 return [
@@ -349,12 +372,13 @@ return [
 ```
 
 **Step 2: Return Decision Engine**
+
 ```php
 // app/Services/ReturnDecisionEngine.php
 class ReturnDecisionEngine {
     public function decide(array $returnRequest): array {
         $factors = $this->analyzeFactors($returnRequest);
-        
+
         return match(true) {
             $factors['is_near_drop_off'] => [
                 'method' => 'drop_off',
@@ -382,7 +406,7 @@ class ReturnDecisionEngine {
             ],
         };
     }
-    
+
     private function analyzeFactors(array $request): array {
         return [
             'is_near_drop_off' => $this->checkNearDropOff($request['address']),
@@ -395,6 +419,7 @@ class ReturnDecisionEngine {
 ```
 
 **Step 3: Return Automation Flow**
+
 ```
 Customer requests return
     ↓
@@ -414,6 +439,7 @@ Refund when item received
 ```
 
 **Step 4: Return Status Notifications**
+
 ```php
 // Email templates for return status
 'pending_approval' => 'Yêu cầu đổi trả đang được xem xét',
@@ -425,6 +451,7 @@ Refund when item received
 ```
 
 ### Expected Results
+
 - Manual processing: -80%
 - Return processing time: 7 days → 3 days
 - Customer satisfaction: +50%
@@ -462,13 +489,13 @@ Week 4-5: Auto Return System
 
 ## Success Metrics
 
-| Metric | Current | Target |
-|--------|---------|--------|
-| Page Load Time | 3s | 1.5s |
-| Server Load | 100% | 30% |
-| User Registration | 100/month | 140/month |
-| Customer Inquiries | 50/day | 20/day |
-| Return Processing | 7 days | 3 days |
+| Metric             | Current   | Target    |
+| ------------------ | --------- | --------- |
+| Page Load Time     | 3s        | 1.5s      |
+| Server Load        | 100%      | 30%       |
+| User Registration  | 100/month | 140/month |
+| Customer Inquiries | 50/day    | 20/day    |
+| Return Processing  | 7 days    | 3 days    |
 
 ---
 
@@ -484,12 +511,12 @@ Week 4-5: Auto Return System
 
 ## Risk Assessment
 
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| CDN downtime | High | Fallback to origin server |
-| OAuth security | High | Use official libraries, validate tokens |
-| J&T API changes | Medium | Abstract API layer, monitor changes |
-| Return abuse | Medium | Fraud detection, manual review for high-value |
+| Risk            | Impact | Mitigation                                    |
+| --------------- | ------ | --------------------------------------------- |
+| CDN downtime    | High   | Fallback to origin server                     |
+| OAuth security  | High   | Use official libraries, validate tokens       |
+| J&T API changes | Medium | Abstract API layer, monitor changes           |
+| Return abuse    | Medium | Fraud detection, manual review for high-value |
 
 ---
 

@@ -1,8 +1,10 @@
 <?php
 require_once __DIR__ . '/../mod/auth_check.php';
-require_once("./elements_LQA/mod/hanghoaCls.php");
-$hanghoa = new hanghoa();
-$list_hinhanh = $hanghoa->GetAllHinhAnh();
+require_once __DIR__ . '/../../../app/autoload.php';
+
+use App\Models\ProductImage;
+
+$list_hinhanh = ProductImage::getAll();
 $total = count($list_hinhanh);
 
 $isDocker = (getenv('DOCKER_ENV') !== false) || file_exists('/.dockerenv');

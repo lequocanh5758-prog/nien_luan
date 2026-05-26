@@ -23,8 +23,8 @@ $blogs = $pageManager->getAllBlogs(true);
     <meta name="description" content="Tin tức, bài viết về điện thoại, công nghệ và hướng dẫn sử dụng.">
     
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link rel="stylesheet" href="public_files/mycss.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="/lequocanh/public_files/mycss.css">
     
     <style>
         .blog-header {
@@ -139,7 +139,7 @@ $blogs = $pageManager->getAllBlogs(true);
                     </li>
                     <?php if (isset($_SESSION['USER'])): ?>
                     <li class="nav-item">
-                        <a class="nav-link" href="administrator/elements_LQA/mgiohang/giohangView.php">
+                        <a class="nav-link" href="/lequocanh/administrator/elements_LQA/mgiohang/giohangView.php">
                             <i class="fas fa-shopping-cart"></i>
                             <span class="badge bg-danger"><?php echo $cartItemCount; ?></span>
                         </a>

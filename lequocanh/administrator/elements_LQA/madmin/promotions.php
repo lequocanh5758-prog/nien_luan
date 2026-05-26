@@ -167,19 +167,19 @@ if ($msg === 'notfound') $message = 'Chương trình ưu đãi không tồn tạ
                         
                         <div class="mb-3">
                             <label for="discount_percent" class="form-label">Phần trăm giảm giá (%)</label>
-                            <input type="number" class="form-control" id="discount_percent" name="discount_percent" min="0" max="100" step="0.01" value="<?php echo $action === 'edit' ? $promotion['discount_percent'] : ($_POST['discount_percent'] ?? '0'); ?>" required>
+                            <input type="number" class="form-control" id="discount_percent" name="discount_percent" min="0" max="100" step="0.01" value="<?php echo htmlspecialchars($action === 'edit' ? $promotion['discount_percent'] : ($_POST['discount_percent'] ?? '0')); ?>" required>
                         </div>
                     </div>
                     
                     <div class="col-md-6">
                         <div class="mb-3">
                             <label for="start_date" class="form-label">Ngày bắt đầu</label>
-                            <input type="date" class="form-control" id="start_date" name="start_date" value="<?php echo $action === 'edit' ? $promotion['start_date'] : ($_POST['start_date'] ?? date('Y-m-d')); ?>" required>
+                            <input type="date" class="form-control" id="start_date" name="start_date" value="<?php echo htmlspecialchars($action === 'edit' ? $promotion['start_date'] : ($_POST['start_date'] ?? date('Y-m-d'))); ?>" required>
                         </div>
                         
                         <div class="mb-3">
                             <label for="end_date" class="form-label">Ngày kết thúc</label>
-                            <input type="date" class="form-control" id="end_date" name="end_date" value="<?php echo $action === 'edit' ? $promotion['end_date'] : ($_POST['end_date'] ?? date('Y-m-d', strtotime('+1 month'))); ?>" required>
+                            <input type="date" class="form-control" id="end_date" name="end_date" value="<?php echo htmlspecialchars($action === 'edit' ? $promotion['end_date'] : ($_POST['end_date'] ?? date('Y-m-d', strtotime('+1 month')))); ?>" required>
                         </div>
                         
                         <div class="mb-3 form-check">

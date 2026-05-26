@@ -47,7 +47,26 @@ abstract class BaseController
 
     protected function getViewPath($viewName)
     {
-        return __DIR__ . '/../Views/' . str_replace('.', '/', $viewName) . '.php';
+        // Primary: new MVC views
+        $newPath = __DIR__ . '/../Views/' . str_replace('.', '/', $viewName) . '.php';
+        if (file_exists($newPath)) {
+            return $newPath;
+        }
+
+        // Fallback: legacy view directories
+        $legacyPaths = [
+            __DIR__ . '/../../apart/' . $viewName . '.php',
+            __DIR__ . '/../../components/' . $viewName . '.php',
+        ];
+
+        foreach ($legacyPaths as $legacyPath) {
+            if (file_exists($legacyPath)) {
+                return $legacyPath;
+            }
+        }
+
+        // Return primary path (will trigger "not found" error)
+        return $newPath;
     }
 
     protected function redirect($url, $statusCode = 302)

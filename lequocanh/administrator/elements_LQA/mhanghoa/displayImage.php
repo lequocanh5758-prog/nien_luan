@@ -8,16 +8,35 @@ error_reporting(E_ALL);
 ini_set('display_errors', 0);
 ini_set('log_errors', 1);
 
-require_once("../mod/database.php");
-require_once("../mod/hanghoaCls.php");
+require_once(__DIR__ . '/../mod/database.php');
+require_once __DIR__ . '/../../../app/autoload.php';
+
+use App\Models\ProductImage;
 
 // Set error log relative to this file
 ini_set('error_log', dirname(dirname(dirname(__FILE__))) . '/upload_errors.log');
 
 if (isset($_GET['id']) && is_numeric($_GET['id'])) {
     $imageId = (int) $_GET['id'];
-    $hanghoa = new hanghoa();
-    $image = $hanghoa->GetHinhAnhById($imageId);
+    
+    // Skip invalid IDs
+    if ($imageId <= 0) {
+        // Return no-image placeholder
+        $noImagePath = __DIR__ . '/../../img_LQA/no-image.png';
+        if (file_exists($noImagePath)) {
+            header("Content-Type: image/png");
+            header("Content-Length: " . filesize($noImagePath));
+            readfile($noImagePath);
+        } else {
+            // Return 1x1 transparent PNG as fallback
+            header("Content-Type: image/png");
+            header("Content-Length: 68");
+            echo base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==');
+        }
+        exit;
+    }
+    
+    $image = ProductImage::getById($imageId);
 
     if ($image) {
         // Priority 1: Database BLOB
@@ -39,10 +58,27 @@ if (isset($_GET['id']) && is_numeric($_GET['id'])) {
                         $mime = $map[$ext];
                 }
             }
+            
+            // Convert to WebP if supported (smaller file size)
+            $acceptWebP = isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'image/webp') !== false;
+            if ($acceptWebP && $mime !== 'image/webp' && function_exists('imagecreatefromstring') && function_exists('imagewebp')) {
+                $img = imagecreatefromstring($data);
+                if ($img) {
+                    ob_start();
+                    imagewebp($img, null, 85);
+                    $webpData = ob_get_clean();
+                    imagedestroy($img);
+                    if ($webpData && strlen($webpData) < strlen($data)) {
+                        $data = $webpData;
+                        $mime = 'image/webp';
+                    }
+                }
+            }
 
             header("Content-Type: $mime");
             header("Content-Length: " . strlen($data));
-            header("Cache-Control: public, max-age=86400");
+            header("Cache-Control: public, max-age=604800"); // 7 days
+            header("ETag: \"" . md5($data) . "\"");
             echo $data;
             exit;
         }
@@ -87,11 +123,9 @@ if (file_exists($noImagePath)) {
     header("Content-Length: " . filesize($noImagePath));
     readfile($noImagePath);
 } else {
+    // Return 1x1 transparent PNG as fallback (GD not available)
     header("Content-Type: image/png");
-    $img = imagecreatetruecolor(100, 100);
-    $bg = imagecolorallocate($img, 240, 240, 240);
-    imagefilledrectangle($img, 0, 0, 100, 100, $bg);
-    imagepng($img);
-    imagedestroy($img);
+    header("Content-Length: 68");
+    echo base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==');
 }
 exit;

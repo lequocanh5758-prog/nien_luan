@@ -21,7 +21,9 @@ ob_start();
 SessionManager::start();
 require_once '../../elements_LQA/mod/giohangCls.php';
 require_once '../../elements_LQA/mod/mtonkhoCls.php';
-require_once '../../elements_LQA/mod/hanghoaCls.php';
+require_once __DIR__ . '/../../../app/autoload.php';
+
+use App\Models\Product;
 
 $giohang = new GioHang();
 
@@ -74,8 +76,7 @@ if (isset($_GET['action'])) {
                 $isAjax = isset($_SERVER['HTTP_X_REQUESTED_WITH']) && 
                          strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
 
-                $hanghoa = new hanghoa();
-                $productStatus = $hanghoa->getProductStatusValue($productId);
+                $productStatus = Product::getProductStatusValue((int)$productId);
 
                 if ($productStatus == 2) {
 

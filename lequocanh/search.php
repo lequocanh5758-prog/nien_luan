@@ -1,9 +1,11 @@
 <?php
-require_once './administrator/elements_LQA/mod/hanghoaCls.php';
-$hanghoa = new hanghoa();
+require_once __DIR__ . '/app/autoload.php';
+
+use App\Models\Product;
+use App\Models\ProductImage;
 
 $query = isset($_GET['query']) ? $_GET['query'] : '';
-$list_hanghoa = $hanghoa->searchHanghoa($query);
+$list_hanghoa = Product::searchProducts($query);
 
 $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https://' : 'http://';
 $host = $_SERVER['HTTP_HOST'];
@@ -16,7 +18,7 @@ $baseUrl = $protocol . $host;
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="public_files/mycss.css">
+    <link rel="stylesheet" href="/lequocanh/public_files/mycss.css">
     <link href="./bootstrap/css/bootstrap.min.css" rel="stylesheet">
     <title>Kết quả tìm kiếm</title>
 </head>
@@ -29,12 +31,12 @@ $baseUrl = $protocol . $host;
                 <?php foreach ($list_hanghoa as $v): ?>
                     <?php
 
-                    $hinhanh = $hanghoa->GetHinhAnhById($v->hinhanh);
+                    $hinhanh = ProductImage::getById((int)$v->hinhanh);
 
                     if ($v->hinhanh > 0) {
-                        $imagePath = "./administrator/elements_LQA/mhanghoa/displayImage.php?id=" . $v->hinhanh;
+                        $imagePath = "/lequocanh/administrator/elements_LQA/mhanghoa/displayImage.php?id=" . $v->hinhanh;
                     } else {
-                        $imagePath = "./administrator/elements_LQA/img_LQA/no-image.png";
+                        $imagePath = "/lequocanh/administrator/elements_LQA/img_LQA/no-image.png";
                     }
                     ?>
                     <div class="col">
@@ -63,8 +65,8 @@ $baseUrl = $protocol . $host;
             <?php endif; ?>
         </div>
     </div>
-    <link rel="stylesheet" href="public_files/mycss.css">
-    <script src="administrator/js_LQA/jscript.js"></script>
+    <link rel="stylesheet" href="/lequocanh/public_files/mycss.css">
+    <script src="/lequocanh/administrator/js_LQA/jscript.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 

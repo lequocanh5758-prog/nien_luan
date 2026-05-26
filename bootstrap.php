@@ -13,28 +13,7 @@ if (!defined('LOCAL_DEV')) {
     define('LOCAL_DEV', $config->get('app.environment') === 'development' || strpos($_SERVER['HTTP_HOST'] ?? '', 'localhost') !== false);
 }
 
-$forceNgrok = filter_var($_ENV['FORCE_NGROK'] ?? false, FILTER_VALIDATE_BOOLEAN);
-$forceTunnel = filter_var($_ENV['FORCE_TUNNEL'] ?? false, FILTER_VALIDATE_BOOLEAN);
-
-$tunnelUrl = $_ENV['BASE_URL'] ?? BASE_URL;
-
-$isOnTunnel = isset($_SERVER['HTTP_HOST']) && (
-    strpos($_SERVER['HTTP_HOST'], 'ngrok') !== false || 
-    strpos($_SERVER['HTTP_HOST'], 'trycloudflare.com') !== false
-);
-
-if (($forceNgrok || $forceTunnel) && isset($_SERVER['HTTP_HOST']) && !$isOnTunnel) {
-    $currentHost = $_SERVER['HTTP_HOST'];
-
-    if (strpos($currentHost, 'localhost') === 0 || strpos($currentHost, '127.0.1') === 0 || strpos($currentHost, '0.0.0') === 0) {
-        if ($tunnelUrl && (strpos($tunnelUrl, 'ngrok') !== false || strpos($tunnelUrl, 'trycloudflare.com') !== false)) {
-
-            usleep(10000);
-            header('Location: ' . $tunnelUrl . $_SERVER['REQUEST_URI']);
-            exit();
-        }
-    }
-}
+// Không còn cần force redirect - hệ thống tự động phát hiện môi trường
 
 if ($config->get('app.app.debug')) {
     error_reporting(E_ALL);

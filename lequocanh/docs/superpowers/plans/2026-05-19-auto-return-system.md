@@ -12,19 +12,20 @@
 
 ## File Structure
 
-| File | Responsibility |
-|------|----------------|
-| `config/return_policy.php` | Return policy configuration |
-| `app/Services/ReturnDecisionEngine.php` | Decision logic |
-| `app/Services/ReturnAutomationService.php` | Automation flow |
-| `app/Controllers/ReturnController.php` | Return endpoints |
-| `database/migrations/expand_returns_table.php` | DB schema |
+| File                                           | Responsibility              |
+| ---------------------------------------------- | --------------------------- |
+| `config/return_policy.php`                     | Return policy configuration |
+| `app/Services/ReturnDecisionEngine.php`        | Decision logic              |
+| `app/Services/ReturnAutomationService.php`     | Automation flow             |
+| `app/Controllers/ReturnController.php`         | Return endpoints            |
+| `database/migrations/expand_returns_table.php` | DB schema                   |
 
 ---
 
 ### Task 1: Return Policy Configuration
 
 **Files:**
+
 - Create: `config/return_policy.php`
 
 - [ ] **Step 1: Create return policy config**
@@ -37,14 +38,14 @@ return [
     'return_window_days' => 7,
     'eligible_statuses' => ['completed'],
     'eligible_payment_methods' => ['bank_transfer', 'momo', 'cod'],
-    
+
     // Auto-approve settings
     'auto_approve' => [
         'enabled' => true,
         'max_amount' => 500000, // VND - auto approve if order < 500k
         'max_items' => 3,
     ],
-    
+
     // Return methods
     'methods' => [
         'self_ship' => [
@@ -70,14 +71,14 @@ return [
             ],
         ],
     ],
-    
+
     // Refund settings
     'refund' => [
         'method' => 'original', // Refund to original payment method
         'processing_days' => 3,
         'partial_refund_allowed' => true,
     ],
-    
+
     // Decision weights
     'decision_weights' => [
         'distance' => 0.3,
@@ -100,6 +101,7 @@ git commit -m "feat: add return policy configuration"
 ### Task 2: Database Migration
 
 **Files:**
+
 - Create: `database/migrations/2026_05_19_expand_returns_table.php`
 
 - [ ] **Step 1: Create migration**
@@ -112,10 +114,10 @@ class ExpandReturnsTable
     public function up()
     {
         $db = \Database::getInstance()->getConnection();
-        
+
         // Expand doi_tra table
         $db->exec("
-            ALTER TABLE doi_tra 
+            ALTER TABLE doi_tra
             ADD COLUMN return_method ENUM('self_ship', 'pickup', 'drop_off') NULL AFTER loai,
             ADD COLUMN pickup_tracking_number VARCHAR(50) NULL AFTER return_method,
             ADD COLUMN pickup_scheduled_date DATE NULL AFTER pickup_tracking_number,
@@ -127,7 +129,7 @@ class ExpandReturnsTable
             ADD COLUMN decision_factors TEXT NULL AFTER refund_date,
             ADD COLUMN auto_approved TINYINT(1) DEFAULT 0 AFTER decision_factors
         ");
-        
+
         // Create return items table
         $db->exec("
             CREATE TABLE IF NOT EXISTS return_items (
@@ -146,11 +148,11 @@ class ExpandReturnsTable
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         ");
     }
-    
+
     public function down()
     {
         $db = \Database::getInstance()->getConnection();
-        
+
         $db->exec("ALTER TABLE doi_tra DROP COLUMN return_method");
         $db->exec("ALTER TABLE doi_tra DROP COLUMN pickup_tracking_number");
         $db->exec("ALTER TABLE doi_tra DROP COLUMN pickup_scheduled_date");
@@ -184,6 +186,7 @@ git commit -m "feat: expand returns table for auto return system"
 ### Task 3: Return Decision Engine
 
 **Files:**
+
 - Create: `app/Services/ReturnDecisionEngine.php`
 - Test: `tests/Unit/ReturnDecisionEngineTest.php`
 
@@ -214,20 +217,20 @@ class ReturnDecisionEngineTest extends TestCase
                 'item_count' => 0.2,
             ],
         ]);
-        
+
         $request = [
             'order_total' => 2000000,
             'item_count' => 2,
             'address' => '123 Nguyễn Huệ, Quận 1, TP.HCM',
             'preferred_method' => null,
         ];
-        
+
         $decision = $engine->decide($request);
-        
+
         $this->assertEquals('pickup', $decision['method']);
         $this->assertEquals(0, $decision['cost']);
     }
-    
+
     public function testDecideForLowValueOrder()
     {
         $engine = new ReturnDecisionEngine([
@@ -243,16 +246,16 @@ class ReturnDecisionEngineTest extends TestCase
                 'item_count' => 0.2,
             ],
         ]);
-        
+
         $request = [
             'order_total' => 200000,
             'item_count' => 1,
             'address' => '456 Lê Lợi, Quận 1, TP.HCM',
             'preferred_method' => 'self_ship',
         ];
-        
+
         $decision = $engine->decide($request);
-        
+
         $this->assertEquals('self_ship', $decision['method']);
     }
 }
@@ -277,38 +280,38 @@ namespace App\Services;
 class ReturnDecisionEngine
 {
     private array $config;
-    
+
     public function __construct(array $config)
     {
         $this->config = $config;
     }
-    
+
     /**
      * Decide optimal return method
      */
     public function decide(array $request): array
     {
         $factors = $this->analyzeFactors($request);
-        
+
         // Calculate scores for each method
         $scores = [];
-        
+
         foreach ($this->config['methods'] as $method => $settings) {
             if (!$settings['enabled']) {
                 continue;
             }
-            
+
             $scores[$method] = $this->calculateMethodScore($method, $settings, $factors);
         }
-        
+
         // Select method with highest score
         arsort($scores);
         $selectedMethod = array_key_first($scores);
-        
+
         // Build decision
         return $this->buildDecision($selectedMethod, $this->config['methods'][$selectedMethod], $factors);
     }
-    
+
     /**
      * Analyze factors
      */
@@ -323,7 +326,7 @@ class ReturnDecisionEngine
             'order_total' => $request['order_total'],
         ];
     }
-    
+
     /**
      * Calculate score for method
      */
@@ -331,7 +334,7 @@ class ReturnDecisionEngine
     {
         $weights = $this->config['decision_weights'];
         $score = 0;
-        
+
         // Distance factor
         if ($method === 'drop_off' && $factors['is_near_drop_off']) {
             $score += $weights['distance'] * 100;
@@ -340,7 +343,7 @@ class ReturnDecisionEngine
         } else {
             $score += $weights['distance'] * 50;
         }
-        
+
         // Order value factor
         if ($method === 'pickup' && $factors['is_high_value']) {
             $score += $weights['order_value'] * 100;
@@ -349,14 +352,14 @@ class ReturnDecisionEngine
         } else {
             $score += $weights['order_value'] * 50;
         }
-        
+
         // Customer preference factor
         if ($factors['customer_preferred'] && $factors['preferred_method'] === $method) {
             $score += $weights['customer_preference'] * 100;
         } else {
             $score += $weights['customer_preference'] * 30;
         }
-        
+
         // Item count factor
         if ($method === 'pickup' && $factors['item_count'] > 2) {
             $score += $weights['item_count'] * 100;
@@ -365,10 +368,10 @@ class ReturnDecisionEngine
         } else {
             $score += $weights['item_count'] * 50;
         }
-        
+
         return $score;
     }
-    
+
     /**
      * Build decision
      */
@@ -380,26 +383,26 @@ class ReturnDecisionEngine
             'estimated_time' => $this->getEstimatedTime($method),
             'cost' => $this->calculateCost($method, $settings, $factors),
         ];
-        
+
         // Add method-specific details
         if ($method === 'drop_off') {
             $decision['locations'] = $settings['locations'] ?? [];
         }
-        
+
         if ($method === 'pickup') {
             $decision['pickup_date'] = $this->calculatePickupDate();
         }
-        
+
         return $decision;
     }
-    
+
     /**
      * Get reason for method selection
      */
     private function getReason(string $method, array $factors): string
     {
         return match($method) {
-            'pickup' => $factors['is_high_value'] 
+            'pickup' => $factors['is_high_value']
                 ? 'Đơn hàng giá trị cao, hỗ trợ lấy hàng tận nơi miễn phí'
                 : 'Phương án lấy hàng tận nơi',
             'drop_off' => $factors['is_near_drop_off']
@@ -409,7 +412,7 @@ class ReturnDecisionEngine
             default => 'Phương án đổi trả',
         };
     }
-    
+
     /**
      * Get estimated time
      */
@@ -422,7 +425,7 @@ class ReturnDecisionEngine
             default => '3-5 ngày',
         };
     }
-    
+
     /**
      * Calculate cost
      */
@@ -431,18 +434,18 @@ class ReturnDecisionEngine
         if ($method === 'self_ship') {
             return 0; // Customer pays
         }
-        
+
         if ($method === 'pickup') {
             return $factors['is_high_value'] ? 0 : ($settings['fee_for_low_value'] ?? 30000);
         }
-        
+
         if ($method === 'drop_off') {
             return 0; // Free
         }
-        
+
         return 0;
     }
-    
+
     /**
      * Check if address is near drop-off location
      */
@@ -450,16 +453,16 @@ class ReturnDecisionEngine
     {
         // Simple keyword check - in production, use geocoding API
         $nearbyKeywords = ['Quận 1', 'Quận 3', 'Bình Thạnh', 'Phú Nhuận'];
-        
+
         foreach ($nearbyKeywords as $keyword) {
             if (stripos($address, $keyword) !== false) {
                 return true;
             }
         }
-        
+
         return false;
     }
-    
+
     /**
      * Calculate pickup date
      */
@@ -467,15 +470,15 @@ class ReturnDecisionEngine
     {
         $date = new \DateTime();
         $date->modify('+1 day');
-        
+
         // Skip weekends
         while ($date->format('N') >= 6) {
             $date->modify('+1 day');
         }
-        
+
         return $date->format('Y-m-d');
     }
-    
+
     /**
      * Create from config
      */
@@ -507,6 +510,7 @@ git commit -m "feat: add ReturnDecisionEngine for automated return processing"
 ### Task 4: Return Automation Service
 
 **Files:**
+
 - Create: `app/Services/ReturnAutomationService.php`
 
 - [ ] **Step 1: Create automation service**
@@ -521,13 +525,13 @@ class ReturnAutomationService
 {
     private ReturnDecisionEngine $decisionEngine;
     private JTExpressService $jtService;
-    
+
     public function __construct()
     {
         $this->decisionEngine = ReturnDecisionEngine::fromConfig();
         $this->jtService = JTExpressService::fromConfig();
     }
-    
+
     /**
      * Process return request automatically
      */
@@ -538,22 +542,22 @@ class ReturnAutomationService
         if (!$eligibility['eligible']) {
             return ['success' => false, 'message' => $eligibility['reason']];
         }
-        
+
         // 2. Auto-approve if eligible
         $autoApproved = $this->shouldAutoApprove($returnRequest);
-        
+
         // 3. Decide return method
         $decision = $this->decisionEngine->decide($returnRequest);
-        
+
         // 4. Execute return method
         $result = $this->executeReturnMethod($decision, $returnRequest);
-        
+
         // 5. Save to database
         $returnId = $this->saveReturn($returnRequest, $decision, $autoApproved);
-        
+
         // 6. Send notifications
         $this->sendNotifications($returnRequest, $decision, $autoApproved);
-        
+
         return [
             'success' => true,
             'return_id' => $returnId,
@@ -566,51 +570,51 @@ class ReturnAutomationService
             'drop_off_locations' => $decision['locations'] ?? [],
         ];
     }
-    
+
     /**
      * Check return eligibility
      */
     private function checkEligibility(array $request): array
     {
         $config = require __DIR__ . '/../../config/return_policy.php';
-        
+
         // Check order status
         if (!in_array($request['order_status'], $config['eligible_statuses'])) {
             return ['eligible' => false, 'reason' => 'Đơn hàng không đủ điều kiện đổi trả'];
         }
-        
+
         // Check return window
         $orderDate = new \DateTime($request['order_date']);
         $now = new \DateTime();
         $diff = $now->diff($orderDate)->days;
-        
+
         if ($diff > $config['return_window_days']) {
             return ['eligible' => false, 'reason' => 'Đã quá thời hạn đổi trả (' . $config['return_window_days'] . ' ngày)'];
         }
-        
+
         // Check payment method
         if (!in_array($request['payment_method'], $config['eligible_payment_methods'])) {
             return ['eligible' => false, 'reason' => 'Phương thức thanh toán không hỗ trợ đổi trả'];
         }
-        
+
         return ['eligible' => true, 'reason' => ''];
     }
-    
+
     /**
      * Check if should auto-approve
      */
     private function shouldAutoApprove(array $request): bool
     {
         $config = require __DIR__ . '/../../config/return_policy.php';
-        
+
         if (!$config['auto_approve']['enabled']) {
             return false;
         }
-        
+
         return $request['order_total'] <= $config['auto_approve']['max_amount']
             && $request['item_count'] <= $config['auto_approve']['max_items'];
     }
-    
+
     /**
      * Execute return method
      */
@@ -619,18 +623,18 @@ class ReturnAutomationService
         switch ($decision['method']) {
             case 'pickup':
                 return $this->schedulePickup($request, $decision);
-            
+
             case 'drop_off':
                 return $this->provideDropOffInfo($decision);
-            
+
             case 'self_ship':
                 return $this->provideSelfShipInfo($request);
-            
+
             default:
                 return ['success' => false, 'message' => 'Invalid return method'];
         }
     }
-    
+
     /**
      * Schedule pickup with J&T
      */
@@ -648,7 +652,7 @@ class ReturnAutomationService
                 'items' => [['name' => 'Return item', 'quantity' => 1]],
                 'service_type' => 'standard',
             ]);
-            
+
             return [
                 'success' => true,
                 'tracking_number' => $result['tracking_number'],
@@ -658,7 +662,7 @@ class ReturnAutomationService
             return ['success' => false, 'message' => 'Failed to schedule pickup: ' . $e->getMessage()];
         }
     }
-    
+
     /**
      * Provide drop-off info
      */
@@ -669,7 +673,7 @@ class ReturnAutomationService
             'locations' => $decision['locations'],
         ];
     }
-    
+
     /**
      * Provide self-ship info
      */
@@ -681,22 +685,22 @@ class ReturnAutomationService
             'instructions' => 'Vui lòng gửi hàng đến địa chỉ trên và ghi mã đơn hàng #' . $request['order_id'],
         ];
     }
-    
+
     /**
      * Save return to database
      */
     private function saveReturn(array $request, array $decision, bool $autoApproved): int
     {
         $db = \Database::getInstance()->getConnection();
-        
+
         $stmt = $db->prepare("
             INSERT INTO doi_tra (ma_don_hang, ma_nguoi_dung, ly_do, loai, return_method, trang_thai, auto_approved, decision_factors)
             VALUES (?, ?, ?, 'return', ?, ?, ?, ?)
         ");
-        
+
         $status = $autoApproved ? 'approved' : 'pending';
         $factors = json_encode($decision);
-        
+
         $stmt->execute([
             $request['order_id'],
             $request['user_id'],
@@ -706,28 +710,28 @@ class ReturnAutomationService
             $autoApproved ? 1 : 0,
             $factors,
         ]);
-        
+
         return (int)$db->lastInsertId();
     }
-    
+
     /**
      * Send notifications
      */
     private function sendNotifications(array $request, array $decision, bool $autoApproved): void
     {
         $emailService = new EmailService();
-        
-        $subject = $autoApproved 
+
+        $subject = $autoApproved
             ? 'Yêu cầu đổi trả đã được chấp nhận'
             : 'Yêu cầu đổi trả đang được xem xét';
-        
+
         // Build email content based on method
         $content = $this->buildReturnEmailContent($request, $decision, $autoApproved);
-        
+
         // Send email (implementation depends on email service)
         // $emailService->send($request['email'], $subject, $content);
     }
-    
+
     /**
      * Build return email content
      */
@@ -739,7 +743,7 @@ class ReturnAutomationService
             'self_ship' => 'Vui lòng tự gửi hàng trả đến địa chỉ của chúng tôi',
             default => '',
         };
-        
+
         return "
             <h2>Yêu cầu đổi trả đơn hàng #{$request['order_id']}</h2>
             <p><strong>Phương thức:</strong> {$methodText}</p>
@@ -748,7 +752,7 @@ class ReturnAutomationService
             <p><strong>Lý do:</strong> {$decision['reason']}</p>
         ";
     }
-    
+
     /**
      * Create from config
      */
@@ -771,6 +775,7 @@ git commit -m "feat: add ReturnAutomationService for automated return processing
 ### Task 5: Return API Endpoint
 
 **Files:**
+
 - Create: `api/return/request.php`
 
 - [ ] **Step 1: Create return API**
@@ -818,7 +823,7 @@ foreach ($required as $field) {
 
 try {
     $service = ReturnAutomationService::fromConfig();
-    
+
     $request = [
         'order_id' => $data['order_id'],
         'user_id' => $_SESSION['USER'],
@@ -833,11 +838,11 @@ try {
         'address' => $data['address'] ?? '',
         'email' => $data['email'] ?? '',
     ];
-    
+
     $result = $service->processReturn($request);
-    
+
     echo json_encode($result);
-    
+
 } catch (\Exception $e) {
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'Internal server error']);
@@ -887,9 +892,9 @@ curl -X POST https://lqashop.com/api/return/request \
 
 ## Success Metrics
 
-| Metric | Before | Target |
-|--------|--------|--------|
-| Manual Processing | 100% | 20% |
+| Metric                 | Before | Target |
+| ---------------------- | ------ | ------ |
+| Manual Processing      | 100%   | 20%    |
 | Return Processing Time | 7 days | 3 days |
-| Customer Satisfaction | 70% | 90% |
-| Return Errors | 15% | 5% |
+| Customer Satisfaction  | 70%    | 90%    |
+| Return Errors          | 15%    | 5%     |

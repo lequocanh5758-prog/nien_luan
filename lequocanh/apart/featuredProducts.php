@@ -1,12 +1,12 @@
 <?php
 
-require_once __DIR__ . '/../administrator/elements_LQA/mod/FeaturedProductsCls.php';
+require_once __DIR__ . '/../app/autoload.php';
 
-$featuredMgr = new FeaturedProducts();
+use App\Models\Product;
 
-$featuredProducts = $featuredMgr->getFeaturedProducts(16);
-$newProducts = $featuredMgr->getNewProducts(16);
-$saleProducts = $featuredMgr->getSaleProducts(16);
+$featuredProducts = Product::getFeaturedProducts(16);
+$newProducts = Product::getNewProducts(16);
+$saleProducts = Product::getSaleProducts(16);
 
 function formatPrice($price) {
     return number_format($price, 0, ',', '.') . ' đ';

@@ -48,9 +48,12 @@ class Database implements DatabaseInterface
     foreach ($connectionConfigs as $connConfig) {
       try {
         $dsn = "mysql:host={$connConfig['host']};port={$connConfig['port']};dbname=$dbname;charset=utf8mb4";
-        $this->conn = new PDO($dsn, $connConfig['user'], $connConfig['pass']);
-        $this->conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        $this->conn->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+        $this->conn = new PDO($dsn, $connConfig['user'], $connConfig['pass'], [
+            PDO::ATTR_PERSISTENT => true,  // Enable connection pooling
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            PDO::ATTR_EMULATE_PREPARES => false
+        ]);
         
         // Set charset to UTF-8 for proper Vietnamese character display
         $this->conn->exec("SET NAMES utf8mb4");

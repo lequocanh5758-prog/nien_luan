@@ -12,19 +12,20 @@
 
 ## File Structure
 
-| File | Responsibility |
-|------|----------------|
-| `config/jtexpress.php` | J&T configuration |
-| `app/Services/JTExpressService.php` | API integration |
-| `app/Controllers/JTWebhookController.php` | Webhook handler |
-| `api/jtexpress/webhook.php` | Webhook endpoint |
-| `database/migrations/add_jt_tracking.php` | DB schema |
+| File                                      | Responsibility    |
+| ----------------------------------------- | ----------------- |
+| `config/jtexpress.php`                    | J&T configuration |
+| `app/Services/JTExpressService.php`       | API integration   |
+| `app/Controllers/JTWebhookController.php` | Webhook handler   |
+| `api/jtexpress/webhook.php`               | Webhook endpoint  |
+| `database/migrations/add_jt_tracking.php` | DB schema         |
 
 ---
 
 ### Task 1: J&T API Registration
 
 **Files:**
+
 - Create: `config/jtexpress.php`
 - Modify: `.env`
 
@@ -46,7 +47,7 @@ return [
     'shop_id' => $_ENV['JT_SHOP_ID'] ?? '',
     'webhook_secret' => $_ENV['JT_WEBHOOK_SECRET'] ?? '',
     'webhook_url' => '/api/jtexpress/webhook',
-    
+
     // Default sender info
     'sender' => [
         'name' => 'LQA Shop',
@@ -56,7 +57,7 @@ return [
         'district' => 'Quận 1',
         'city' => 'TP.HCM',
     ],
-    
+
     // Service types
     'services' => [
         'standard' => ['name' => 'Tiêu chuẩn', 'days' => '3-5'],
@@ -89,6 +90,7 @@ git commit -m "feat: add J&T Express configuration"
 ### Task 2: Database Migration
 
 **Files:**
+
 - Create: `database/migrations/2026_05_19_add_jt_tracking.php`
 
 - [ ] **Step 1: Create migration**
@@ -101,16 +103,16 @@ class AddJTTracking
     public function up()
     {
         $db = \Database::getInstance()->getConnection();
-        
+
         // Add tracking fields to don_hang table
         $db->exec("
-            ALTER TABLE don_hang 
+            ALTER TABLE don_hang
             ADD COLUMN tracking_number VARCHAR(50) NULL AFTER order_notes,
             ADD COLUMN shipping_carrier VARCHAR(50) DEFAULT 'jtexpress' AFTER tracking_number,
             ADD COLUMN shipping_label_url VARCHAR(500) NULL AFTER shipping_carrier,
             ADD COLUMN estimated_delivery DATE NULL AFTER shipping_label_url
         ");
-        
+
         // Create tracking events table
         $db->exec("
             CREATE TABLE IF NOT EXISTS tracking_events (
@@ -127,7 +129,7 @@ class AddJTTracking
                 INDEX idx_event_time (event_time)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         ");
-        
+
         // Create webhook logs table
         $db->exec("
             CREATE TABLE IF NOT EXISTS webhook_logs (
@@ -142,11 +144,11 @@ class AddJTTracking
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         ");
     }
-    
+
     public function down()
     {
         $db = \Database::getInstance()->getConnection();
-        
+
         $db->exec("ALTER TABLE don_hang DROP COLUMN tracking_number");
         $db->exec("ALTER TABLE don_hang DROP COLUMN shipping_carrier");
         $db->exec("ALTER TABLE don_hang DROP COLUMN shipping_label_url");
@@ -175,6 +177,7 @@ git commit -m "feat: add J&T tracking database schema"
 ### Task 3: J&T Express Service
 
 **Files:**
+
 - Create: `app/Services/JTExpressService.php`
 - Test: `tests/Unit/JTExpressServiceTest.php`
 
@@ -193,16 +196,16 @@ class JTExpressServiceTest extends TestCase
     public function testGetStatusIcon()
     {
         $service = new JTExpressService([]);
-        
+
         $this->assertEquals('📦', $service->getStatusIcon('PICKUP'));
         $this->assertEquals('🚚', $service->getStatusIcon('IN_TRANSIT'));
         $this->assertEquals('✅', $service->getStatusIcon('DELIVERED'));
     }
-    
+
     public function testFormatTrackingTimeline()
     {
         $service = new JTExpressService([]);
-        
+
         $data = [
             'details' => [
                 [
@@ -213,7 +216,7 @@ class JTExpressServiceTest extends TestCase
                 ],
             ]
         ];
-        
+
         $timeline = $service->formatTrackingTimeline($data);
         $this->assertCount(1, $timeline);
         $this->assertEquals('📦', $timeline[0]['icon']);
@@ -243,7 +246,7 @@ class JTExpressService
     private string $apiKey;
     private string $apiSecret;
     private string $shopId;
-    
+
     public function __construct(array $config)
     {
         $this->apiUrl = $config['api_url'] ?? 'https://api.jtexpress.vn';
@@ -251,7 +254,7 @@ class JTExpressService
         $this->apiSecret = $config['api_secret'] ?? '';
         $this->shopId = $config['shop_id'] ?? '';
     }
-    
+
     /**
      * Create shipping order
      */
@@ -274,43 +277,43 @@ class JTExpressService
             'cod_amount' => $orderData['cod_amount'] ?? 0,
             'insurance_amount' => $orderData['insurance_amount'] ?? 0,
         ];
-        
+
         $response = $this->apiCall('POST', '/api/order/create', $payload);
-        
+
         return [
             'tracking_number' => $response['tracking_no'] ?? '',
             'label_url' => $response['label_url'] ?? '',
             'estimated_delivery' => $response['estimated_delivery'] ?? '',
         ];
     }
-    
+
     /**
      * Track order
      */
     public function trackOrder(string $trackingNumber): array
     {
         $response = $this->apiCall('GET', "/api/tracking?tracking_no={$trackingNumber}");
-        
+
         return $response;
     }
-    
+
     /**
      * Get tracking timeline
      */
     public function getTrackingTimeline(string $trackingNumber): array
     {
         $data = $this->trackOrder($trackingNumber);
-        
+
         return $this->formatTrackingTimeline($data);
     }
-    
+
     /**
      * Format tracking timeline
      */
     public function formatTrackingTimeline(array $data): array
     {
         $timeline = [];
-        
+
         foreach (($data['details'] ?? []) as $detail) {
             $timeline[] = [
                 'time' => $detail['updateTime'],
@@ -320,10 +323,10 @@ class JTExpressService
                 'completed' => $this->isCompletedStatus($detail['statusCode']),
             ];
         }
-        
+
         return $timeline;
     }
-    
+
     /**
      * Get status icon
      */
@@ -339,7 +342,7 @@ class JTExpressService
             default => '📋',
         };
     }
-    
+
     /**
      * Check if status is completed
      */
@@ -347,7 +350,7 @@ class JTExpressService
     {
         return in_array($statusCode, ['PICKUP', 'IN_TRANSIT', 'OUT_FOR_DELIVERY', 'DELIVERED']);
     }
-    
+
     /**
      * Cancel order
      */
@@ -362,40 +365,40 @@ class JTExpressService
             return false;
         }
     }
-    
+
     /**
      * Make API call
      */
     private function apiCall(string $method, string $endpoint, array $data = []): array
     {
         $url = $this->apiUrl . $endpoint;
-        
+
         $headers = [
             'Content-Type: application/json',
             'API-Key: ' . $this->apiKey,
             'API-Secret: ' . $this->apiSecret,
         ];
-        
+
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-        
+
         if ($method === 'POST') {
             curl_setopt($ch, CURLOPT_POST, true);
             curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
         }
-        
+
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
-        
+
         if ($httpCode !== 200) {
             throw new \RuntimeException("J&T API error: HTTP {$httpCode}");
         }
-        
+
         return json_decode($response, true);
     }
-    
+
     /**
      * Create from config
      */
@@ -427,6 +430,7 @@ git commit -m "feat: add J&T Express service for shipping integration"
 ### Task 4: Webhook Handler
 
 **Files:**
+
 - Create: `api/jtexpress/webhook.php`
 - Create: `app/Controllers/JTWebhookController.php`
 
@@ -461,19 +465,19 @@ class JTWebhookController
     {
         $payload = file_get_contents('php://input');
         $data = json_decode($payload, true);
-        
+
         if (!$data) {
             return ['success' => false, 'message' => 'Invalid payload'];
         }
-        
+
         // Log webhook
         $this->logWebhook($payload);
-        
+
         // Verify signature
         if (!$this->verifySignature($data)) {
             return ['success' => false, 'message' => 'Invalid signature'];
         }
-        
+
         // Process webhook
         try {
             $this->processWebhook($data);
@@ -482,7 +486,7 @@ class JTWebhookController
             return ['success' => false, 'message' => $e->getMessage()];
         }
     }
-    
+
     private function processWebhook(array $data): void
     {
         $trackingNumber = $data['tracking_no'] ?? '';
@@ -490,75 +494,75 @@ class JTWebhookController
         $statusDesc = $data['status_desc'] ?? '';
         $location = $data['location'] ?? '';
         $eventTime = $data['event_time'] ?? date('Y-m-d H:i:s');
-        
+
         if (empty($trackingNumber)) {
             throw new \InvalidArgumentException('Missing tracking number');
         }
-        
+
         // Save tracking event
         $this->saveTrackingEvent($trackingNumber, $statusCode, $statusDesc, $location, $eventTime);
-        
+
         // Update order status
         $this->updateOrderStatus($trackingNumber, $statusCode);
-        
+
         // Send notification
         $this->sendNotification($trackingNumber, $statusCode, $statusDesc);
     }
-    
+
     private function saveTrackingEvent(string $trackingNumber, string $statusCode, string $statusDesc, string $location, string $eventTime): void
     {
         $db = \Database::getInstance()->getConnection();
-        
+
         // Get order ID
         $stmt = $db->prepare("SELECT id FROM don_hang WHERE tracking_number = ?");
         $stmt->execute([$trackingNumber]);
         $order = $stmt->fetch(\PDO::FETCH_ASSOC);
-        
+
         if (!$order) {
             return;
         }
-        
+
         $stmt = $db->prepare("
             INSERT INTO tracking_events (order_id, tracking_number, status_code, status_desc, location, event_time)
             VALUES (?, ?, ?, ?, ?, ?)
         ");
         $stmt->execute([$order['id'], $trackingNumber, $statusCode, $statusDesc, $location, $eventTime]);
     }
-    
+
     private function updateOrderStatus(string $trackingNumber, string $statusCode): void
     {
         $db = \Database::getInstance()->getConnection();
-        
+
         $newStatus = match($statusCode) {
             'PICKUP' => 'approved',
             'IN_TRANSIT' => 'delivered',
             'DELIVERED' => 'completed',
             default => null,
         };
-        
+
         if ($newStatus) {
             $stmt = $db->prepare("UPDATE don_hang SET trang_thai = ? WHERE tracking_number = ?");
             $stmt->execute([$newStatus, $trackingNumber]);
         }
     }
-    
+
     private function sendNotification(string $trackingNumber, string $statusCode, string $statusDesc): void
     {
         // Get order and user info
         $db = \Database::getInstance()->getConnection();
         $stmt = $db->prepare("
-            SELECT dh.*, u.email, u.hoten 
-            FROM don_hang dh 
-            JOIN users u ON dh.ma_nguoi_dung = u.username 
+            SELECT dh.*, u.email, u.hoten
+            FROM don_hang dh
+            JOIN users u ON dh.ma_nguoi_dung = u.username
             WHERE dh.tracking_number = ?
         ");
         $stmt->execute([$trackingNumber]);
         $order = $stmt->fetch(\PDO::FETCH_ASSOC);
-        
+
         if (!$order) {
             return;
         }
-        
+
         // Send email notification
         $emailService = new \App\Services\EmailService();
         $emailService->sendOrderStatusUpdate(
@@ -568,22 +572,22 @@ class JTWebhookController
             $statusCode
         );
     }
-    
+
     private function verifySignature(array $data): bool
     {
         $config = require __DIR__ . '/../../config/jtexpress.php';
         $secret = $config['webhook_secret'] ?? '';
-        
+
         if (empty($secret)) {
             return true; // Skip verification if no secret configured
         }
-        
+
         $signature = $data['signature'] ?? '';
         $expectedSignature = hash_hmac('sha256', json_encode($data), $secret);
-        
+
         return $signature === $expectedSignature;
     }
-    
+
     private function logWebhook(string $payload): void
     {
         $db = \Database::getInstance()->getConnection();
@@ -608,6 +612,7 @@ git commit -m "feat: add J&T Express webhook handler"
 ### Task 5: Tracking Page
 
 **Files:**
+
 - Modify: `administrator/elements_LQA/mgiohang/order_tracking.php`
 
 - [ ] **Step 1: Update order_tracking.php**
@@ -687,8 +692,8 @@ curl -X POST https://lqashop.com/api/jtexpress/webhook \
 
 ## Success Metrics
 
-| Metric | Before | Target |
-|--------|--------|--------|
-| Customer Inquiries | 50/day | 20/day |
-| Delivery Transparency | 0% | 100% |
-| Customer Satisfaction | 70% | 90% |
+| Metric                | Before | Target |
+| --------------------- | ------ | ------ |
+| Customer Inquiries    | 50/day | 20/day |
+| Delivery Transparency | 0%     | 100%   |
+| Customer Satisfaction | 70%    | 90%    |

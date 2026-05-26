@@ -1,16 +1,16 @@
 <?php
 
-require_once __DIR__ . '/../administrator/elements_LQA/mod/hanghoaCls.php';
-require_once __DIR__ . '/../administrator/elements_LQA/mod/FeaturedProductsCls.php';
+require_once __DIR__ . '/../app/autoload.php';
 require_once __DIR__ . '/../administrator/elements_LQA/mod/BannerManager.php';
 
-$hanghoa = new hanghoa();
-$featuredProducts = new FeaturedProducts();
+use App\Models\Product;
+use App\Models\ProductImage;
+
 $bannerManager = new BannerManager();
 
-$featuredProductsList = $featuredProducts->getFeaturedProducts(3);
-$newProductsList = $featuredProducts->getNewProducts(3);
-$saleProductsList = $featuredProducts->getSaleProducts(3);
+$featuredProductsList = Product::getFeaturedProducts(3);
+$newProductsList = Product::getNewProducts(3);
+$saleProductsList = Product::getSaleProducts(3);
 $activeBanners = $bannerManager->getActiveBanners();
 
 $currentTime = time();
@@ -22,10 +22,10 @@ $carouselItems = [];
 if ($timeSlot == 0) {
 
     foreach ($featuredProductsList as $product) {
-        $hinhanh = $hanghoa->GetHinhAnhById($product->hinhanh);
-        $imageUrl = ($hinhanh && !empty($hinhanh->duong_dan))
-            ? './administrator/elements_LQA/mhanghoa/displayImage.php?id=' . $product->hinhanh
-            : './administrator/elements_LQA/img_LQA/no-image.png';
+        $hinhanh = ProductImage::getById((int)$product->hinhanh);
+        $imageUrl = ($hinhanh && (!empty($hinhanh->duong_dan) || !empty($hinhanh->du_lieu)))
+            ? '/lequocanh/administrator/elements_LQA/mhanghoa/displayImage.php?id=' . $product->hinhanh
+            : '/lequocanh/administrator/elements_LQA/img_LQA/no-image.png';
 
         $carouselItems[] = [
             'type' => 'product',
@@ -43,10 +43,10 @@ if ($timeSlot == 0) {
     }
 
     foreach ($newProductsList as $product) {
-        $hinhanh = $hanghoa->GetHinhAnhById($product->hinhanh);
-        $imageUrl = ($hinhanh && !empty($hinhanh->duong_dan))
-            ? './administrator/elements_LQA/mhanghoa/displayImage.php?id=' . $product->hinhanh
-            : './administrator/elements_LQA/img_LQA/no-image.png';
+        $hinhanh = ProductImage::getById((int)$product->hinhanh);
+        $imageUrl = ($hinhanh && (!empty($hinhanh->duong_dan) || !empty($hinhanh->du_lieu)))
+            ? '/lequocanh/administrator/elements_LQA/mhanghoa/displayImage.php?id=' . $product->hinhanh
+            : '/lequocanh/administrator/elements_LQA/img_LQA/no-image.png';
 
         $carouselItems[] = [
             'type' => 'product',
@@ -64,10 +64,10 @@ if ($timeSlot == 0) {
     }
 
     foreach ($saleProductsList as $product) {
-        $hinhanh = $hanghoa->GetHinhAnhById($product->hinhanh);
-        $imageUrl = ($hinhanh && !empty($hinhanh->duong_dan))
-            ? './administrator/elements_LQA/mhanghoa/displayImage.php?id=' . $product->hinhanh
-            : './administrator/elements_LQA/img_LQA/no-image.png';
+        $hinhanh = ProductImage::getById((int)$product->hinhanh);
+        $imageUrl = ($hinhanh && (!empty($hinhanh->duong_dan) || !empty($hinhanh->du_lieu)))
+            ? '/lequocanh/administrator/elements_LQA/mhanghoa/displayImage.php?id=' . $product->hinhanh
+            : '/lequocanh/administrator/elements_LQA/img_LQA/no-image.png';
 
         $carouselItems[] = [
             'type' => 'product',
@@ -98,10 +98,10 @@ if ($timeSlot == 0) {
 } elseif ($timeSlot == 1) {
 
     foreach ($newProductsList as $product) {
-        $hinhanh = $hanghoa->GetHinhAnhById($product->hinhanh);
-        $imageUrl = ($hinhanh && !empty($hinhanh->duong_dan))
-            ? './administrator/elements_LQA/mhanghoa/displayImage.php?id=' . $product->hinhanh
-            : './administrator/elements_LQA/img_LQA/no-image.png';
+        $hinhanh = ProductImage::getById((int)$product->hinhanh);
+        $imageUrl = ($hinhanh && (!empty($hinhanh->duong_dan) || !empty($hinhanh->du_lieu)))
+            ? '/lequocanh/administrator/elements_LQA/mhanghoa/displayImage.php?id=' . $product->hinhanh
+            : '/lequocanh/administrator/elements_LQA/img_LQA/no-image.png';
 
         $carouselItems[] = [
             'type' => 'product',
@@ -119,10 +119,10 @@ if ($timeSlot == 0) {
     }
 
     foreach ($featuredProductsList as $product) {
-        $hinhanh = $hanghoa->GetHinhAnhById($product->hinhanh);
-        $imageUrl = ($hinhanh && !empty($hinhanh->duong_dan))
-            ? './administrator/elements_LQA/mhanghoa/displayImage.php?id=' . $product->hinhanh
-            : './administrator/elements_LQA/img_LQA/no-image.png';
+        $hinhanh = ProductImage::getById((int)$product->hinhanh);
+        $imageUrl = ($hinhanh && (!empty($hinhanh->duong_dan) || !empty($hinhanh->du_lieu)))
+            ? '/lequocanh/administrator/elements_LQA/mhanghoa/displayImage.php?id=' . $product->hinhanh
+            : '/lequocanh/administrator/elements_LQA/img_LQA/no-image.png';
 
         $carouselItems[] = [
             'type' => 'product',
@@ -140,10 +140,10 @@ if ($timeSlot == 0) {
     }
 
     foreach ($saleProductsList as $product) {
-        $hinhanh = $hanghoa->GetHinhAnhById($product->hinhanh);
-        $imageUrl = ($hinhanh && !empty($hinhanh->duong_dan))
-            ? './administrator/elements_LQA/mhanghoa/displayImage.php?id=' . $product->hinhanh
-            : './administrator/elements_LQA/img_LQA/no-image.png';
+        $hinhanh = ProductImage::getById((int)$product->hinhanh);
+        $imageUrl = ($hinhanh && (!empty($hinhanh->duong_dan) || !empty($hinhanh->du_lieu)))
+            ? '/lequocanh/administrator/elements_LQA/mhanghoa/displayImage.php?id=' . $product->hinhanh
+            : '/lequocanh/administrator/elements_LQA/img_LQA/no-image.png';
 
         $carouselItems[] = [
             'type' => 'product',
@@ -174,10 +174,10 @@ if ($timeSlot == 0) {
 } elseif ($timeSlot == 2) {
 
     foreach ($saleProductsList as $product) {
-        $hinhanh = $hanghoa->GetHinhAnhById($product->hinhanh);
-        $imageUrl = ($hinhanh && !empty($hinhanh->duong_dan))
-            ? './administrator/elements_LQA/mhanghoa/displayImage.php?id=' . $product->hinhanh
-            : './administrator/elements_LQA/img_LQA/no-image.png';
+        $hinhanh = ProductImage::getById((int)$product->hinhanh);
+        $imageUrl = ($hinhanh && (!empty($hinhanh->duong_dan) || !empty($hinhanh->du_lieu)))
+            ? '/lequocanh/administrator/elements_LQA/mhanghoa/displayImage.php?id=' . $product->hinhanh
+            : '/lequocanh/administrator/elements_LQA/img_LQA/no-image.png';
 
         $carouselItems[] = [
             'type' => 'product',
@@ -195,10 +195,10 @@ if ($timeSlot == 0) {
     }
 
     foreach ($featuredProductsList as $product) {
-        $hinhanh = $hanghoa->GetHinhAnhById($product->hinhanh);
-        $imageUrl = ($hinhanh && !empty($hinhanh->duong_dan))
-            ? './administrator/elements_LQA/mhanghoa/displayImage.php?id=' . $product->hinhanh
-            : './administrator/elements_LQA/img_LQA/no-image.png';
+        $hinhanh = ProductImage::getById((int)$product->hinhanh);
+        $imageUrl = ($hinhanh && (!empty($hinhanh->duong_dan) || !empty($hinhanh->du_lieu)))
+            ? '/lequocanh/administrator/elements_LQA/mhanghoa/displayImage.php?id=' . $product->hinhanh
+            : '/lequocanh/administrator/elements_LQA/img_LQA/no-image.png';
 
         $carouselItems[] = [
             'type' => 'product',
@@ -216,10 +216,10 @@ if ($timeSlot == 0) {
     }
 
     foreach ($newProductsList as $product) {
-        $hinhanh = $hanghoa->GetHinhAnhById($product->hinhanh);
-        $imageUrl = ($hinhanh && !empty($hinhanh->duong_dan))
-            ? './administrator/elements_LQA/mhanghoa/displayImage.php?id=' . $product->hinhanh
-            : './administrator/elements_LQA/img_LQA/no-image.png';
+        $hinhanh = ProductImage::getById((int)$product->hinhanh);
+        $imageUrl = ($hinhanh && (!empty($hinhanh->duong_dan) || !empty($hinhanh->du_lieu)))
+            ? '/lequocanh/administrator/elements_LQA/mhanghoa/displayImage.php?id=' . $product->hinhanh
+            : '/lequocanh/administrator/elements_LQA/img_LQA/no-image.png';
 
         $carouselItems[] = [
             'type' => 'product',
@@ -262,10 +262,10 @@ if ($timeSlot == 0) {
     }
 
     foreach ($featuredProductsList as $product) {
-        $hinhanh = $hanghoa->GetHinhAnhById($product->hinhanh);
-        $imageUrl = ($hinhanh && !empty($hinhanh->duong_dan))
-            ? './administrator/elements_LQA/mhanghoa/displayImage.php?id=' . $product->hinhanh
-            : './administrator/elements_LQA/img_LQA/no-image.png';
+        $hinhanh = ProductImage::getById((int)$product->hinhanh);
+        $imageUrl = ($hinhanh && (!empty($hinhanh->duong_dan) || !empty($hinhanh->du_lieu)))
+            ? '/lequocanh/administrator/elements_LQA/mhanghoa/displayImage.php?id=' . $product->hinhanh
+            : '/lequocanh/administrator/elements_LQA/img_LQA/no-image.png';
 
         $carouselItems[] = [
             'type' => 'product',
@@ -283,10 +283,10 @@ if ($timeSlot == 0) {
     }
 
     foreach ($newProductsList as $product) {
-        $hinhanh = $hanghoa->GetHinhAnhById($product->hinhanh);
-        $imageUrl = ($hinhanh && !empty($hinhanh->duong_dan))
-            ? './administrator/elements_LQA/mhanghoa/displayImage.php?id=' . $product->hinhanh
-            : './administrator/elements_LQA/img_LQA/no-image.png';
+        $hinhanh = ProductImage::getById((int)$product->hinhanh);
+        $imageUrl = ($hinhanh && (!empty($hinhanh->duong_dan) || !empty($hinhanh->du_lieu)))
+            ? '/lequocanh/administrator/elements_LQA/mhanghoa/displayImage.php?id=' . $product->hinhanh
+            : '/lequocanh/administrator/elements_LQA/img_LQA/no-image.png';
 
         $carouselItems[] = [
             'type' => 'product',
@@ -304,10 +304,10 @@ if ($timeSlot == 0) {
     }
 
     foreach ($saleProductsList as $product) {
-        $hinhanh = $hanghoa->GetHinhAnhById($product->hinhanh);
-        $imageUrl = ($hinhanh && !empty($hinhanh->duong_dan))
-            ? './administrator/elements_LQA/mhanghoa/displayImage.php?id=' . $product->hinhanh
-            : './administrator/elements_LQA/img_LQA/no-image.png';
+        $hinhanh = ProductImage::getById((int)$product->hinhanh);
+        $imageUrl = ($hinhanh && (!empty($hinhanh->duong_dan) || !empty($hinhanh->du_lieu)))
+            ? '/lequocanh/administrator/elements_LQA/mhanghoa/displayImage.php?id=' . $product->hinhanh
+            : '/lequocanh/administrator/elements_LQA/img_LQA/no-image.png';
 
         $carouselItems[] = [
             'type' => 'product',
@@ -342,23 +342,23 @@ $carouselItems = array_slice($carouselItems, 0, 12);
         <?php foreach ($carouselItems as $index => $item): ?>
             <div class="carousel-item <?php echo $index === 0 ? 'active' : ''; ?>">
                 <?php if ($item['type'] === 'product'): ?>
-                    <!-- Sản phẩm -->
+                    <!-- San pham -->
                     <div
-                        style="background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); padding: 20px; border-radius: 10px; height: 400px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; position: relative;">
+                        style="background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); padding: 20px; border-radius: 10px; height: 400px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; position: relative; overflow: hidden;">
                         <a href="./index.php?reqHanghoa=<?php echo $item['id']; ?>"
                             style="text-decoration: none; color: inherit; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center;">
-                            <img src="<?php echo $item['image']; ?>" alt="<?php echo htmlspecialchars($item['title']); ?>"
-                                style="max-height: 250px; max-width: 100%; object-fit: contain; margin-bottom: 15px;">
-                            <h5 style="font-weight: bold; margin: 10px 0 5px; color: #333; text-align: center;">
+                            <img src="<?php echo $item['image']; ?>" alt="<?php echo htmlspecialchars($item['title']); ?>" loading="lazy"
+                                style="max-height: 200px; max-width: 100%; object-fit: contain; margin-bottom: 10px;">
+                            <h5 style="font-weight: bold; margin: 5px 0; color: #333; text-align: center; font-size: 16px;">
                                 <?php echo htmlspecialchars($item['title']); ?></h5>
 
                             <?php if ($item['discount_price'] && $item['discount_price'] < $item['price']): ?>
-                                <div>
-                                    <span class="text-danger fw-bold" style="font-size: 18px;">
+                                <div style="margin-top: 5px;">
+                                    <span class="text-danger fw-bold" style="font-size: 20px;">
                                         <?php echo number_format($item['discount_price'], 0, ',', '.') . ' ₫'; ?>
                                     </span>
                                     <br>
-                                    <small class="text-muted text-decoration-line-through">
+                                    <small class="text-muted text-decoration-line-through" style="font-size: 15px; display: block; margin-top: 4px;">
                                         <?php echo number_format($item['price'], 0, ',', '.') . ' ₫'; ?>
                                     </small>
                                 </div>
@@ -370,10 +370,10 @@ $carouselItems = array_slice($carouselItems, 0, 12);
                         </a>
                     </div>
                 <?php elseif ($item['type'] === 'banner'): ?>
-                    <!-- Banner quảng cáo -->
+                    <!-- Banner quang cao -->
                     <a href="<?php echo $item['link'] ?: '#'; ?>" style="display: block;">
                         <img src="<?php echo $item['image']; ?>" class="d-block w-100"
-                            alt="<?php echo htmlspecialchars($item['title']); ?>" style="max-height: 400px; object-fit: cover;">
+                            alt="<?php echo htmlspecialchars($item['title']); ?>" loading="lazy" style="max-height: 400px; object-fit: cover;">
                     </a>
                     <div class="carousel-caption d-none d-md-block">
                         <h5><?php echo htmlspecialchars($item['title']); ?></h5>

@@ -64,3 +64,39 @@ INSTALLATION_COMPLETE.txt
 *.backup
 *.backup_*
 *.bak
+
+# === Agent/Tool directories ===
+.adal/
+.agents/
+.claude/
+.codebuddy/
+.continue/
+.jcode/
+.kilocode/
+.kiro/
+.obsidian/
+.pi-lens/
+.pi/
+.planning/
+.playwright-mcp/
+.qoder/
+.rovodev/
+.trae/
+.until-done/
+.vibe/
+.windsurf/
+
+# === Cache (app-level) ===
+lequocanh/cache/
+
+# === Screenshots / temp images ===
+*.png
+!lequocanh/public_files/**/*.png
+!lequocanh/administrator/uploads/**/*.png
+
+# === Temp scripts ===
+_scan.ps1
+_scan_models.ps1
+get_schema.php
+skills-lock.json
+*.bak

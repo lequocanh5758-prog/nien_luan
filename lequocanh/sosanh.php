@@ -88,10 +88,10 @@ if (!empty($productIds)) {
     </noscript>
 
     <!-- Local CSS files - Critical first -->
-    <link rel="stylesheet" href="public_files/critical.css">
-    <link rel="stylesheet" href="public_files/mycss.css" media="print" onload="this.media='all'">
+    <link rel="stylesheet" href="/lequocanh/public_files/critical.css">
+    <link rel="stylesheet" href="/lequocanh/public_files/mycss.css" media="print" onload="this.media='all'">
     <noscript>
-        <link rel="stylesheet" href="public_files/mycss.css">
+        <link rel="stylesheet" href="/lequocanh/public_files/mycss.css">
     </noscript>
 
     <title>So sánh sản phẩm</title>
@@ -205,14 +205,14 @@ if (!empty($productIds)) {
                                 ?>
                             </button>
                             <ul class="dropdown-menu" aria-labelledby="userDropdown">
-                                <li><a class="dropdown-item" href="./administrator/elements_LQA/mUser/userProfile.php">
+                                <li><a class="dropdown-item" href="/lequocanh/administrator/elements_LQA/mUser/userProfile.php">
                                         <i class="fas fa-user-circle me-2"></i>Thông tin tài khoản
                                     </a></li>
                                 <li>
                                     <hr class="dropdown-divider">
                                 </li>
                                 <li><a class="dropdown-item"
-                                        href="./administrator/elements_LQA/mUser/userAct.php?reqact=userlogout">
+                                        href="/lequocanh/administrator/elements_LQA/mUser/userAct.php?reqact=userlogout">
                                         <i class="fas fa-sign-out-alt me-2"></i>Đăng xuất
                                     </a></li>
                             </ul>
@@ -225,20 +225,20 @@ if (!empty($productIds)) {
                                 Quản trị viên
                             </button>
                             <ul class="dropdown-menu" aria-labelledby="adminDropdown">
-                                <li><a class="dropdown-item" href="./administrator/index.php">
+                                <li><a class="dropdown-item" href="/lequocanh/administrator/index.php">
                                         <i class="fas fa-tachometer-alt me-2"></i>Bảng điều khiển
                                     </a></li>
                                 <li>
                                     <hr class="dropdown-divider">
                                 </li>
                                 <li><a class="dropdown-item"
-                                        href="./administrator/elements_LQA/mUser/userAct.php?reqact=userlogout">
+                                        href="/lequocanh/administrator/elements_LQA/mUser/userAct.php?reqact=userlogout">
                                         <i class="fas fa-sign-out-alt me-2"></i>Đăng xuất
                                     </a></li>
                             </ul>
                         </div>
                     <?php else: ?>
-                        <a href="./administrator/userLogin.php" class="btn btn-light me-2">
+                        <a href="/lequocanh/administrator/userLogin.php" class="btn btn-light me-2">
                             <i class="fas fa-user me-2"></i>
                             Đăng nhập
                         </a>
@@ -280,12 +280,12 @@ if (!empty($productIds)) {
                                         <td>
                                             <?php
                                             $hinhanh = $hanghoa->GetHinhAnhById($product->hinhanh);
-                                            if ($hinhanh && !empty($hinhanh->duong_dan)):
+                                            if ($hinhanh && (!empty($hinhanh->duong_dan) || !empty($hinhanh->du_lieu))):
                                             ?>
-                                                <img src="./administrator/elements_LQA/mhanghoa/displayImage.php?id=<?php echo $product->hinhanh; ?>"
+                                                <img src="/lequocanh/administrator/elements_LQA/mhanghoa/displayImage.php?id=<?php echo $product->hinhanh; ?>"
                                                     class="product-image" alt="<?php echo htmlspecialchars($product->tenhanghoa); ?>">
                                             <?php else: ?>
-                                                <img src="./administrator/elements_LQA/img_LQA/no-image.png"
+                                                <img src="/lequocanh/administrator/elements_LQA/img_LQA/no-image.png"
                                                     class="product-image" alt="Không có hình ảnh">
                                             <?php endif; ?>
                                         </td>
@@ -343,7 +343,7 @@ if (!empty($productIds)) {
                                                 <i class="fas fa-eye me-1"></i> Xem chi tiết
                                             </a>
                                             <br>
-                                            <a href="./administrator/elements_LQA/mgiohang/giohangAct.php?reqact=addtocart&idhanghoa=<?php echo $product->idhanghoa; ?>"
+                                            <a href="/lequocanh/administrator/elements_LQA/mgiohang/giohangAct.php?reqact=addtocart&idhanghoa=<?php echo $product->idhanghoa; ?>"
                                                 class="btn btn-success">
                                                 <i class="fas fa-shopping-cart me-1"></i> Thêm vào giỏ
                                             </a>
@@ -471,8 +471,8 @@ if (!empty($productIds)) {
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" defer></script>
 
     <!-- Load local scripts -->
-    <script src="administrator/js_LQA/jscript.js" defer></script>
-    <script src="public_files/search.js" defer></script>
+    <script src="/lequocanh/administrator/js_LQA/jscript.js" defer></script>
+    <script src="/lequocanh/public_files/search.js" defer></script>
 </body>
 
 </html>

@@ -1,5 +1,7 @@
 <?php
-require_once '../mod/hanghoaCls.php';
+require_once __DIR__ . '/../../../app/autoload.php';
+
+use App\Models\Product;
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
@@ -53,8 +55,7 @@ file_put_contents($log_file, "idNhanVien: $idNhanVien\n", FILE_APPEND);
 file_put_contents($log_file, "trang_thai: $trang_thai\n", FILE_APPEND);
 
 try {
-    $hanghoa = new hanghoa();
-    $result = $hanghoa->HanghoaUpdate(
+    $result = Product::updateProduct(
         $tenhanghoa,
         $id_hinhanh,
         $mota,
@@ -63,13 +64,13 @@ try {
         $idThuongHieu,
         $idDonViTinh,
         $idNhanVien,
-        $idhanghoa
+        (int)$idhanghoa
     );
 
     file_put_contents($log_file, "Update result: " . ($result ? "Success" : "Failed") . "\n", FILE_APPEND);
 
     if ($trang_thai) {
-        $statusResult = $hanghoa->updateProductStatus($idhanghoa, $trang_thai);
+        $statusResult = Product::updateProductStatus((int)$idhanghoa, (int)$trang_thai);
         file_put_contents($log_file, "Status update result: " . ($statusResult ? "Success" : "Failed") . "\n", FILE_APPEND);
     }
 

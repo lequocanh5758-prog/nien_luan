@@ -98,48 +98,6 @@ class ProductViewTracker {
         }
     }
     
-    public function getMostViewedProducts($limit = 10, $days = null) {
-        if ($days) {
-
-            try {
-                $sql = "SELECT 
-                        h.idhanghoa,
-                        h.tenhanghoa,
-                        h.giathamkhao,
-                        COUNT(l.id) as view_count
-                        FROM hanghoa h
-                        INNER JOIN product_view_logs l ON h.idhanghoa = l.idhanghoa
-                        WHERE l.viewed_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
-                        GROUP BY h.idhanghoa
-                        ORDER BY view_count DESC
-                        LIMIT ?";
-                
-                $stmt = $this->db->prepare($sql);
-                $stmt->bindValue(1, (int)$days, PDO::PARAM_INT);
-                $stmt->bindValue(2, (int)$limit, PDO::PARAM_INT);
-                $stmt->execute();
-                return $stmt->fetchAll(PDO::FETCH_OBJ);
-            } catch (Exception $e) {
-
-            }
-        }
-
-        $sql = "SELECT
-                idhanghoa,
-                tenhanghoa,
-                giathamkhao,
-                view_count
-                FROM hanghoa
-                WHERE view_count > 0
-                ORDER BY view_count DESC
-                LIMIT :limit_val";
-
-        $stmt = $this->db->prepare($sql);
-        $stmt->bindValue(':limit_val', (int)$limit, PDO::PARAM_INT);
-        $stmt->execute();
-        return $stmt->fetchAll(PDO::FETCH_OBJ);
-    }
-    
     public function resetViewCount($idhanghoa = null) {
         if ($idhanghoa) {
             $sql = "UPDATE hanghoa SET view_count = 0 WHERE idhanghoa = ?";

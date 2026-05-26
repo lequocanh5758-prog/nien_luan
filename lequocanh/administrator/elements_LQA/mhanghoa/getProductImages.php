@@ -1,6 +1,8 @@
 <?php
 require_once("../mod/database.php");
-require_once("../mod/hanghoaCls.php");
+require_once __DIR__ . '/../../../app/autoload.php';
+
+use App\Models\ProductImage;
 
 if (!isset($_GET['idhanghoa']) || empty($_GET['idhanghoa'])) {
     echo json_encode([
@@ -11,9 +13,8 @@ if (!isset($_GET['idhanghoa']) || empty($_GET['idhanghoa'])) {
 }
 
 $idhanghoa = intval($_GET['idhanghoa']);
-$hanghoaObj = new hanghoa();
 
-$images = $hanghoaObj->GetAllImagesForProduct($idhanghoa);
+$images = ProductImage::getAllForProduct($idhanghoa);
 
 header('Content-Type: application/json');
 echo json_encode([

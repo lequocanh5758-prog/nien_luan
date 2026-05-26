@@ -264,6 +264,8 @@
 <script>
 let currentTicketId = null;
 let refreshInterval = null;
+let messageRefreshInterval = null;
+let lastMessageCount = 0;
 
 async function loadTickets() {
     try {
@@ -320,6 +322,9 @@ function renderTicketsList(tickets) {
 
 async function loadTicketDetail(ticketId) {
     try {
+        // Stop previous message refresh
+        stopMessageRefresh();
+        
         currentTicketId = ticketId;
         
         const response = await fetch(`../api/support_tickets.php?action=details&ticket_id=${ticketId}`, {
@@ -331,6 +336,7 @@ async function loadTicketDetail(ticketId) {
             throw new Error(result.error);
         }
         
+        lastMessageCount = result.data.messages.length;
         renderTicketDetail(result.data.ticket, result.data.messages);
         
         document.querySelectorAll('.ticket-item').forEach(item => {
@@ -342,8 +348,74 @@ async function loadTicketDetail(ticketId) {
             }
         });
         
+        // Start auto-refresh messages
+        startMessageRefresh(ticketId);
+        
     } catch (error) {
         console.error('Load ticket detail error:', error);
+    }
+}
+
+// Start auto-refresh for messages
+function startMessageRefresh(ticketId) {
+    stopMessageRefresh();
+    messageRefreshInterval = setInterval(async () => {
+        await refreshMessages(ticketId);
+    }, 3000); // Check every 3 seconds
+}
+
+// Stop auto-refresh
+function stopMessageRefresh() {
+    if (messageRefreshInterval) {
+        clearInterval(messageRefreshInterval);
+        messageRefreshInterval = null;
+    }
+}
+
+// Refresh messages only (without full re-render)
+async function refreshMessages(ticketId) {
+    try {
+        const response = await fetch(`../api/support_tickets.php?action=details&ticket_id=${ticketId}`, {
+            credentials: 'include'
+        });
+        const result = await response.json();
+        
+        if (!result.success) return;
+        
+        const newMessages = result.data.messages;
+        
+        // Only update if there are new messages
+        if (newMessages.length !== lastMessageCount) {
+            lastMessageCount = newMessages.length;
+            renderMessages(newMessages);
+            // Also refresh ticket list to update status
+            loadTickets();
+        }
+    } catch (error) {
+        // Silent fail for auto-refresh
+    }
+}
+
+// Render only messages (without full ticket detail)
+function renderMessages(messages) {
+    const messagesContainer = document.getElementById('messagesContainer');
+    if (!messagesContainer) return;
+    
+    const wasAtBottom = messagesContainer.scrollHeight - messagesContainer.clientHeight <= messagesContainer.scrollTop + 50;
+    
+    messagesContainer.innerHTML = messages.map(msg => `
+        <div class="message ${msg.sender_type}">
+            <div class="message-avatar">${getInitials(msg.sender_id)}</div>
+            <div class="message-content">
+                <div class="message-bubble">${escapeHtml(msg.message)}</div>
+                <div class="message-time">${formatDate(msg.created_at)}</div>
+            </div>
+        </div>
+    `).join('');
+    
+    // Auto scroll to bottom if was at bottom or new message from admin
+    if (wasAtBottom || messages.length > 0 && messages[messages.length - 1].sender_type === 'admin') {
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
     }
 }
 
@@ -494,5 +566,6 @@ window.addEventListener('beforeunload', () => {
     if (refreshInterval) {
         clearInterval(refreshInterval);
     }
+    stopMessageRefresh();
 });
 </script>

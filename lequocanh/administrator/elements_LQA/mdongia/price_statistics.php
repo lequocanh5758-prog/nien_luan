@@ -21,34 +21,16 @@ if (!$foundDongia) {
     throw new Exception("Không thể tải file dongiaCls.php");
 }
 
-$hanghoaPaths = [
-    '../mod/hanghoaCls.php',
-    './elements_LQA/mod/hanghoaCls.php',
-    './administrator/elements_LQA/mod/hanghoaCls.php',
-    __DIR__ . '/../mod/hanghoaCls.php'
-];
+require_once __DIR__ . '/../../../app/autoload.php';
 
-$foundHanghoa = false;
-foreach ($hanghoaPaths as $path) {
-    if (file_exists($path)) {
-        require_once $path;
-        $foundHanghoa = true;
-        break;
-    }
-}
-
-if (!$foundHanghoa) {
-    error_log("Không thể tìm thấy file hanghoaCls.php");
-    throw new Exception("Không thể tải file hanghoaCls.php");
-}
+use App\Models\Product;
 
 try {
     $dongiaObj = new Dongia();
-    $hanghoaObj = new hanghoa();
 
     $allPrices = $dongiaObj->DongiaGetAll();
 
-    $allProducts = $hanghoaObj->HanghoaGetAll();
+    $allProducts = Product::getAllWithPricing();
 
     $totalPrices = count($allPrices);
     $activePrices = 0;

@@ -12,18 +12,19 @@
 
 ## File Structure
 
-| File | Responsibility |
-|------|----------------|
-| `config/cdn.php` | CDN configuration |
-| `app/Services/CDNService.php` | CDN URL helper |
-| `.htaccess` | Cache headers |
-| `components/head.php` | CDN asset URLs |
+| File                          | Responsibility    |
+| ----------------------------- | ----------------- |
+| `config/cdn.php`              | CDN configuration |
+| `app/Services/CDNService.php` | CDN URL helper    |
+| `.htaccess`                   | Cache headers     |
+| `components/head.php`         | CDN asset URLs    |
 
 ---
 
 ### Task 1: Cloudflare Account Setup
 
 **Files:**
+
 - Create: `config/cdn.php`
 - Modify: `.env`
 
@@ -43,6 +44,7 @@
 - [ ] **Step 3: Update nameservers**
 
 At your domain registrar:
+
 ```
 ns1.cloudflare.com
 ns2.cloudflare.com
@@ -94,6 +96,7 @@ git commit -m "feat: add CDN configuration for Cloudflare"
 ### Task 2: CDN Service
 
 **Files:**
+
 - Create: `app/Services/CDNService.php`
 - Test: `tests/Unit/CDNServiceTest.php`
 
@@ -117,14 +120,14 @@ class CDNServiceTest extends TestCase
             $cdn->url('/uploads/image.jpg')
         );
     }
-    
+
     public function testImageReturnsOptimizedPath()
     {
         $cdn = new CDNService('https://cdn.example.com');
         $result = $cdn->image('/uploads/product.jpg', 800, 80);
         $this->assertStringContainsString('/cdn-cgi/image/', $result);
     }
-    
+
     public function testDisabledReturnsOriginalPath()
     {
         $cdn = new CDNService('', false);
@@ -157,7 +160,7 @@ class CDNService
     private string $cdnUrl;
     private bool $enabled;
     private bool $imageOptimization;
-    
+
     public function __construct(
         string $cdnUrl = '',
         bool $enabled = true,
@@ -167,7 +170,7 @@ class CDNService
         $this->enabled = $enabled;
         $this->imageOptimization = $imageOptimization;
     }
-    
+
     /**
      * Get CDN URL for asset
      */
@@ -176,10 +179,10 @@ class CDNService
         if (!$this->enabled || empty($this->cdnUrl)) {
             return $path;
         }
-        
+
         return $this->cdnUrl . '/' . ltrim($path, '/');
     }
-    
+
     /**
      * Get optimized image URL via Cloudflare Images
      */
@@ -192,26 +195,26 @@ class CDNService
         if (!$this->enabled || !$this->imageOptimization) {
             return $this->url($path);
         }
-        
+
         $params = [];
         if ($width > 0) {
             $params[] = "width={$width}";
         }
         $params[] = "quality={$quality}";
         $params[] = "format={$format}";
-        
+
         $paramString = implode(',', $params);
-        
+
         return $this->cdnUrl . '/cdn-cgi/image/' . $paramString . $path;
     }
-    
+
     /**
      * Create from config
      */
     public static function fromConfig(): self
     {
         $config = require __DIR__ . '/../../config/cdn.php';
-        
+
         return new self(
             $config['cdn_url'] ?? '',
             $config['enabled'] ?? false,
@@ -241,6 +244,7 @@ git commit -m "feat: add CDNService for Cloudflare integration"
 ### Task 3: Cache Headers
 
 **Files:**
+
 - Modify: `.htaccess`
 
 - [ ] **Step 1: Add cache headers to .htaccess**
@@ -255,22 +259,22 @@ git commit -m "feat: add CDNService for Cloudflare integration"
         Header set Cache-Control "public, max-age=2592000, immutable"
         Header set X-CDN-Cache "HIT"
     </FilesMatch>
-    
+
     # CSS/JS - 1 day
     <FilesMatch "\.(css|js)$">
         Header set Cache-Control "public, max-age=86400"
     </FilesMatch>
-    
+
     # Fonts - 30 days
     <FilesMatch "\.(woff|woff2|ttf|eot)$">
         Header set Cache-Control "public, max-age=2592000, immutable"
     </FilesMatch>
-    
+
     # HTML - no cache (dynamic)
     <FilesMatch "\.html$">
         Header set Cache-Control "no-cache, must-revalidate"
     </FilesMatch>
-    
+
     # API - no cache
     <FilesMatch "\.php$">
         Header set Cache-Control "no-cache, no-store, must-revalidate"
@@ -303,6 +307,7 @@ git commit -m "perf: add cache headers for CDN optimization"
 ### Task 4: Update Image Paths
 
 **Files:**
+
 - Modify: `components/head.php`
 - Modify: `apart/viewHangHoa.php`
 - Modify: `administrator/elements_LQA/mhanghoa/displayImage.php`
@@ -338,6 +343,7 @@ git commit -m "perf: update image paths to use CDN"
 ### Task 5: Cloudflare Page Rules
 
 **Files:**
+
 - None (Cloudflare dashboard)
 
 - [ ] **Step 1: Create Page Rule for images**
@@ -395,9 +401,9 @@ curl -I https://cdn.lqashop.com/uploads/image.jpg
 
 ## Success Metrics
 
-| Metric | Before | Target |
-|--------|--------|--------|
-| Page Load Time | 3s | 1.5s |
-| TTFB | 200ms | 50ms |
-| Server Load | 100% | 30% |
-| Bandwidth | 100% | 30% |
+| Metric         | Before | Target |
+| -------------- | ------ | ------ |
+| Page Load Time | 3s     | 1.5s   |
+| TTFB           | 200ms  | 50ms   |
+| Server Load    | 100%   | 30%    |
+| Bandwidth      | 100%   | 30%    |

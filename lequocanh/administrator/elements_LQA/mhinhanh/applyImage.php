@@ -4,7 +4,9 @@ if (session_status() == PHP_SESSION_NONE) {
 }
 
 require_once("../mod/database.php");
-require_once("../mod/hanghoaCls.php");
+require_once __DIR__ . '/../../../app/autoload.php';
+
+use App\Models\ProductImage;
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -14,9 +16,8 @@ try {
 
     if (isset($data['image_id'])) {
         $imageId = (int)$data['image_id'];
-        $hanghoa = new hanghoa();
 
-        $imageInfo = $hanghoa->GetHinhAnhById($imageId);
+        $imageInfo = ProductImage::getById($imageId);
 
         if (!$imageInfo) {
             throw new Exception("Không tìm thấy hình ảnh");
@@ -24,7 +25,7 @@ try {
 
         $fileName = pathinfo($imageInfo->ten_file, PATHINFO_FILENAME);
 
-        $matchingProducts = $hanghoa->FindProductsByExactName($fileName);
+        $matchingProducts = ProductImage::findProductsByExactName($fileName);
 
         if (empty($matchingProducts)) {
             throw new Exception("Không tìm thấy sản phẩm nào có tên trùng khớp với tên file '{$fileName}'");
@@ -34,7 +35,7 @@ try {
         $appliedProducts = [];
 
         foreach ($matchingProducts as $product) {
-            if ($hanghoa->ApplyImageToProduct($product->idhanghoa, $imageId)) {
+            if (ProductImage::applyToProduct((int)$product->idhanghoa, $imageId)) {
                 $appliedCount++;
                 $appliedProducts[] = $product->tenhanghoa;
             }

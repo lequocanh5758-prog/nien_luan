@@ -45,13 +45,13 @@ $carousel_items = array_slice($list_hanghoa, 0, 5);
 ?>
 
 <!-- Rating Styles -->
-<link rel="stylesheet" href="public_files/rating_styles.css">
-<link rel="stylesheet" href="public_files/product_filter.css">
+<link rel="stylesheet" href="/lequocanh/public_files/rating_styles.css">
+<link rel="stylesheet" href="/lequocanh/public_files/product_filter.css">
 
 <!-- Carousel -->
 <?php include __DIR__ . '/productBannerCarousel.php'; ?>
 
-<script src="administrator/js_LQA/jscript.js" defer></script>
+<script src="/lequocanh/administrator/js_LQA/jscript.js" defer></script>
 
 <?php
 
@@ -408,11 +408,11 @@ $activePromotions = [];
                     </button>
                     <?php endif; ?>
 
-                    <?php if ($hinhanh && !empty($hinhanh->duong_dan)): ?>
-                    <img src="./administrator/elements_LQA/mhanghoa/displayImage.php?id=<?php echo $v->hinhanh; ?>"
+                    <?php if ($hinhanh && (!empty($hinhanh->duong_dan) || !empty($hinhanh->du_lieu))): ?>
+                    <img src="/lequocanh/administrator/elements_LQA/mhanghoa/displayImage.php?id=<?php echo $v->hinhanh; ?>"
                          class="card-img-top" alt="<?php echo htmlspecialchars($v->tenhanghoa); ?>" loading="lazy">
                     <?php else: ?>
-                    <img src="./administrator/elements_LQA/img_LQA/no-image.png" class="card-img-top" alt="No image" loading="lazy">
+                    <img src="/lequocanh/administrator/elements_LQA/img_LQA/no-image.png" class="card-img-top" alt="No image" loading="lazy">
                     <?php endif; ?>
                     
                     <div class="card-body">
@@ -466,7 +466,7 @@ $activePromotions = [];
     </div>
 </div>
 
-<script src="public_files/product_filter.js" defer></script>
+<script src="/lequocanh/public_files/product_filter.js" defer></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const compareCheckboxes = document.querySelectorAll('.compare-checkbox');

@@ -1,6 +1,40 @@
 <?php
 ob_start();
 
+// Image optimization function
+function optimizeImage($imageBinary, $maxWidth = 1200, $maxHeight = 1200, $quality = 85) {
+    $image = imagecreatefromstring($imageBinary);
+    if (!$image) return $imageBinary;
+    
+    $origWidth = imagesx($image);
+    $origHeight = imagesy($image);
+    
+    // Calculate new dimensions
+    $ratio = min($maxWidth / $origWidth, $maxHeight / $origHeight);
+    if ($ratio >= 1) {
+        // Image is smaller than max, return original
+        imagedestroy($image);
+        return $imageBinary;
+    }
+    
+    $newWidth = (int)($origWidth * $ratio);
+    $newHeight = (int)($origHeight * $ratio);
+    
+    // Resize
+    $resized = imagecreatetruecolor($newWidth, $newHeight);
+    imagecopyresampled($resized, $image, 0, 0, 0, 0, $newWidth, $newHeight, $origWidth, $origHeight);
+    
+    // Output
+    ob_start();
+    imagejpeg($resized, null, $quality);
+    $optimized = ob_get_clean();
+    
+    imagedestroy($image);
+    imagedestroy($resized);
+    
+    return $optimized ?: $imageBinary;
+}
+
 if (session_status() == PHP_SESSION_NONE) {
 
     require_once __DIR__ . '/../mod/sessionManager.php';
@@ -10,7 +44,9 @@ if (session_status() == PHP_SESSION_NONE) {
 }
 require_once __DIR__ . '/../../../includes/csrf_helper.php';
 require_once("../mod/database.php");
-require_once("../mod/hanghoaCls.php");
+require_once __DIR__ . '/../../../app/autoload.php';
+
+use App\Models\ProductImage;
 
 require_once __DIR__ . '/../../../includes/upload_security.php';
 
@@ -58,8 +94,6 @@ function deleteImageFile($imagePath)
 try {
     if (isset($_REQUEST["reqact"])) {
         $requestAction = $_REQUEST["reqact"];
-        $hanghoa = new hanghoa();
-
         switch ($requestAction) {
             case "addnew":
                 if (isset($_FILES['fileHinhanh'])) {
@@ -190,12 +224,15 @@ try {
 
                             if ($matchedProduct) {
                                 $fileHash = md5_file($fileTmpName);
-                                $existingImageId = $hanghoa->CheckImageExistsByHash($fileHash);
+                                $existingImageId = ProductImage::existsByHash($fileHash);
                                 $imageBinary = file_get_contents($fileTmpName);
+                                
+                                // Optimize image before storing
+                                $imageBinary = optimizeImage($imageBinary);
 
                                 if ($existingImageId) {
                                     // Duplicate detected
-                                    $existingImageInfo = $hanghoa->GetHinhAnhById($existingImageId);
+                                    $existingImageInfo = ProductImage::getById((int)$existingImageId);
                                     if (!isset($_SESSION['duplicate_images']))
                                         $_SESSION['duplicate_images'] = [];
 
@@ -215,9 +252,9 @@ try {
                                 } else {
                                     // Normal new image - Store in DB only
                                     $virtualPath = "db_storage/" . $fileName;
-                                    if ($hanghoa->ThemHinhAnh($fileName, $fileType, $virtualPath, $fileHash, $imageBinary)) {
-                                        $lastInsertId = (int) $hanghoa->GetLastInsertId();
-                                        $hanghoa->ApplyImageToProduct($matchedProduct['idhanghoa'], $lastInsertId);
+                                    if (ProductImage::create($fileName, $fileType, $virtualPath, $fileHash, $imageBinary)) {
+                                        $lastInsertId = (int) ProductImage::getLastInsertId();
+                                        ProductImage::applyToProduct((int)$matchedProduct['idhanghoa'], $lastInsertId);
 
                                         if (!isset($_SESSION['matched_images']))
                                             $_SESSION['matched_images'] = [];
@@ -279,7 +316,7 @@ try {
 
                 $id = intval($_POST["id"]);
 
-                $products = $hanghoa->GetProductsByImageId($id);
+                $products = ProductImage::getProductsByImageId($id);
 
                 if (!empty($products)) {
                     $productNames = array_map(function ($product) {
@@ -295,11 +332,11 @@ try {
                     exit;
                 }
 
-                $imagePath = $hanghoa->GetImagePath($id);
+                $imagePath = ProductImage::getPath($id);
 
                 deleteImageFile($imagePath);
 
-                $result = $hanghoa->XoaHinhAnh($id);
+                $result = ProductImage::delete($id);
 
                 if ($result) {
                     echo json_encode([
@@ -334,7 +371,7 @@ try {
                 $inUseProducts = [];
 
                 foreach ($ids as $id) {
-                    $products = $hanghoa->GetProductsByImageId($id);
+                    $products = ProductImage::getProductsByImageId($id);
                     if (!empty($products)) {
                         $inUseImages[] = $id;
                         foreach ($products as $product) {
@@ -364,11 +401,11 @@ try {
 
                 foreach ($ids as $id) {
 
-                    $imagePath = $hanghoa->GetImagePath($id);
+                    $imagePath = ProductImage::getPath($id);
 
                     deleteImageFile($imagePath);
 
-                    $result = $hanghoa->XoaHinhAnh($id);
+                    $result = ProductImage::delete($id);
 
                     if ($result) {
                         $successCount++;
@@ -430,8 +467,8 @@ try {
 
                         $imageBinary = isset($dupInfo['new_image_binary']) ? $dupInfo['new_image_binary'] : null;
                         $virtualPath = "db_storage/" . $dupInfo['new_image_name'];
-                        if ($hanghoa->ThemHinhAnh($dupInfo['new_image_name'], $dupInfo['new_image_type'], $virtualPath, $dupInfo['new_image_hash'], $imageBinary)) {
-                            $newImageId = $hanghoa->GetLastInsertId();
+                        if (ProductImage::create($dupInfo['new_image_name'], $dupInfo['new_image_type'], $virtualPath, $dupInfo['new_image_hash'], $imageBinary)) {
+                            $newImageId = ProductImage::getLastInsertId();
 
                             $sqlUpdateProduct = "UPDATE hanghoa SET hinhanh = ? WHERE idhanghoa = ?";
                             $stmtUpdateProduct = $conn->prepare($sqlUpdateProduct);

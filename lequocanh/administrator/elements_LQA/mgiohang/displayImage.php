@@ -7,13 +7,14 @@ error_reporting(E_ALL);
 ini_set('display_errors', 0);
 ini_set('log_errors', 1);
 
-require_once '../../elements_LQA/mod/hanghoaCls.php';
+require_once __DIR__ . '/../../../app/autoload.php';
+
+use App\Models\ProductImage;
 
 $imageId = isset($_GET['id']) ? (int) $_GET['id'] : 0;
 
 if ($imageId > 0) {
-    $hanghoa = new hanghoa();
-    $image = $hanghoa->GetHinhAnhById($imageId);
+    $image = ProductImage::getById($imageId);
 
     if ($image && !empty($image->du_lieu)) {
         $data = $image->du_lieu;

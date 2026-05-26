@@ -12,8 +12,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !verify_csrf_token()) {
     die('CSRF token validation failed. Vui lòng tải lại trang và thử lại.');
 }
 
-require_once '../mod/hanghoaCls.php';
-$hanghoa = new hanghoa();
+require_once __DIR__ . '/../../../app/autoload.php';
+
+use App\Models\Product;
+use App\Models\ProductImage;
 
 $nhatKyHelperPaths = [
     __DIR__ . '/../mnhatkyhoatdong/nhatKyHoatDongHelper.php',
@@ -64,7 +66,7 @@ if (isset($_REQUEST['reqact'])) {
 
             try {
 
-                $result = $hanghoa->HanghoaAdd($tenhanghoa, $mota, $giathamkhao, $id_hinhanh, $idloaihang, $idThuongHieu, $idDonViTinh, $idNhanVien, $ghichu);
+                $result = Product::addProduct($tenhanghoa, $mota, $giathamkhao, $id_hinhanh, $idloaihang, $idThuongHieu, $idDonViTinh, $idNhanVien, $ghichu);
 
                 $log_result = date('Y-m-d H:i:s') . " - Kết quả thêm hàng hóa: " . ($result ? "thành công" : "thất bại") . "\n";
                 file_put_contents($log_file, $log_result, FILE_APPEND);
@@ -96,10 +98,10 @@ if (isset($_REQUEST['reqact'])) {
         case 'deletehanghoa':
             $idhanghoa = $_REQUEST['idhanghoa'];
 
-            $hanghoaInfo = $hanghoa->HanghoaGetbyId($idhanghoa);
+            $hanghoaInfo = Product::getById((int)$idhanghoa);
             $tenhanghoa = $hanghoaInfo ? $hanghoaInfo->tenhanghoa : "Không xác định";
 
-            $result = $hanghoa->HanghoaDelete($idhanghoa);
+            $result = Product::deleteProduct((int)$idhanghoa);
 
             if (is_array($result)) {
                 if ($result['success']) {
@@ -168,14 +170,14 @@ if (isset($_REQUEST['reqact'])) {
 
             try {
 
-                $productUpdateResult = $hanghoa->HanghoaUpdate($tenhanghoa, $id_hinhanh, $mota, $giathamkhao, $idloaihang, $idThuongHieu, $idDonViTinh, $idNhanVien, $idhanghoa, $ghichu);
+                $productUpdateResult = Product::updateProduct($tenhanghoa, $id_hinhanh, $mota, $giathamkhao, $idloaihang, $idThuongHieu, $idDonViTinh, $idNhanVien, (int)$idhanghoa, $ghichu);
 
                 if ($debug_log) {
                     $log_data = date('Y-m-d H:i:s') . " - Product update result: " . ($productUpdateResult ? "Success (rows: $productUpdateResult)" : "No rows affected") . "\n";
                     file_put_contents(__DIR__ . '/debug_log.txt', $log_data, FILE_APPEND);
                 }
 
-                $statusUpdateResult = $hanghoa->updateProductStatus($idhanghoa, $trang_thai);
+                $statusUpdateResult = Product::updateProductStatus((int)$idhanghoa, $trang_thai);
 
                 if ($debug_log) {
                     $log_data = date('Y-m-d H:i:s') . " - Status update result: " . ($statusUpdateResult ? "Success" : "Failed") . "\n";
@@ -219,7 +221,7 @@ if (isset($_REQUEST['reqact'])) {
                 $idhanghoa = intval($_GET['idhanghoa']);
                 $id_hinhanh = intval($_GET['id_hinhanh']);
 
-                if ($hanghoa->ApplyImageToProduct($idhanghoa, $id_hinhanh)) {
+                if (ProductImage::applyToProduct($idhanghoa, $id_hinhanh)) {
 
                     header("location: ../../index.php?req=hanghoaview&result=ok&msg=image_applied");
                 } else {
@@ -243,7 +245,7 @@ if (isset($_REQUEST['reqact'])) {
                 $successCount = 0;
 
                 foreach ($matches as $match) {
-                    if ($hanghoa->ApplyImageToProduct($match['product_id'], $match['image_id'])) {
+                    if (ProductImage::applyToProduct((int)$match['product_id'], (int)$match['image_id'])) {
                         $successCount++;
                     }
                 }
@@ -267,7 +269,7 @@ if (isset($_REQUEST['reqact'])) {
 
         case "remove_mismatched_images":
 
-            $count = $hanghoa->RemoveAllMismatchedImages();
+            $count = ProductImage::removeAllMismatchedImages();
 
             if ($count === false) {
 
@@ -285,7 +287,7 @@ if (isset($_REQUEST['reqact'])) {
 
             if (isset($_GET['idhanghoa'])) {
                 $idhanghoa = intval($_GET['idhanghoa']);
-                $result = $hanghoa->RemoveImageFromProduct($idhanghoa);
+                $result = ProductImage::removeFromProduct($idhanghoa);
 
                 $isAjax = isset($_SERVER['HTTP_X_REQUESTED_WITH']) &&
                     strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';

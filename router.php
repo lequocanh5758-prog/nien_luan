@@ -43,6 +43,8 @@ if (strpos($request_uri, 'api/') === 0) {
 
 $routes = [
     '' => '/lequocanh/index.php',
+    'lequocanh' => '/lequocanh/index.php',
+    'lequocanh/' => '/lequocanh/index.php',
     'admin' => '/lequocanh/administrator/index.php',
     'admin/login' => '/lequocanh/administrator/userLogin.php',
     'admin/logout' => '/lequocanh/administrator/userLogout.php',
@@ -61,7 +63,33 @@ if (array_key_exists($request_uri, $routes)) {
 $legacy_file = __DIR__ . '/lequocanh/' . $request_uri;
 if (file_exists($legacy_file) && is_file($legacy_file)) {
 
-    if (pathinfo($legacy_file, PATHINFO_EXTENSION) === 'php') {
+    // Serve static files (CSS, JS, images, etc.)
+    $ext = pathinfo($legacy_file, PATHINFO_EXTENSION);
+    $mimeTypes = [
+        'css' => 'text/css',
+        'js' => 'application/javascript',
+        'json' => 'application/json',
+        'png' => 'image/png',
+        'jpg' => 'image/jpeg',
+        'jpeg' => 'image/jpeg',
+        'gif' => 'image/gif',
+        'webp' => 'image/webp',
+        'svg' => 'image/svg+xml',
+        'ico' => 'image/x-icon',
+        'woff' => 'font/woff',
+        'woff2' => 'font/woff2',
+        'ttf' => 'font/ttf',
+        'eot' => 'application/vnd.ms-fontobject'
+    ];
+    
+    if (isset($mimeTypes[$ext])) {
+        header('Content-Type: ' . $mimeTypes[$ext]);
+        header('Cache-Control: public, max-age=86400');
+        readfile($legacy_file);
+        exit;
+    }
+
+    if ($ext === 'php') {
         require $legacy_file;
         exit;
     }

@@ -106,9 +106,9 @@ class MoMoConfig
         }
         
         $baseUrlFromEnv = self::getEnvValue('BASE_URL');
-        $useTunnel = self::getEnvValue('USE_CLOUDFLARE_TUNNEL');
         
-        if (!empty($baseUrlFromEnv) && $useTunnel === 'true') {
+        // Always use BASE_URL from .env if it exists
+        if (!empty($baseUrlFromEnv)) {
             $baseUrl = rtrim($baseUrlFromEnv, '/');
             
             if (strpos($baseUrl, '/lequocanh') === false) {
@@ -137,7 +137,7 @@ class MoMoConfig
             return $protocol . '://' . $host . '/lequocanh';
         }
         
-        return 'http://localhost:8080/lequocanh';
+        return 'http://localhost/lequocanh';
     }
 
     public static function getReturnUrl()

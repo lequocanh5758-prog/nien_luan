@@ -14,18 +14,6 @@ parameters:
         - lequocanh/cache/QueryCache.php
     ignoreErrors:
         # Legacy classes loaded via require (not autoload)
-        - '#on an unknown class (Database|SessionManager|GioHang|CacheManager|ProductReview|hanghoa|ConfigManager|CorsMiddleware|ValidationMiddleware)#'
-        - '#Instantiated class (GioHang|hanghoa|ProductReview|CorsMiddleware|ValidationMiddleware) not found#'
-        # Firebase JWT - loaded via vendor but not in scanned paths
-        - '#on an unknown class Firebase#'
-        - '#Instantiated class Firebase#'
+        - '#on an unknown class (Database|SessionManager|GioHang|CacheManager|ConfigManager)#'
         # Active Record pattern - unsafe new static()
         - '#Unsafe usage of new static\(\)#'
-        # Legacy properties accessed dynamically
-        - '#Access to an undefined property .+Product::\$#'
-        # Dead catch in try/catch (safeRedirect always exits)
-        - '#Dead catch - Exception is never thrown#'
-        # Defensive programming - comparison always true after validation
-        - '#Comparison operation ">" between int<1, max> and 0 is always true#'
-        # Properties written but read via reflection or future use
-        - '#Property .+ is never read, only written#'

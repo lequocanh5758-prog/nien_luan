@@ -47,9 +47,9 @@ if (empty($results)) {
             error_log("Found " . count($hanghoaResults) . " results in hanghoa");
             foreach ($hanghoaResults as $item) {
 
-                $imagePath = './administrator/elements_LQA/img_LQA/no-image.png';
+                $imagePath = '/lequocanh/administrator/elements_LQA/img_LQA/no-image.png';
                 if (isset($item->hinhanh) && $item->hinhanh > 0) {
-                    $imagePath = "./administrator/elements_LQA/mhanghoa/displayImage.php?id=" . $item->hinhanh;
+                    $imagePath = "/lequocanh/administrator/elements_LQA/mhanghoa/displayImage.php?id=" . $item->hinhanh;
                 }
 
                 $hasDiscount = false;

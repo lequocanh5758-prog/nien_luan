@@ -38,16 +38,14 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" defer></script>
 
 <!-- Load local scripts -->
-<script src="administrator/js_LQA/jscript.js" defer></script>
-<script src="public_files/search.js" defer></script>
-<script src="public_files/product_filter.js" defer></script>
-<script src="public_files/product_reviews.js" defer></script>
-<script src="public_files/performance.js" defer></script>
+<script src="/lequocanh/administrator/js_LQA/jscript.js" defer></script>
+<script src="/lequocanh/public_files/bundle.min.js" defer></script>
+<script src="/lequocanh/public_files/performance.js" defer></script>
 
 <!-- Conditional notification script -->
 <?php if (isset($_SESSION['USER'])): ?>
-    <script src="public_files/notification.js" defer></script>
-    <script src="public_files/wishlist.js?v=<?php echo time(); ?>" defer></script>
+    <script src="/lequocanh/public_files/notification.js" defer></script>
+    <script src="/lequocanh/public_files/wishlist.js?v=<?php echo time(); ?>" defer></script>
 <?php endif; ?>
 
 <!-- Performance optimization script -->
@@ -128,11 +126,17 @@
     }
 
     if ('serviceWorker' in navigator) {
+        // Register service worker for offline support
+        navigator.serviceWorker.register('/lequocanh/sw.js')
+            .then(reg => console.log('Service Worker registered'))
+            .catch(err => console.log('Service Worker registration failed'));
+        
+        // Prefetch critical resources
         const resources = [
-            'public_files/mycss.css',
-            'public_files/notification.css',
-            'administrator/js_LQA/jscript.js',
-            'public_files/search.js'
+            '/lequocanh/public_files/mycss.css',
+            '/lequocanh/public_files/bundle.min.css',
+            '/lequocanh/administrator/js_LQA/jscript.js',
+            '/lequocanh/public_files/bundle.min.js'
         ];
         resources.forEach(resource => {
             const link = document.createElement('link');
@@ -147,7 +151,10 @@
             entries.forEach(entry => {
                 if (entry.isIntersecting) {
                     const img = entry.target;
-                    img.src = img.dataset.src;
+                    if (img.dataset.src) {
+                        img.src = img.dataset.src;
+                        img.removeAttribute('data-src');
+                    }
                     img.classList.remove('lazy-load');
                     img.classList.add('loaded');
                     imageObserver.unobserve(img);
@@ -156,13 +163,25 @@
         });
 
         document.addEventListener('DOMContentLoaded', () => {
+            // Observe images with data-src
             const lazyImages = document.querySelectorAll('img[data-src]');
             lazyImages.forEach(img => imageObserver.observe(img));
+            
+            // Observe images with loading="lazy" for placeholder removal
+            const lazyLoadImages = document.querySelectorAll('img[loading="lazy"]');
+            lazyLoadImages.forEach(img => {
+                if (img.complete) {
+                    img.classList.add('loaded');
+                } else {
+                    img.addEventListener('load', () => img.classList.add('loaded'));
+                    img.addEventListener('error', () => img.classList.add('loaded'));
+                }
+            });
         });
     }
 </script>
 
 <!-- CSRF Protection Helper -->
-<script src="public_files/js/csrf-helper.js" defer></script>
+<script src="/lequocanh/public_files/js/csrf-helper.js" defer></script>
 
 <?php echo perf_footer(); ?>

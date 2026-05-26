@@ -1,14 +1,15 @@
 <?php
 
-require_once __DIR__ . '/../administrator/elements_LQA/mod/FeaturedProductsCls.php';
+require_once __DIR__ . '/../app/autoload.php';
 require_once __DIR__ . '/../administrator/elements_LQA/mod/AutoFeaturedCls.php';
 
-$featuredMgr = new FeaturedProducts();
+use App\Models\Product;
+
 $autoMgr = new AutoFeatured();
 
-$featuredProducts = $featuredMgr->getFeaturedProducts(8);
-$newProducts = $featuredMgr->getNewProducts(8);
-$saleProducts = $featuredMgr->getSaleProducts(8);
+$featuredProducts = Product::getFeaturedProducts(8);
+$newProducts = Product::getNewProducts(8);
+$saleProducts = Product::getSaleProducts(8);
 
 $topSales = $autoMgr->getTopProducts('sales', 20);
 $topViews = $autoMgr->getTopProducts('views', 20);

@@ -33,7 +33,9 @@ if (isset($_SESSION['dongia_message'])) {
 }
 
 require_once './elements_LQA/mod/dongiaCls.php';
-require_once './elements_LQA/mod/hanghoaCls.php';
+require_once __DIR__ . '/../../../app/autoload.php';
+
+use App\Models\Product;
 
 try {
     $lhobj = new Dongia();
@@ -46,8 +48,7 @@ try {
     $l = 0;
 }
 
-$hhobj = new Hanghoa();
-$list_hh = $hhobj->HanghoaGetAll();
+$list_hh = Product::getAllWithPricing();
 
 if (empty($list_hh)) {
     $list_hh = [];

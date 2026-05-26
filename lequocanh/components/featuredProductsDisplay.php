@@ -1,84 +1,12 @@
 <?php
 
-require_once __DIR__ . '/../administrator/elements_LQA/mod/database.php';
+require_once __DIR__ . '/../app/autoload.php';
 
-class FeaturedProductsDisplay
-{
-    private $db;
+use App\Models\Product;
 
-    public function __construct()
-    {
-        $this->db = Database::getInstance()->getConnection();
-    }
-
-    public function getFeaturedProducts($limit = 8)
-    {
-        $sql = "SELECT h.*, 
-                       th.tenTH AS tenthuonghieu,
-                       lh.tenloaihang,
-                       h.hinhanh as image_id
-                FROM hanghoa h
-                LEFT JOIN thuonghieu th ON h.idThuongHieu = th.idThuongHieu
-                LEFT JOIN loaihang lh ON h.idloaihang = lh.idloaihang
-                WHERE h.is_featured = 1 
-                  AND h.trang_thai = 1
-                ORDER BY h.created_at DESC
-                LIMIT :limit";
-
-        $stmt = $this->db->prepare($sql);
-        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
-        $stmt->execute();
-        return $stmt->fetchAll(PDO::FETCH_OBJ);
-    }
-
-    public function getNewProducts($limit = 8)
-    {
-        $sql = "SELECT h.*, 
-                       th.tenTH AS tenthuonghieu,
-                       lh.tenloaihang,
-                       h.hinhanh as image_id
-                FROM hanghoa h
-                LEFT JOIN thuonghieu th ON h.idThuongHieu = th.idThuongHieu
-                LEFT JOIN loaihang lh ON h.idloaihang = lh.idloaihang
-                WHERE h.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
-                  AND h.trang_thai = 1
-                ORDER BY h.created_at DESC
-                LIMIT :limit";
-
-        $stmt = $this->db->prepare($sql);
-        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
-        $stmt->execute();
-        return $stmt->fetchAll(PDO::FETCH_OBJ);
-    }
-
-    public function getPromotionProducts($limit = 8)
-    {
-        $sql = "SELECT h.*, 
-                       th.tenTH AS tenthuonghieu,
-                       lh.tenloaihang,
-                       h.hinhanh as image_id,
-                       ROUND(((h.giathamkhao - h.giakhuyenmai) / h.giathamkhao * 100), 0) as discount_percent
-                FROM hanghoa h
-                LEFT JOIN thuonghieu th ON h.idThuongHieu = th.idThuongHieu
-                LEFT JOIN loaihang lh ON h.idloaihang = lh.idloaihang
-                WHERE h.giakhuyenmai IS NOT NULL 
-                  AND h.giakhuyenmai > 0
-                  AND h.giakhuyenmai < h.giathamkhao
-                  AND h.trang_thai = 1
-                ORDER BY discount_percent DESC, h.created_at DESC
-                LIMIT :limit";
-
-        $stmt = $this->db->prepare($sql);
-        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
-        $stmt->execute();
-        return $stmt->fetchAll(PDO::FETCH_OBJ);
-    }
-}
-
-$featuredDisplay = new FeaturedProductsDisplay();
-$featuredProducts = $featuredDisplay->getFeaturedProducts(8);
-$newProducts = $featuredDisplay->getNewProducts(8);
-$promotionProducts = $featuredDisplay->getPromotionProducts(8);
+$featuredProducts = Product::getFeaturedProducts(8);
+$newProducts = Product::getNewProducts(8);
+$promotionProducts = Product::getSaleProducts(8);
 ?>
 
 <style>
@@ -372,10 +300,10 @@ $promotionProducts = $featuredDisplay->getPromotionProducts(8);
                                 <?= $statusText ?>
                             </span>
                         <?php endif; ?>
-                        <?php if (!empty($product->image_id) && $product->image_id > 0): ?>
-                            <img src="administrator/elements_LQA/mhanghoa/displayImage.php?id=<?= $product->image_id ?>" alt="<?= htmlspecialchars($product->tenhanghoa) ?>">
+                        <?php if (!empty($product->hinhanh) && $product->hinhanh > 0): ?>
+                            <img src="/lequocanh/administrator/elements_LQA/mhanghoa/displayImage.php?id=<?= $product->hinhanh ?>" alt="<?= htmlspecialchars($product->tenhanghoa) ?>" loading="lazy">
                         <?php else: ?>
-                            <img src="administrator/elements_LQA/mhanghoa/displayImage.php?id=0" alt="No image">
+                            <img src="/lequocanh/administrator/elements_LQA/img_LQA/no-image.png" alt="Không có hình ảnh" loading="lazy">
                         <?php endif; ?>
                     </div>
                     <div class="product-info">
@@ -431,10 +359,10 @@ $promotionProducts = $featuredDisplay->getPromotionProducts(8);
                         <span class="product-badge badge-new">
                             <i class="fas fa-sparkles"></i> Mới
                         </span>
-                        <?php if (!empty($product->image_id) && $product->image_id > 0): ?>
-                            <img src="administrator/elements_LQA/mhanghoa/displayImage.php?id=<?= $product->image_id ?>" alt="<?= htmlspecialchars($product->tenhanghoa) ?>">
+                        <?php if (!empty($product->hinhanh) && $product->hinhanh > 0): ?>
+                            <img src="/lequocanh/administrator/elements_LQA/mhanghoa/displayImage.php?id=<?= $product->hinhanh ?>" alt="<?= htmlspecialchars($product->tenhanghoa) ?>" loading="lazy">
                         <?php else: ?>
-                            <img src="administrator/elements_LQA/mhanghoa/displayImage.php?id=0" alt="No image">
+                            <img src="/lequocanh/administrator/elements_LQA/img_LQA/no-image.png" alt="Không có hình ảnh" loading="lazy">
                         <?php endif; ?>
                     </div>
                     <div class="product-info">
@@ -486,10 +414,10 @@ $promotionProducts = $featuredDisplay->getPromotionProducts(8);
                         <span class="product-badge badge-sale">
                             <i class="fas fa-fire"></i> Sale
                         </span>
-                        <?php if (!empty($product->image_id) && $product->image_id > 0): ?>
-                            <img src="administrator/elements_LQA/mhanghoa/displayImage.php?id=<?= $product->image_id ?>" alt="<?= htmlspecialchars($product->tenhanghoa) ?>">
+                        <?php if (!empty($product->hinhanh) && $product->hinhanh > 0): ?>
+                            <img src="/lequocanh/administrator/elements_LQA/mhanghoa/displayImage.php?id=<?= $product->hinhanh ?>" alt="<?= htmlspecialchars($product->tenhanghoa) ?>" loading="lazy">
                         <?php else: ?>
-                            <img src="administrator/elements_LQA/mhanghoa/displayImage.php?id=0" alt="No image">
+                            <img src="/lequocanh/administrator/elements_LQA/img_LQA/no-image.png" alt="Không có hình ảnh" loading="lazy">
                         <?php endif; ?>
                     </div>
                     <div class="product-info">
@@ -520,11 +448,11 @@ $promotionProducts = $featuredDisplay->getPromotionProducts(8);
     <?php endif; ?>
 </div>
 
-<link rel="stylesheet" href="administrator/css_LQA/toast-notification.css">
-<script src="administrator/js_LQA/toast-notification.js"></script>
+<link rel="stylesheet" href="/lequocanh/public_files/toast-notification.css">
+<script src="/lequocanh/public_files/toast-notification.js?v=20260516"></script>
 <script>
     function addToCart(productId) {
-        fetch('administrator/elements_LQA/mgiohang/giohangAct.php?action=add&productId=' + productId + '&quantity=1', {
+        fetch('/lequocanh/administrator/elements_LQA/mgiohang/giohangAct.php?action=add&productId=' + productId + '&quantity=1', {
                 method: 'GET',
                 headers: {
                     'X-Requested-With': 'XMLHttpRequest'

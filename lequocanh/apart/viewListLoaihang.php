@@ -1,14 +1,20 @@
 <?php ob_start(); ?>
+<!DOCTYPE html>
+<html lang="vi">
 <?php
 if (session_status() == PHP_SESSION_NONE) {
     session_start();
 }
 require_once __DIR__ . '/../administrator/elements_LQA/mod/loaihangCls.php';
-require_once __DIR__ . '/../administrator/elements_LQA/mod/hanghoaCls.php';
 require_once __DIR__ . '/../includes/query_builder.php';
 require_once __DIR__ . '/../includes/advanced_cache.php';
+require_once __DIR__ . '/../app/autoload.php';
+require_once __DIR__ . '/../includes/csrf_helper.php';
+require_once __DIR__ . '/../includes/performance_bootstrap.php';
 
-$hanghoa = new hanghoa();
+use App\Models\Product;
+use App\Models\ProductImage;
+use App\Models\ProductReview;
 
 $hasFilters = isset($_GET['min_price']) || isset($_GET['max_price']) ||
     isset($_GET['colors']) || isset($_GET['sizes']) || isset($_GET['min_rating']);
@@ -22,28 +28,50 @@ if ($hasFilters) {
         'category' => isset($_GET['reqView']) ? (int)$_GET['reqView'] : null,
         'min_rating' => isset($_GET['min_rating']) ? (int)$_GET['min_rating'] : 0
     ];
-    $list_hanghoa = $hanghoa->filterProducts($filters);
+    $list_hanghoa = Product::filterProducts($filters);
 } elseif (isset($_GET['reqView'])) {
     $idloaihang = $_GET['reqView'];
     
-    $list_hanghoa = cache_remember('products_category_' . $idloaihang, 300, function() use ($hanghoa, $idloaihang) {
-        return $hanghoa->HanghoaGetbyIdloaihang($idloaihang);
+    $list_hanghoa = cache_remember('products_category_' . $idloaihang, 300, function() use ($idloaihang) {
+        return Product::getByCategoryWithPricing((int)$idloaihang);
     });
 } else {
-    $list_hanghoa = cache_remember('all_products', 300, function() use ($hanghoa) {
-        return $hanghoa->HanghoaGetAll();
+    $list_hanghoa = cache_remember('all_products', 300, function() {
+        return Product::getAllWithPricing();
     });
 }
+
+// Pagination
+$productsPerPage = 20;
+$totalProducts = count($list_hanghoa);
+$totalPages = ceil($totalProducts / $productsPerPage);
+$currentPage = max(1, min(isset($_GET['page']) ? (int)$_GET['page'] : 1, $totalPages));
+$offset = ($currentPage - 1) * $productsPerPage;
+$paginatedProducts = array_slice($list_hanghoa, $offset, $productsPerPage);
 
 $carousel_items = array_slice($list_hanghoa, 0, 5);
 
 ?>
 
+<?php include __DIR__ . '/../components/head.php'; ?>
+<body>
+<div class="page-loader" id="pageLoader"></div>
+
+<?php
+// Initialize cart count for navbar
+require_once __DIR__ . '/../administrator/elements_LQA/mod/giohangCls.php';
+$giohang = new GioHang();
+$cartItemCount = $giohang->getCartItemCount();
+?>
+
+<!-- Navbar with Category Menu -->
+<?php include __DIR__ . '/../components/navbar.php'; ?>
+
 <!-- Rating Styles -->
-<link rel="stylesheet" href="public_files/rating_styles.css">
+<link rel="stylesheet" href="/lequocanh/public_files/rating_styles.css">
 
 <!-- Product Filter Styles -->
-<link rel="stylesheet" href="public_files/product_filter.css">
+<link rel="stylesheet" href="/lequocanh/public_files/product_filter.css">
 
 <!-- Carousel kết hợp sản phẩm nổi bật, mới, khuyến mãi và banner quảng cáo -->
 <?php include __DIR__ . '/productBannerCarousel.php'; ?>
@@ -59,16 +87,16 @@ $carousel_items = array_slice($list_hanghoa, 0, 5);
         if (!empty($carousel_items)) {
             foreach ($carousel_items as $index => $item):
 
-                $hinhanh = $hanghoa->GetHinhAnhById($item->hinhanh);
+                $hinhanh = ProductImage::getById((int)$item->hinhanh);
         ?>
         <div class="carousel-item <?php echo $index === 0 ? 'active' : ''; ?>" data-bs-interval="3000">
             <a href="./index.php?reqHanghoa=<?php echo $item->idhanghoa; ?>">
-                <?php if ($hinhanh && !empty($hinhanh->duong_dan)): ?>
-                <img src="./administrator/elements_LQA/mhanghoa/displayImage.php?id=<?php echo $item->hinhanh; ?>"
-                    class="d-block" alt="<?php echo $item->tenhanghoa; ?>">
+                <?php if ($hinhanh && (!empty($hinhanh->duong_dan) || !empty($hinhanh->du_lieu))): ?>
+                <img src="/lequocanh/administrator/elements_LQA/mhanghoa/displayImage.php?id=<?php echo $item->hinhanh; ?>"
+                    class="d-block" alt="<?php echo $item->tenhanghoa; ?>" loading="lazy">
                 <?php else: ?>
                 <div class="updating-image-container">
-                    <img src="./administrator/elements_LQA/img_LQA/no-image.png" alt="Không có hình ảnh">
+                    <img src="/lequocanh/administrator/elements_LQA/img_LQA/no-image.png" alt="Không có hình ảnh">
                 </div>
                 <?php endif; ?>
             </a>
@@ -93,9 +121,6 @@ $carousel_items = array_slice($list_hanghoa, 0, 5);
     <?php endif; ?>
 </div>
 -->
-
-<!-- Thêm script khởi tạo carousel -->
-<script src="administrator/js_LQA/jscript.js"></script>
 
 <?php
 
@@ -208,12 +233,15 @@ $carousel_items = array_slice($list_hanghoa, 0, 5);
     .filter-column {
         flex: 0 0 280px !important;
         min-width: 280px;
-        height: 100% !important;
-        overflow: hidden;
+        height: auto !important;
+        overflow: visible;
+        position: sticky;
+        top: 20px;
+        align-self: flex-start;
     }
     
     .filter-sidebar {
-        height: 100% !important;
+        max-height: calc(100vh - 40px);
         overflow-y: auto !important;
     }
     
@@ -359,7 +387,7 @@ $carousel_items = array_slice($list_hanghoa, 0, 5);
                 <a href="news_detail.php?id=<?php echo $news['id']; ?>" class="sidebar-news-item">
                     <?php if ($news['featured_image']): ?>
                     <img src="/lequocanh/administrator/elements_LQA/madmin/displayImage.php?type=news&id=<?php echo $news['id']; ?>" 
-                         class="sidebar-news-thumb" alt="">
+                         class="sidebar-news-thumb" alt="" loading="lazy">
                     <?php else: ?>
                     <div class="sidebar-news-thumb-placeholder">
                         <i class="fas fa-newspaper"></i>
@@ -599,7 +627,10 @@ $carousel_items = array_slice($list_hanghoa, 0, 5);
 
         <!-- Results Count -->
         <div class="results-count">
-            Hiển thị <?php echo count($list_hanghoa); ?> sản phẩm
+            Hiển thị <?php echo count($paginatedProducts); ?> trong tổng số <?php echo $totalProducts; ?> sản phẩm
+            <?php if ($totalPages > 1): ?>
+                | Trang <?php echo $currentPage; ?>/<?php echo $totalPages; ?>
+            <?php endif; ?>
         </div>
 
         <h3 class="section-title my-4">
@@ -607,9 +638,17 @@ $carousel_items = array_slice($list_hanghoa, 0, 5);
         </h3>
 
         <div class="row row-cols-1 row-cols-md-3 g-4 product-list-grid">
-            <?php foreach ($list_hanghoa as $v):
+            <?php 
+            // Batch load ratings for all products on this page
+            $productIds = array_map(function($p) { return (int)$p->idhanghoa; }, $paginatedProducts);
+            $allRatings = ProductReview::getAverageRatingBatch($productIds);
+            
+            foreach ($paginatedProducts as $v):
 
-                $hinhanh = $hanghoa->GetHinhAnhById($v->hinhanh);
+                $hinhanh = ProductImage::getById((int)$v->hinhanh);
+                $ratingInfo = $allRatings[(int)$v->idhanghoa] ?? ['average' => 0, 'count' => 0];
+                $avgRating = $ratingInfo['average'];
+                $reviewCount = $ratingInfo['count'];
 
                 $hasDiscount = false;
                 $discountPercent = 0;
@@ -635,12 +674,12 @@ $carousel_items = array_slice($list_hanghoa, 0, 5);
                         </button>
                         <?php endif; ?>
 
-                        <?php if ($hinhanh && !empty($hinhanh->duong_dan)): ?>
-                            <img src="./administrator/elements_LQA/mhanghoa/displayImage.php?id=<?php echo $v->hinhanh; ?>"
-                                class="card-img-top" alt="<?php echo $v->tenhanghoa; ?>">
+                        <?php if ($hinhanh && (!empty($hinhanh->duong_dan) || !empty($hinhanh->du_lieu))): ?>
+                            <img src="/lequocanh/administrator/elements_LQA/mhanghoa/displayImage.php?id=<?php echo $v->hinhanh; ?>"
+                                class="card-img-top" alt="<?php echo $v->tenhanghoa; ?>" loading="lazy">
                         <?php else: ?>
                             <div class="updating-image-container">
-                                <img src="./administrator/elements_LQA/img_LQA/no-image.png" alt="Không có hình ảnh">
+                                <img src="/lequocanh/administrator/elements_LQA/img_LQA/no-image.png" alt="Không có hình ảnh" loading="lazy">
                             </div>
                         <?php endif; ?>
                         <div class="card-body">
@@ -654,10 +693,6 @@ $carousel_items = array_slice($list_hanghoa, 0, 5);
                             </div>
 
                             <?php
-
-                            $ratingInfo = $hanghoa->getAverageRating($v->idhanghoa);
-                            $avgRating = $ratingInfo['average'];
-                            $reviewCount = $ratingInfo['count'];
 
                             if ($reviewCount > 0):
                                 $highRating = $avgRating >= 4.5 ? 'high-rating' : '';
@@ -780,7 +815,48 @@ $carousel_items = array_slice($list_hanghoa, 0, 5);
 
         </script>
 
+        <?php if ($totalPages > 1): ?>
+        <!-- Pagination -->
+        <nav aria-label="Product pagination" class="mt-4">
+            <ul class="pagination justify-content-center">
+                <?php if ($currentPage > 1): ?>
+                    <li class="page-item">
+                        <a class="page-link" href="?page=<?php echo $currentPage - 1; ?>" aria-label="Previous">
+                            <span aria-hidden="true">&laquo;</span>
+                        </a>
+                    </li>
+                <?php endif; ?>
+                
+                <?php 
+                $startPage = max(1, $currentPage - 2);
+                $endPage = min($totalPages, $currentPage + 2);
+                for ($i = $startPage; $i <= $endPage; $i++): 
+                ?>
+                    <li class="page-item <?php echo $i === $currentPage ? 'active' : ''; ?>">
+                        <a class="page-link" href="?page=<?php echo $i; ?>"><?php echo $i; ?></a>
+                    </li>
+                <?php endfor; ?>
+                
+                <?php if ($currentPage < $totalPages): ?>
+                    <li class="page-item">
+                        <a class="page-link" href="?page=<?php echo $currentPage + 1; ?>" aria-label="Next">
+                            <span aria-hidden="true">&raquo;</span>
+                        </a>
+                    </li>
+                <?php endif; ?>
+            </ul>
+        </nav>
+        <?php endif; ?>
+
     </div> <!-- End products-column -->
 </div> <!-- End products-container -->
 
+<!-- Footer -->
+<?php include __DIR__ . '/../components/footer.php'; ?>
+
+<!-- Scripts -->
+<?php include __DIR__ . '/../components/scripts.php'; ?>
+
+</body>
+</html>
 <?php ob_end_flush(); ?>

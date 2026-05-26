@@ -1,0 +1,14 @@
+version: "3.8"
+
+services:
+  gitnexus-mcp:
+    build: .
+    container_name: gitnexus-mcp
+    volumes:
+      # Mount the repository
+      - D:\PHP_WS:/repos/PHP_WS:ro
+      # Mount GitNexus index data
+      - D:\PHP_WS\.gitnexus:/repos/PHP_WS/.gitnexus
+    stdin_open: true
+    tty: true
+    restart: unless-stopped
